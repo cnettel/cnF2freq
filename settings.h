@@ -47,6 +47,7 @@ const unsigned int NUMPATHS = NUMTYPES << 1;
 const unsigned int NUMSHIFTGEN = NUMGEN - 1;
 const unsigned int HALFNUMSHIFTS = 1 << ((1 << (NUMSHIFTGEN - 1)) - 1);
 const unsigned int NUMSHIFTS = 1 << ((1 << NUMSHIFTGEN) - 1);
+const bool DOINFPROBS = true;
 /*const unsigned int NUMSHIFTGEN = 0;
 const unsigned int HALFNUMSHIFTS = 1;
 const unsigned int NUMSHIFTS = 1;*/

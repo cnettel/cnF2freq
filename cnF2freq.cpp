@@ -3087,7 +3087,7 @@ template<bool full> void doit(FILE* out, bool printalot
 										pival *= factor;
 									}
 
-									if (false) for (int i = 0; i < 2; i++)
+									for (int i = 0; i < 2; i++)
 									{
 										int index = i * (TYPEBITS / 2);
 										int r = dous[j]->n;
@@ -3156,9 +3156,8 @@ template<bool full> void doit(FILE* out, bool printalot
 											}
 										}
 									}*/
-									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q-1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
-									probs[mapval] += val;
-									//if (marker <= 3 && dous[j]->n >= 2327 && dous[j]->n <= 2330) printf("%d %d %d %d %lf\n", dous[j]->n, shiftflagmode, g, flag2, val);
+									int g3 = (g & 1) + ((bool)(g & 8)) * 2;
+									probs[g3] += val;
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
 continueloop:;
@@ -3297,7 +3296,7 @@ continueloop:;
 						}
 
 
-						if (false) {
+						if (DOINFPROBS) {
 #pragma omp critical(infprobs)
 						{
 
@@ -3855,7 +3854,7 @@ continueloop:;
 						map<MarkerVal, double> surenesses;
 
 						// TODO: NOT INFERRING SURENESS
-						if (false)
+						if (DOINFPROBS)
 						{
 							map<MarkerVal, double> sums[2];
 							for (int a = 0; a < 2; a++)
@@ -4934,7 +4933,7 @@ void readmerlinped(FILE* pedfile)
 		  ind->haploweight[k] = 0.5;
 		  fscanf(pedfile, "%d %d", &a, &b);
 	  
-		  // Assume 1 percent allele error rate
+		  // Assume 1e-7 allele error rate
 			  ind->markersure[k] = make_pair(a ? 1e-7 : 0.0, b ? 1e-7 : 0.0);
 	      
 		  ind->markerdata[k] = make_pair(a * MarkerValue, b * MarkerValue);
@@ -5165,18 +5164,16 @@ int main(int argc, char* argv[])
 	readmarkerdata(in);
 	fclose(in);	*/
 
-	if (argc < 5)
+	if (argc < 4)
 	  {
-	    printf("Three args expected: map, ped and geno file, followed by output filename.\n");
+	    printf("Three args expected: map, ped files in Merlin format, followed by output filename.\n");
 	    return -1;
 	  }
 
 	FILE* mapfile = fopen(argv[1], "rt");
-	readalphamap(mapfile);
+	readmerlnimap(mapfile);
 	FILE* pedfile = fopen(argv[2], "rt");
-	readalphaped(pedfile);
-	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);
+	readmerlinped(pedfile);
 	//	return 0;
 	CORRECTIONINFERENCE = false;
 	postmarkerdata();
@@ -5210,9 +5207,9 @@ int main(int argc, char* argv[])
 
 	//	sscanf(argv[5], "%d", &chromstarts[1]);
 
-	FILE* out = fopen(argv[4], "w");
+	FILE* out = fopen(argv[3], "w");
 	int COUNT = 1;
-	if (argc == 6) sscanf(argv[5], "%d", &COUNT);
+	if (argc == 5) sscanf(argv[4], "%d", &COUNT);
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
