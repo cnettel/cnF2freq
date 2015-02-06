@@ -841,7 +841,6 @@ struct individ
 			f2s = flag99;
 			f2end = flag99 + 1;			
 		}
-		//if (this->n == 1633) printf("%d %d %d %d %d\t%d %d %d\n", this->n, localshift, genwidth, NUMGEN - NUMFLAG2GEN, flag99, upflag2, upflag, upshift);
 
 		int firstpar = flag & 1;
 		double ok = 0;
@@ -2416,11 +2415,13 @@ void postmarkerdata()
 		for (int i = 1; i < 1000000; i++)
 		{
 			individ* ind = getind(i);
-			ind->children = 0;
+			if (ind) ind->children = 0;
 		}
 		for (int i = 1; i < 1000000; i++)
 		{
 			individ* ind = getind(i);
+			if (!ind) continue;
+
 			for (int j = 0; j < 2; j++)
 			  {
 			  if (ind->pars[j])
@@ -2445,7 +2446,9 @@ void postmarkerdata()
 		for (int i = 1; i < 1000000; i++)
 		{
 			individ* ind = getind(i);
-			if (ind->sex) continue;
+			if (!ind) continue;
+			// Only run for sex 2, tailored to half sibships
+			if (!ind->sex) continue;
 
 			for (int g = 0; g < (int) ind->markervals.size(); g++)
 			{
@@ -5093,7 +5096,7 @@ int main(int argc, char* argv[])
 	FILE* datafile = fopen(argv[3], "rt");
 	readalphadata(datafile);
 	//	return 0;
-	CORRECTIONINFERENCE = false;
+	CORRECTIONINFERENCE = true;
 	postmarkerdata();
 	CORRECTIONINFERENCE = false;
 	int chromnum;
