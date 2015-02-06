@@ -5171,7 +5171,7 @@ int main(int argc, char* argv[])
 	  }
 
 	FILE* mapfile = fopen(argv[1], "rt");
-	readmerlnimap(mapfile);
+	readmerlinmap(mapfile);
 	FILE* pedfile = fopen(argv[2], "rt");
 	readmerlinped(pedfile);
 	//	return 0;
