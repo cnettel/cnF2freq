@@ -3029,7 +3029,7 @@ template<bool full> void doit(FILE* out, bool printalot
 										int upflag2r = upflagit(flag2 >> 1, firstpar, genwidth);
 										int upshiftr = upflagit(shiftflagmode >> 1, firstpar, genwidth >> (NUMGEN - NUMSHIFTGEN));
 										int marker = -(q + 1000);
-										int impossibleval = generation * markerposes.size() + marker;
+										int impossibleval = generation * markerposes.size() + marker;p
 
 										if (impossible[shiftflagmode & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3] == impossibleval)
 										{
@@ -3293,6 +3293,7 @@ continueloop:;
 							}
 
 							if (pinfsum[a] < 1e-10) pinfsum[a] = 1e-10;
+							printf("pinfsum val %lf\n", pinfsum[a]);
 						}
 
 
@@ -3390,15 +3391,6 @@ continueloop:;
 
 											dous[j]->pars[a]->sureinfprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
 											+= toadd;
-
-											if (homo)
-											{
-												if (dous[j]->n == 3180)
-												{
-													dous[j]->n = 3180;
-												}
-												//dous[j]->pars[a]->homoinfprobs[marker][c] += toadd;
-											}
 										}
 									}
 								}
@@ -3853,7 +3845,6 @@ continueloop:;
 
 						map<MarkerVal, double> surenesses;
 
-						// TODO: NOT INFERRING SURENESS
 						if (DOINFPROBS)
 						{
 							map<MarkerVal, double> sums[2];
