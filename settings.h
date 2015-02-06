@@ -36,6 +36,7 @@ const bool HAPLOTYPING = false;*/
 
 const int NUMGEN = 2;
 const int TYPEBITS = (1 << NUMGEN) - 2;
+const int TYPEGENS[TYPEBITS] = {0, 0};
 const int TYPESEXES[TYPEBITS] = {0, 1};
 const int NUMTYPES = 1 << TYPEBITS;
 const double EVENGEN = 1.0 / NUMTYPES;
