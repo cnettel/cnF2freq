@@ -3155,7 +3155,6 @@ template<bool full> void doit(FILE* out, bool printalot
 									}*/
 									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q-1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									probs[mapval] += val;
-									//if (marker <= 3 && dous[j]->n >= 2327 && dous[j]->n <= 2330) printf("%d %d %d %d %lf\n", dous[j]->n, shiftflagmode, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
 continueloop:;
@@ -3880,7 +3879,7 @@ continueloop:;
 								for (map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
 								{
 									double factor = sums[a][i->first.second] / (sums[0][i->first.second] + sums[1][i->first.second] + 1e-10);
-									fprintf(out, "Factor: %lf %lf %d %d %d %d %lf %lf\n", i->second, factor, ind->n, j, i->first.first, i->first.second, sums[0][i->first.second], sums[1][i->first.second]);
+									//									fprintf(out, "Factor: %lf %lf %d %d %d %d %lf %lf\n", i->second, factor, ind->n, j, i->first.first, i->first.second, sums[0][i->first.second], sums[1][i->first.second]);
 									factor += 1e-10;
 
 									factor = 1;
