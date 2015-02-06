@@ -3293,7 +3293,6 @@ continueloop:;
 							}
 
 							if (pinfsum[a] < 1e-10) pinfsum[a] = 1e-10;
-							printf("pinfsum val %lf\n", pinfsum[a]);
 						}
 
 
@@ -3406,7 +3405,7 @@ continueloop:;
 					{
 						const int NUMTURNS = 1 << (TYPEBITS + 1);
 						double rawvals[NUMTURNS][NUMSHIFTS];
-						double rawervals[NUMTURNS][NUMSHIFTS];
+						double rawervals[NUMTURNS][NUMSHIFTS];f
 						double sumnegval[TYPEBITS + 1] = {0};
 						for (int g = 0; g < NUMTURNS; g++)
 						{
@@ -3861,6 +3860,7 @@ continueloop:;
 
 							for (int a = 0; a < 2; a++)
 							{
+								// Clear old infprobs
 								for (int b = 0; b < 2; b++)
 								{
 									for (int c = 0; c < 2; c++)
@@ -3882,7 +3882,7 @@ continueloop:;
 								for (map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
 								{
 									double factor = sums[a][i->first.second] / (sums[0][i->first.second] + sums[1][i->first.second] + 1e-10);
-									//																fprintf(out, "Factor: %lf %lf %d %d %d %d %lf %lf\n", i->second, factor, ind->n, j, i->first.first, i->first.second, sums[0][i->first.second], sums[1][i->first.second]);
+									fprintf(out, "Factor: %lf %lf %d %d %d %d %lf %lf\n", i->second, factor, ind->n, j, i->first.first, i->first.second, sums[0][i->first.second], sums[1][i->first.second]);
 									factor += 1e-10;
 
 									factor = 1;
@@ -3901,18 +3901,6 @@ continueloop:;
 										bestmarker = (&(ind->markerdata[j].first))[a];
 									}
 								}
-
-								//														if (ind->n == 2) printf("New sum: %lf\n", sum);
-
-								/*else
-								if (sum < 6.5)
-								{
-								sum = 500;
-								bestval = 1;
-								bestval2 = 1;
-								bestmarker = UnknownMarkerVal;
-								ind->haploweight[j] = 0.5;
-								}*/
 
 								for (map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
 								{
