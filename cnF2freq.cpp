@@ -3337,7 +3337,7 @@ continueloop:;
 										//		  if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal) continue;
 
 										// pinfsum calculated for d, or evil, equalling 0, 
-										for (int d = 1; d < 2; d++)
+										for (int d = 0; d < 2; d++)
 										{
 											dous[j]->parinfprobs[marker][a][c][b][d] /= pinfsum[a];
 
