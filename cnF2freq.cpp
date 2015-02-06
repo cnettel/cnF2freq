@@ -4001,63 +4001,13 @@ continueloop:;
 								}
 								else
 								{
-									if (iter % 30 == 29 && false)
-									{
-										/*bestval = 0;
-										sum = 0;
-
-										for (map<MarkerVal, double>::iterator i = ind->sureinfprobs[j][a].begin(); i != ind->sureinfprobs[j][a].end(); i++)
-										{
-										sum += i->second;
-										if (i->second > bestval) 
-										{
-										bestval = i->second;
-										bestmarker = i->first;
-										}
-										}
-
-										//if (origsum < 10) origsum = 10;
-
-										if (/*sum - ind->homoinfprobs[j][a] > 1 &&*/ /*bestval / sum > 0.999 && origsum * 0.5 < sum)
-										{
-										bestvals[a] = bestmarker;
-										bestsure[a] = 0.01;
-										surefound = true;
-										}
-										else
-										foundbest = false;*/
-									}
-									else								  
-									{
-										printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
-										foundbest = false;
-									}
-								}
-
-								if (foundbest && ind->n == 1931 && j == 3 && a == 1)
-								{
-									printf("Here I am\n");
-								}									
+									printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
+									foundbest = false;
+								}								
 							}
 						}
 
-						/*if (foundbest)
-						{
-						double missum = 0;
-						double totsum = 0;
-
-						for (int a = 0; a < 2; a++)
-						{
-						for (map<MarkerVal, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
-						{
-						totsum += i->second;
-						if (i->first != bestvals[0] && i->first != bestvals[1]) missum += i->second;							
-						}
-						}
-
-						if (1.0 - missum / totsum < 0.95) foundbest = false;
-						}*/
-						if (false) // TODO: NOT INFERRING SURENESS
+						if (DOINFPROBS)
 						{
 							if (ind->sex) foundbest = false;
 
@@ -4070,14 +4020,6 @@ continueloop:;
 								bestsure[0] = 0;
 								bestsure[1] = 0;
 							}
-
-							/*if (foundbest && ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal && bestvals[0] != ind->markerdata[j].first && bestvals[1] != ind->markerdata[j].second)
-							{
-							int index = bestsure[0] < bestsure[1];
-
-							bestvals[index] = (&(ind->markerdata[j].first))[index];
-							bestsure[index] = (&(ind->markersure[j].first))[index];
-							}*/
 
 							if (ind->lastinved[cno] == -1 || true)
 							{
