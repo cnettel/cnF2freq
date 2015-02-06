@@ -3,7 +3,7 @@
 // F2 with haplotyping
 /*const int NUMGEN = 3;
 const int TYPEBITS = (1 << NUMGEN) - 2;
-const int TYPESEXES[TYPEBITS + SELFING * 2] = { 0, 0, 1, 1, 0, 1/*, 0, 0*/ };
+//const int TYPESEXES[TYPEBITS + SELFING * 2] = { 0, 0, 1, 1, 0, 1/*, 0, 0*/ };
 //const int TYPEGENS[TYPEBITS] = {1, 0, 0, 1, 0, 0};
 //const int TYPEGENS[TYPEBITS + SELFING * 2] = { 1, 0, 0, 1, 0, 0/*, 2, 2*/ };
 /*const int NUMTYPES = 1 << (TYPEBITS + (SELFING ? 2 : 0));
