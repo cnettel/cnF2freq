@@ -3906,10 +3906,6 @@ continueloop:;
 									double factor = 1;
 
 									double sureness = i->second / factor / sum;
-<<<<<<< HEAD
-=======
-									printf("SURENESS: %lf %lf %d\n", i->second, sureness, (int)i->first.value());
->>>>>>> 3c5e0d2... Turn on correction inference, fix bugs related to not allocating all 'individ' structures
 									// Add extra uncertainty
 									/*								double extra = 1.0 - min(0.5 / (sum), 0.5);
 
