@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # This script will compile cnF2freq using the Intel compiler (recommended, recent GCC is good, but Intel auto-vectorization is nice for performance)
+g++ -O2 cnF2freq.cpp -ffast-math  -o cnF2freq -fopenmp
 icc -openmp -openmp-linkstatic -fast -ftz cnF2freq.cpp -o cnF2freq
+
 
 
 # cnF2freq is the run on two demo files, a marker map and a pedigree
