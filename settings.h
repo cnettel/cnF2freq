@@ -52,7 +52,7 @@ const bool DOINFPROBS = true;
 /*const unsigned int NUMSHIFTGEN = 0;
 const unsigned int HALFNUMSHIFTS = 1;
 const unsigned int NUMSHIFTS = 1;*/
-//const bool HAPLOTYPING = true;
+const bool HAPLOTYPING = true;
 
 
 
