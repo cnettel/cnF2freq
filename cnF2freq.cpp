@@ -3545,7 +3545,7 @@ continueloop:;
 
 
 					double probsum = 0;
-					for (int i = 0; i < 3; i++)
+					for (int i = 0; i < 4; i++)
 					{
 						probsum += probs[i];
 					}
@@ -5170,9 +5170,9 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 					if (!world.rank())
 #endif
-					  /*if (i == COUNT - 1)*/						fprintf(stdout, "%d\n", i2);
+					  /*if (i == COUNT - 1)*/						fprintf(stdout, "%d %s\n", i2, ind->name.c_str());
 					// Printing of haplotype data for each iteration
-					for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
+6~					for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
 
 					{
 						for (unsigned int j = chromstarts[c]; j < chromstarts[c + 1]; j++)
