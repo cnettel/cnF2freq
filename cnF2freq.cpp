@@ -3029,7 +3029,7 @@ template<bool full> void doit(FILE* out, bool printalot
 										int upflag2r = upflagit(flag2 >> 1, firstpar, genwidth);
 										int upshiftr = upflagit(shiftflagmode >> 1, firstpar, genwidth >> (NUMGEN - NUMSHIFTGEN));
 										int marker = -(q + 1000);
-										int impossibleval = generation * markerposes.size() + marker;p
+										int impossibleval = generation * markerposes.size() + marker;
 
 										if (impossible[shiftflagmode & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3] == impossibleval)
 										{
