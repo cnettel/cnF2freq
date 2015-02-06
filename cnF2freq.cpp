@@ -3988,7 +3988,7 @@ continueloop:;
 
 						if (DOINFPROBS)
 						{
-							if (!ind->sex) foundbest = false;
+							//if (!ind->sex) foundbest = false;
 
 							if (!foundbest && ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal && (bestvals[0] != UnknownMarkerVal || bestvals[1] != UnknownMarkerVal))
 							{
