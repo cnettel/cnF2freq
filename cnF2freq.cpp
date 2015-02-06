@@ -3908,7 +3908,7 @@ continueloop:;
 									double factor = 1;
 
 									double sureness = i->second / factor / sum;
-									printf("SURENESS: %lf %d\n", sureness, (int)i->first.value);
+									printf("SURENESS: %lf %d\n", sureness, (int)i->first.value());
 									// Add extra uncertainty
 									/*								double extra = 1.0 - min(0.5 / (sum), 0.5);
 
