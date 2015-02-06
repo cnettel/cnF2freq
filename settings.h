@@ -1,4 +1,4 @@
-const bool SELFING = false;
+
 
 // F2 with haplotyping
 /*const int NUMGEN = 3;
@@ -15,9 +15,7 @@ const unsigned int NUMPATHS = 1 << (TYPEBITS + 1);
 const unsigned int NUMSHIFTGEN = NUMGEN - 1;
 const unsigned int HALFNUMSHIFTS = 1 << ((1 << (NUMSHIFTGEN - 1)) - 1);
 const unsigned int NUMSHIFTS = 1 << ((1 << NUMSHIFTGEN) - 1);
-const bool HAPLOTYPING = true;
-const int NONSELFNUMTYPES = NUMTYPES >> (SELFING * 2);
-const int VALIDSELFNUMTYPES = NUMTYPES - SELFING * (NUMTYPES >> 2);*/
+const bool HAPLOTYPING = true;*/
 
 // F2 with no haplotyping
 /*const int NUMGEN = 2;
@@ -65,3 +63,7 @@ const int HALFNUMTYPES = 1 << (TYPEBITS / 2);
 // ccoeff does not provide correction inference, so exact result reproduction
 // is achieved when this flag is disabled.
 bool CORRECTIONINFERENCE = true;
+
+const bool SELFING = false;
+const int NONSELFNUMTYPES = NUMTYPES >> (SELFING * 2);
+const int VALIDSELFNUMTYPES = NUMTYPES - SELFING * (NUMTYPES >> 2);
