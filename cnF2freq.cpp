@@ -902,18 +902,12 @@ struct individ
 			// Normalize, in some sense.
 			f2n ^= ((firstpar ^ localshift) & 1);
 
-			if (!genwidth)
-			{
-				//printf("Hoj!\n");
-			}
-			//if (this->n == 2327) printf("%d %d %d\n", f2n, realf2n, flag2);
-
 			if (zeropropagate || !genwidth)
 			{
 				baseval *= 0.5;
 			}
-			//else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-			else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
+			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
+						else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
 				//if (baseval == 0.5) printf("%d\n", n);
