@@ -3905,7 +3905,7 @@ continueloop:;
 									double factor = 1;
 
 									double sureness = i->second / factor / sum;
-									printf("SURENESS: %lf %lf %d\n", i->second, sureness, (int)i->first.value());
+									//printf("SURENESS: %lf %lf %d\n", i->second, sureness, (int)i->first.value());
 									// Add extra uncertainty
 									/*								double extra = 1.0 - min(0.5 / (sum), 0.5);
 
@@ -3977,7 +3977,7 @@ continueloop:;
 								}
 								else
 								{
-									printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
+								  //									printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
 									foundbest = false;
 								}								
 							}
