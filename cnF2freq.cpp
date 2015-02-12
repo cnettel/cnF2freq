@@ -296,9 +296,11 @@ vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-
-
 #pragma omp threadprivate(generation, done, factors, cacheprobs, shiftflagmode, impossible, haplos, lockpos, quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, reltree, relmap, infprobs)
+
+
+
+
 
 // We put all thread-local structures in our own separate struct. This is because many compilers implementing OpenMP
 // use a relatively expensive call for determining thread-local global data, which is not cached over function calls.
@@ -4745,7 +4747,7 @@ void readalphadata(FILE* in)
 
 					ime->markerdata[x] = marker;
 					ime->markersure[x] = markersure;
-					printf("%d/%d turned into %d %d with %lf;%lf\n", data, data2, marker.first, marker.second, markersure.first, markersure.second);
+					printf("%d/%d turned into %d %d with %lf;%lf\n", data, data2, marker.first.value(), marker.second.value(), markersure.first, markersure.second);
 				}
 			}
 		}
