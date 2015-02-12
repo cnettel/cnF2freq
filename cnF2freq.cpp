@@ -276,27 +276,36 @@ PerStateArray<double>::T quickmem[NUMSHIFTS];
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
 typedef boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
-IAT impossible;
+extern IAT impossible;
 
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-boost::array<boost::array<float, 2>, 1000000> haplos;
-boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+extern boost::array<boost::array<float, 2>, 1000000> haplos;
+extern boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 
 // done, factors and cacheprobs all keep track of the same data
 // done indicates that a specific index (in the binary tree of blocks of multi-step transitions) is done
 // with a "generation id" that's semi-unique, meaning no active clearing of the data structure is performed
-vector<int> done[NUMSHIFTS];
+extern vector<int> done[NUMSHIFTS];
 // factors contain the mantissas of the extended floating-point representation
-vector<PerStateArray<double>::T > factors[NUMSHIFTS];
+extern vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
-vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-vector<individ*> reltree;
-map<individ*, int> relmap; //containing flag2 indices
+extern vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
+extern vector<individ*> reltree;
+extern map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
 #pragma omp threadprivate(generation, done, factors, cacheprobs, shiftflagmode, impossible, haplos, lockpos, quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, reltree, relmap, infprobs)
+
+IAT impossible;
+boost::array<boost::array<float, 2>, 1000000> haplos;
+vector<int> done[NUMSHIFTS];
+vector<PerStateArray<double>::T > factors[NUMSHIFTS];
+vector<individ*> reltree;
+map<individ*, int> relmap; //containing flag2 indices
+vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
+boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 
 
 
@@ -770,6 +779,10 @@ struct individ
 			  if (false)
 			    {
 				impossibleref = &(*tb.impossible)[*(tb.shiftflagmode) & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3];
+			    }
+			  else
+			    {
+			      impossibleref = 0;
 			    }
 				impossibleval = (*tb.generation) * markerposes.size() + marker;
 
