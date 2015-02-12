@@ -15,7 +15,7 @@ icc -openmp -openmp-linkstatic -fast -ftz cnF2freq.cpp -o cnF2freq
 
 # g++ puts a lot of thread private storage on the stack
 # This is large enough for at least some use cases. The defaults on some implementations will be too low.
-EXPORT OMP_STACK_SIZE=128M
+export OMP_STACK_SIZE=128M
 ./cnF2freq halfsibdemo.map halfsibdemo.ped demooutput 35
 
 # In this example, the parent haplotypes are 1111 1121 (sire), and 1111 2222 (d1)
