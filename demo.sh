@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script will compile cnF2freq using the Intel compiler (recommended, recent GCC is good, but Intel auto-vectorization is nice for performance)
-g++ -O2 cnF2freq.cpp -ffast-math  -o cnF2freq -fopenmp
+g++ -O2 cnF2freq.cpp -ffast-math  -o cnF2freq -fopenmp -I boost_1_57_0 -g
 icc -openmp -openmp-linkstatic -fast -ftz cnF2freq.cpp -o cnF2freq
 
 
@@ -12,6 +12,10 @@ icc -openmp -openmp-linkstatic -fast -ftz cnF2freq.cpp -o cnF2freq
 # Per-marker phasing, sureness and inferred genotypes are only written to stdout
 # Final output to demooutput file will contain per-marker probabilities for the offspring individuals, expressed as:
 # Parent 2 haplotype * 2 + parent 1 haplotype
+
+# g++ puts a lot of thread private storage on the stack
+# This is large enough for at least some use cases. The defaults on some implementations will be too low.
+EXPORT OMP_STACK_SIZE=128M
 ./cnF2freq halfsibdemo.map halfsibdemo.ped demooutput 35
 
 # In this example, the parent haplotypes are 1111 1121 (sire), and 1111 2222 (d1)
