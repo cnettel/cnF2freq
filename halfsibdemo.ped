@@ -1,8 +1,0 @@
-fam1 sire 0 0 1 0	1 1	1 1	1 2	1 1
-fam1 d1   0 0 2 0	0 0	0 0	0 0	0 0
-fam1 o1   sire d1 1 0	1 1	1 1 	1 1	1 1
-fam1 o2   sire d1 1 0   1 2	1 2	1 2	1 2
-fam1 o3	  sire d1 1 0	1 1	1 1	2 1	1 1
-
-
- 
