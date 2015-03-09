@@ -3417,7 +3417,7 @@ continueloop:;
 					{
 						const int NUMTURNS = 1 << (TYPEBITS + 1);
 						double rawvals[NUMTURNS][NUMSHIFTS];
-						double rawervals[NUMTURNS][NUMSHIFTS];f
+						double rawervals[NUMTURNS][NUMSHIFTS];
 						double sumnegval[TYPEBITS + 1] = {0};
 						for (int g = 0; g < NUMTURNS; g++)
 						{
