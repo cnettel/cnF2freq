@@ -19,6 +19,14 @@ const bool HAPLOTYPING = true;
 const int NONSELFNUMTYPES = NUMTYPES >> (SELFING * 2);
 const int VALIDSELFNUMTYPES = NUMTYPES - SELFING * (NUMTYPES >> 2);
 
+//#define DOEXTERNFORGCC
+
+#ifdef DOEXTERNFORGCC
+#define EXTERNFORGCC extern
+#else
+#define EXTERNFORGCC
+#endif
+
 // F2 with no haplotyping
 /*const int NUMGEN = 2;
 const int TYPEBITS = (1 << NUMGEN) - 2;

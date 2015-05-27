@@ -276,28 +276,30 @@ PerStateArray<double>::T quickmem[NUMSHIFTS];
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
 typedef boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
-extern IAT impossible;
+
+EXTERNFORGCC IAT impossible;
 
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-extern boost::array<boost::array<float, 2>, 1000000> haplos;
-extern boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+EXTERNFORGCC boost::array<boost::array<float, 2>, 1000000> haplos;
+EXTERNFORGCC boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 
 // done, factors and cacheprobs all keep track of the same data
 // done indicates that a specific index (in the binary tree of blocks of multi-step transitions) is done
 // with a "generation id" that's semi-unique, meaning no active clearing of the data structure is performed
-extern vector<int> done[NUMSHIFTS];
+EXTERNFORGCC vector<int> done[NUMSHIFTS];
 // factors contain the mantissas of the extended floating-point representation
-extern vector<PerStateArray<double>::T > factors[NUMSHIFTS];
+EXTERNFORGCC vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
-extern vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-extern vector<individ*> reltree;
-extern map<individ*, int> relmap;
+EXTERNFORGCC vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
+EXTERNFORGCC vector<individ*> reltree;
+EXTERNFORGCC map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
 #pragma omp threadprivate(generation, done, factors, cacheprobs, shiftflagmode, impossible, haplos, lockpos, quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, reltree, relmap, infprobs)
 
+#ifdef DOEXTERNFORGCC
 IAT impossible;
 boost::array<boost::array<float, 2>, 1000000> haplos;
 vector<int> done[NUMSHIFTS];
@@ -306,7 +308,7 @@ vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
-
+#endif
 
 
 
