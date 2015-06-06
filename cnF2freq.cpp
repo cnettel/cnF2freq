@@ -2655,7 +2655,7 @@ template<int N> struct valuereporter
 {
 	array<double, N> probs;
 
-	void reset()
+	valuereporter()
 	{
 		for (int k = 0; k < N; k++)
 		{
@@ -2690,7 +2690,7 @@ struct genotypereporter : valuereporter<4>
 	{
 		probs[mapval] += val;
 	}
-} report_g;
+};
 
 struct statereporter : valuereporter<NUMTYPES>
 {
@@ -2698,13 +2698,13 @@ struct statereporter : valuereporter<NUMTYPES>
 	{
 		probs[g] += val;
 	}
-} report_s;
+};
 
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
 // marker positions.
-template<bool full, typename reporterclass> void doit(FILE* out, bool printalot, reporterclass reporter
+template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #ifdef F2MPI
 							  , mpi::communicator& world
 #endif
@@ -3009,7 +3009,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot,
 
 				for (int q = qstart; q != qend; q+=qd)
 				{
-					reporter.reset();
+					reporterclass reporter;
 					//double mwvals[NUMTYPES][NUMTYPES] = {0};
 					//double mwfvals[NUMTYPES] = {0};
 					double mwvals[1][1];
@@ -5186,7 +5186,7 @@ int main(int argc, char* argv[])
 		{
 			//		  	  	{
 			early = (i < 1);
-			doit<false>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true, report_g
+			doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
 #ifdef F2MPI
 				, world
 #endif
