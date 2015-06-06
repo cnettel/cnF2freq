@@ -2663,7 +2663,7 @@ template<int N> struct valuereporter
 		}
 	}
 
-	void report(vector<string>& outqueue)
+	void report(vector<char>& outqueue)
 	{
 		double probsum = 0;
 		for (int i = 0; i < N; i++)
@@ -2932,7 +2932,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot,
 				if (full)
 				{
 					qstart = (int) markerposes[chromstarts[i]];
-					qend = (int) marpkerposes[chromstarts[i + 1] - 1] + 1;
+					qend = (int) markerposes[chromstarts[i + 1] - 1] + 1;
 					qd = 1;
 					f2s = -1;
 					f2end = 0;
@@ -3349,7 +3349,7 @@ continueloop:;
 							{
 								for (int b = 0; b < 2; b++)
 								{
-									for (int d = 0; d < 1; d++)p
+									for (int d = 0; d < 1; d++)
 									{
 										pinfsum[a] += dous[j]->parinfprobs[marker][a][c][b][d];
 									}
