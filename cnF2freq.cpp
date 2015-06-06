@@ -5186,7 +5186,7 @@ int main(int argc, char* argv[])
 		{
 			//		  	  	{
 			early = (i < 1);
-			doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
+			doit<false, statereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
 #ifdef F2MPI
 				, world
 #endif
