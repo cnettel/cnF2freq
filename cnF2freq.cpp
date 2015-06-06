@@ -2675,7 +2675,7 @@ template<int N> struct valuereporter
 		{
 			char string[255];
 			int val;
-			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == 3 ? '\n' : '\t', &val);
+			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == N - 1 ? '\n' : '\t', &val);
 			for (int k = 0; k < val; k++)
 			{
 				outqueue.push_back(string[k]);
