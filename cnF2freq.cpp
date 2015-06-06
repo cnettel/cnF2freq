@@ -2684,7 +2684,7 @@ template<int N> struct valuereporter
 	}
 };
 
-struct genotypereporter : valuereporter<4>
+struct genotypereporter : valuereporter<3>
 {
 	void addval(int q, int mapval, int g, int flag2, double val)
 	{
