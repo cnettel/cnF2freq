@@ -4693,10 +4693,18 @@ void readalphaped(FILE* in)
 
 void readalphadata(FILE* in)
 {
+	individ* haplo = getind("haplo");
+	for (int x = 0; x < markerposes.size(); x++)
+	{
+		haplo->markerdata[x] = make_pair(SexMarkerVal, SexMarkerVal);
+		haplo->markersure[x] = make_pair(0, 0);
+	}
+
 	char me[255];
 	while (fscanf(in, "%s", me) == 1)
 	{
 		individ* ime = getind(me);
+		bool doublehaplo = (ime->pars[1] == getind("haplo"));
 		ime->empty = false;
 		int data;
 		for (int x = 0; x < markerposes.size(); x++)
@@ -4795,6 +4803,10 @@ void readalphadata(FILE* in)
 					ime->markerdata[x] = marker;
 					ime->markersure[x] = markersure;
 					printf("%d/%d turned into %d %d with %lf;%lf\n", data, data2, marker.first.value(), marker.second.value(), markersure.first, markersure.second);
+				}
+				if (doublehaplo)
+				{
+					ime->markerdata[x] = make_pair(ime->markerdata[x].first, SexMarkerVal);
 				}
 			}
 		}
