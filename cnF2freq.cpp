@@ -1,5 +1,5 @@
 // cnF2freq, (c) Carl Nettelblad, Department of Cell and Molecular Biology, Uppsala University
-// 2008-2014
+// 2008-2015
 //
 // Modified version of Plantimpute with haplotype skewness values written.
 //
@@ -2650,11 +2650,61 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 	return false;
 }
 
+
+template<int N> struct valuereporter
+{
+	array<double, N> probs;
+
+	void reset()
+	{
+		for (int k = 0; k < N; k++)
+		{
+			probs[k] = 0;
+		}
+	}
+
+	void report(vector<string>& outqueue)
+	{
+		double probsum = 0;
+		for (int i = 0; i < N; i++)
+		{
+			probsum += probs[i];
+		}
+		probsum = 1 / probsum;
+		for (int i = 0; i < N; i++)
+		{
+			char string[255];
+			int val;
+			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == 3 ? '\n' : '\t', &val);
+			for (int k = 0; k < val; k++)
+			{
+				outqueue.push_back(string[k]);
+			}
+		}
+	}
+};
+
+struct genotypereporter : valuereporter<3>
+{
+	void addval(int q, int mapval, int g, int flag2, int val)
+	{
+		probs[mapval] += val;
+	}
+} report_g;
+
+struct statereporter : valuereporter<NUMTYPES>
+{
+	void addval(int q, int mapval, int g, int flag2, int val)
+	{
+		probs[g] += val;
+	}
+} report_s;
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
 // marker positions.
-template<bool full> void doit(FILE* out, bool printalot
+template<bool full, typename reporterclass> void doit(FILE* out, bool printalot, reporterclass reporter
 #ifdef F2MPI
 							  , mpi::communicator& world
 #endif
@@ -2882,7 +2932,7 @@ template<bool full> void doit(FILE* out, bool printalot
 				if (full)
 				{
 					qstart = (int) markerposes[chromstarts[i]];
-					qend = (int) markerposes[chromstarts[i + 1] - 1] + 1;
+					qend = (int) marpkerposes[chromstarts[i + 1] - 1] + 1;
 					qd = 1;
 					f2s = -1;
 					f2end = 0;
@@ -2959,7 +3009,7 @@ template<bool full> void doit(FILE* out, bool printalot
 
 				for (int q = qstart; q != qend; q+=qd)
 				{
-					double probs[4] = {0};
+					reporter.reset();
 					//double mwvals[NUMTYPES][NUMTYPES] = {0};
 					//double mwfvals[NUMTYPES] = {0};
 					double mwvals[1][1];
@@ -3171,7 +3221,7 @@ template<bool full> void doit(FILE* out, bool printalot
 										}
 									}*/
 									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q-1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
-									probs[mapval] += val;
+									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
 continueloop:;
@@ -3299,7 +3349,7 @@ continueloop:;
 							{
 								for (int b = 0; b < 2; b++)
 								{
-									for (int d = 0; d < 1; d++)
+									for (int d = 0; d < 1; d++)p
 									{
 										pinfsum[a] += dous[j]->parinfprobs[marker][a][c][b][d];
 									}
@@ -3559,24 +3609,7 @@ continueloop:;
 					}					
 
 
-
-
-					double probsum = 0;
-					for (int i = 0; i < 4; i++)
-					{
-						probsum += probs[i];
-					}
-					probsum = 1 / probsum;
-					for (int i = 0; i < 4; i++)
-					{
-						char string[255];
-						int val;
-						sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == 3 ? '\n' : '\t', &val);
-						for (int k = 0; k < val; k++)
-						{
-							outqueue[j].push_back(string[k]);
-						}
-					}
+					reporter.report(outqueue[j]);
 
 
 
@@ -5153,7 +5186,7 @@ int main(int argc, char* argv[])
 		{
 			//		  	  	{
 			early = (i < 1);
-			doit<false>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
+			doit<false>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true, report_g
 #ifdef F2MPI
 				, world
 #endif
