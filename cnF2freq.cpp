@@ -4696,7 +4696,7 @@ void readalphadata(FILE* in)
 	individ* haplo = getind("haplo");
 	for (int x = 0; x < markerposes.size(); x++)
 	{
-		haplo->markerdata[x] = make_pair(SexMarkerVal, SexMarkerVal);
+		haplo->markerdata[x] = make_pair(sexmarkerval, sexmarkerval);
 		haplo->markersure[x] = make_pair(0, 0);
 	}
 
@@ -4806,7 +4806,7 @@ void readalphadata(FILE* in)
 				}
 				if (doublehaplo)
 				{
-					ime->markerdata[x] = make_pair(ime->markerdata[x].first, SexMarkerVal);
+					ime->markerdata[x] = make_pair(ime->markerdata[x].first, sexmarkerval);
 				}
 			}
 		}
