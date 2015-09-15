@@ -11,4 +11,8 @@ C Nettelblad, S Holmgren, L Crooks, Ö Carlborg - Bioinformatics and Computationa
 Inferring haplotypes and parental genotypes in larger full sib-ships and other pedigrees with missing or erroneous genotype data
 C Nettelblad - BMC Genetics, 2012
 
+The PlantImpute branches specifically should also cite:
+Imputation of Single Nucleotide Polymorphism Genotypes in Biparental, Backcross, and Topcross Populations with a Hidden Markov Model
+John M Hickey, Gregor Gorjanc, Rajeev K Varshney, Carl Nettelblad 2015
+
 Specific versions and uses of the code might have other appropriate publications.
