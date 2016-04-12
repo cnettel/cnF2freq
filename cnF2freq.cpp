@@ -29,6 +29,11 @@
 #include <string.h>
 #include <stdio.h>
 
+
+const int ANALYZE_FLAG_FORWARD = 0;
+const int ANALYZE_FLAG_BACKWARD = 16;
+const int ANALYZE_FLAG_STORE = 32;
+
 float templgeno[8] = {-1, -0.5,
 	0,  0.5,
 	0,  0.5,
@@ -41,8 +46,9 @@ float templgeno[8] = {-1, -0.5,
 //#include <array>
 //#else
 // Boost also provides an array implementation, that is largely compatible
-#include <boost/array.hpp>
+//#include <boost/array.hpp>
 //#endif
+#include <array>
 
 #include <boost/math/distributions/binomial.hpp>
 #include <boost/units/quantity.hpp>
@@ -153,7 +159,7 @@ double genrec[3];
 vector<unsigned int> chromstarts;
 
 vector<int> markertranslation;
-typedef vector<boost::array<double, 5 > > MWTYPE;
+typedef vector<std::array<double, 5 > > MWTYPE;
 
 template<class T> class vectorplus;
 
@@ -253,7 +259,7 @@ int quickgen[NUMSHIFTS];
 template<class T2> class PerStateArray
 {
 public:
-	typedef boost::array<T2, NUMTYPES> T;
+	typedef std::array<T2, NUMTYPES> T;
 };
 
 template<class T2> class StateToStateMatrix
@@ -264,6 +270,7 @@ public:
 		::T T;
 };
 
+#if !DOFB
 // The quick prefixes are caches that retain the last invocation.
 // Only used fully when we stop at marker positions exactly, i.e. not a general grid search.
 double quickfactor[NUMSHIFTS];
@@ -271,20 +278,22 @@ PerStateArray<int>::T quickendmarker[NUMSHIFTS];
 PerStateArray<double>::T quickendfactor[NUMSHIFTS];
 StateToStateMatrix<double>::T quickendprobs[NUMSHIFTS];
 PerStateArray<double>::T quickmem[NUMSHIFTS];
+#endif
 
 // A hashed store of inheritance pathway branches that are known to be impossible.
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
-typedef boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
+typedef std::array<std::array<std::array<std::array<std::array<std::array<std::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
 
 EXTERNFORGCC IAT impossible;
 
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-EXTERNFORGCC boost::array<boost::array<float, 2>, 1000000> haplos;
-EXTERNFORGCC boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+EXTERNFORGCC std::array<std::array<float, 2>, 1000000> haplos;
+EXTERNFORGCC std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 
+#if !DOFB
 // done, factors and cacheprobs all keep track of the same data
 // done indicates that a specific index (in the binary tree of blocks of multi-step transitions) is done
 // with a "generation id" that's semi-unique, meaning no active clearing of the data structure is performed
@@ -293,21 +302,37 @@ EXTERNFORGCC vector<int> done[NUMSHIFTS];
 EXTERNFORGCC vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
 EXTERNFORGCC vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
+#else
+EXTERNFORGCC vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
+EXTERNFORGCC vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
+int fwbwdone[NUMSHIFTS];
+#endif
+
 EXTERNFORGCC vector<individ*> reltree;
 EXTERNFORGCC map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-#pragma omp threadprivate(generation, done, factors, cacheprobs, shiftflagmode, impossible, haplos, lockpos, quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, reltree, relmap, infprobs)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, infprobs)
+#if !DOFB
+#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
+#else
+#pragma omp threadprivate(fwbw,fwbwfactors,fwbwdone)
+#endif
 
 #ifdef DOEXTERNFORGCC
 IAT impossible;
-boost::array<boost::array<float, 2>, 1000000> haplos;
-vector<int> done[NUMSHIFTS];
+std::array<std::array<float, 2>, 1000000> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
+#if !DOFB
+vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+#else
+vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
+vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
+#endif
 #endif
 
 
@@ -320,26 +345,41 @@ struct threadblock
 {
 	int* const generation;
 	int* const shiftflagmode;
+#if !DOFB
 	int* const quickmark;
 	int* const quickgen;
+#endif
 	int* const lockpos;
+#if !DOFB
 	double* const quickfactor;
 	PerStateArray<double>::T* const quickmem;
 	PerStateArray<int>::T* const quickendmarker;
+#endif
 	IAT* const impossible;
-	boost::array<boost::array<float, 2>, 1000000>* const haplos;
+	std::array<std::array<float, 2>, 1000000>* const haplos;
+#if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
-	vector<StateToStateMatrix<double>::T >* const cacheprobs;	
+	vector<StateToStateMatrix<double>::T >* const cacheprobs;
 	PerStateArray<double>::T* const quickendfactor;
 	StateToStateMatrix<double>::T* const quickendprobs;
-	boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000>* infprobs;
+#else
+	vector<std::array<PerStateArray<double>::T, 2> >* fwbw;
+	vector<std::array<double, 2> >* fwbwfactors;
+	int* fwbwdone;
+#endif	
+	std::array<std::array<map<MarkerVal, float>, 2>, 1000000>* infprobs;
 
 	threadblock() : generation(&::generation), shiftflagmode(&::shiftflagmode), impossible(&::impossible),
-		done(::done), factors(::factors), cacheprobs(::cacheprobs), haplos(&::haplos),
-		quickmark(::quickmark), quickgen(::quickgen), lockpos(::lockpos), quickmem(::quickmem),
+		haplos(&::haplos), infprobs(&::infprobs), lockpos(::lockpos),
+#if !DOFB
+		done(::done), factors(::factors), cacheprobs(::cacheprobs),
+		quickmark(::quickmark), quickgen(::quickgen), quickmem(::quickmem),
 		quickfactor(::quickfactor), quickendfactor(::quickendfactor), quickendprobs(::quickendprobs),
-		quickendmarker(::quickendmarker), infprobs(&::infprobs)
+		quickendmarker(::quickendmarker)
+#else
+		fwbw(::fwbw), fwbwfactors(::fwbwfactors), fwbwdone(::fwbwdone)
+#endif
 	{
 	};
 };
@@ -445,7 +485,7 @@ struct classicstop
 	classicstop(int lockpos, int genotype) : lockpos(lockpos), genotype(genotype)
 	{}
 
-	operator int() const
+	explicit operator int() const
 	{
 		return lockpos;
 	}
@@ -587,7 +627,7 @@ struct twicestop : tssmcommon
 
 struct stopmodpair : tssmcommon, smnonecommon
 {
-	typedef boost::array<boost::array<float, 2>, 2> miniactrecT;
+	typedef std::array<std::array<float, 2>, 2> miniactrecT;
 	miniactrecT actrec;
 
 	stopmodpair(int lockpos, miniactrecT actrec) : tssmcommon(lockpos), actrec(actrec)
@@ -690,11 +730,11 @@ struct individ
 	vector<float> negshift;
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
-	//vector<boost::array<boost::array<double, 40>, 4 > > semishift;
-	vector<boost::array<boost::array<boost::array<boost::array<double, 2>, 2>, 2>, 2> > parinfprobs;
-	vector<boost::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
-	vector<boost::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
-	vector<boost::array<double, 2> > unknowninfprobs;
+	//vector<std::array<std::array<double, 40>, 4 > > semishift;
+	vector<std::array<std::array<std::array<std::array<double, 2>, 2>, 2>, 2> > parinfprobs;
+	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
+	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
+	vector<std::array<double, 2> > unknowninfprobs;
 
 	vector<int> genotypegrid;
 
@@ -1234,6 +1274,7 @@ struct individ
 		
 	// Append a "multi-step" transition. If the cached values (essentially a N * N transition matrix for the steps from startmark to
 	// endmark) are missing, calculate them first.
+#if !DOFB
 	double fillortake(const threadblock& tb, const int index, const unsigned int startmark, const unsigned int endmark, PerStateArray<double>::T& probs)
 	{
 		if ((tb.done[*(tb.shiftflagmode)])[index] != (*tb.generation))
@@ -1382,7 +1423,7 @@ struct individ
 					// change the probability values leading up to this position, so they are cached.
 					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
 					tb.quickmark[*tb.shiftflagmode] = startmark;
-					tb.lockpos[*tb.shiftflagmode] = stopdata;
+					tb.lockpos[*tb.shiftflagmode] = (int) stopdata;
 					tb.quickfactor[*tb.shiftflagmode] = factor;
 
 					for (int i = 0; i < NUMTYPES; i++)
@@ -1485,7 +1526,7 @@ return MINFACTOR;
 				if (!frommem && !stopdata.okstep(startmark, endmark))
 				{
 					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
-					tb.lockpos[*tb.shiftflagmode] = stopdata;
+					tb.lockpos[*tb.shiftflagmode] = (int) stopdata;
 					tb.quickfactor[*tb.shiftflagmode] = MINFACTOR;
 				}
 
@@ -1495,7 +1536,83 @@ return MINFACTOR;
 
 		return factor;
 	}
+#else
+// Analyze for a specific range, including a possible fixed specific state at some position (determined by stopdata)
+template<bool inclusive, class T, class G> double quickanalyze(const threadblock& tb, const T& turner, unsigned int startmark,
+	const unsigned int endmark, const G &stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
+	float minfactor = MINFACTOR)
+{
+	// Probe the distance to test
+	int newstart = startmark;
+	bool allowfull = inclusive;
 
+	while (stopdata.okstep(startmark, newstart))
+	{
+		int stepsize;
+		for (stepsize = 1; stepsize < (endmark - startmark + allowfull) &&
+			stopdata.okstep(newstart, newstart + stepsize); stepsize *= 2)
+		{
+		}
+
+		stepsize /= 2;
+		newstart += stepsize;
+	}
+
+	// KLAGA OM PROBS REDAN ÄR SATT???
+	// LÄS IN FORWARD
+	double factor = 0;
+	probs = fwbw[*tb.shiftflagmode][0][newstart];
+	startmark = newstart;
+	// LOOPA FRAMÅT STEG FÖR STEG TILLS CANQUICKEND ÄR OKEJ	
+	while (startmark < endmark)
+	{
+		int stepsize = 1;
+
+		bool willquickend = (turner.canquickend() && canquickend(startmark, stopdata));
+		int genotype = stopdata.getgenotype(startmark);
+
+		if (willquickend)
+		{
+			// If we are doing a quick end
+			factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+			double sum = 0;
+
+			for (int k = 0; k < NUMTYPES; k++)
+			{
+				probs[k] *= (genotype >= 0) && (k != genotype) ? 0 : fwbw[*tb.shiftflagmode][1][startmark][k];
+				sum += probs[k];
+			}
+
+			if (sum <= 0)
+			{
+				factor = MINFACTOR;
+			}
+			else
+			{
+				// Normalize, update auxiliary exponent
+				sum = 1 / sum;
+				for (int i = 0; i < NUMTYPES; i++)
+				{
+					probs[i] *= sum;
+				}
+				factor -= log(sum);
+			}
+		}
+		else
+		{
+			//printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
+			factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+		}
+
+		startmark += stepsize;
+		allowfull |= true;
+	}
+
+	return factor;
+}
+#endif
+
+#if !DOFB
 	// A wrapper to quickanalyze, preparing the start probability vector.
 	template<class T, class G> double doanalyze(const threadblock& tb, const T& turner, const int startmark, const int endmark, const G& stopdata,
 		const int flag2, bool ruleout = false, PerStateArray<double>::T* realprobs = 0, float minfactor = MINFACTOR)
@@ -1532,7 +1649,51 @@ return MINFACTOR;
 		if (!small) adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO, the very last marker can be somewhat distorted
 
 		return factor;
-	}	
+	}
+#else
+	template<class T, class G> double doanalyze(const threadblock& tb, const T& turner, const int startmark, const int endmark, const G& stopdata,
+		const int flag2, bool ruleout = false, PerStateArray<double>::T* realprobs = 0, float minfactor = MINFACTOR)
+	{
+		if (realprobs != 0) fprintf(stderr, "THIS WAS NOT EXPECTED. WHEN IS THIS USED?\n");
+		PerStateArray<double>::T probs;
+
+		if (tb.fwbwdone[*(tb.shiftflagmode)] != *(tb.generation))
+		{
+			// Initialize forward-backward matrices in one big go.
+			//probs = fakeprobs;
+			double selfingfactors[4];
+			if (SELFING)
+			{
+			  int selfgen = gen - 2;
+				selfingfactors[0] = 1.0 / (1 << selfgen);
+				selfingfactors[1] = (1 - selfingfactors[0]) * 0.5;
+				selfingfactors[2] = (1 - selfingfactors[0]) * 0.5;
+				selfingfactors[3] = 0;
+			}
+			for (int i = 0; i < NUMTYPES; i++)
+			{
+				probs[i] = EVENGEN * (SELFING ?
+					selfingfactors[i >> TYPEBITS] : 1.0);
+			}
+			// TODO, INGET STOPP, INGEN TURNER
+			// TODO VAD ÄR ENDMARK?
+			realanalyze<ANALYZE_FLAG_STORE & ANALYZE_FLAG_FORWARD & 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			
+			for (int i = 0; i < NUMTYPES; i++)
+			{
+				probs[i] = 1.0;
+			}
+			realanalyze<ANALYZE_FLAG_STORE & ANALYZE_FLAG_BACKWARD & 2 & 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+		}
+
+		double factor = quickanalyze<true, T>(tb, turner, startmark, endmark, stopdata, flag2, ruleout, probs, minfactor);
+		bool small = !_finite(factor) || minfactor >= factor;
+
+		if (!small) adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO, the very last marker can be somewhat distorted
+
+		return factor;
+	}
+#endif
 
 	// This is the actual analyzing code. It works with no caches, and can function independently, but is generally only used to patch in those
 	// elements not found in caches by quickanalyze and fillortake.
@@ -1542,6 +1703,9 @@ return MINFACTOR;
 	// first bit in updateend signals whether the interval is end-inclusive at endmark
 	// the second bit in updateend will be 0 if the interval is end-inclusive at startmark, and 1 IF NOT
 	// the third bit will cause the code to quit early, after processing the genotype and turner condition
+	// the fourth bit will cause the code to go backwards, if set
+	// the fifth bit will cause whe code to store probs in fwbw structures
+	// Be careful how things switch meaning when going backwards! Could be refactored!
 	template<int updateend, class T, class G> double realanalyze(const threadblock& tb, const T& turner, const int startmark, const int endmark, const G& stopdata,
 		const int flag2, const bool ruleout = false, PerStateArray<double>::T* realprobs = 0)
 	{
@@ -1565,11 +1729,22 @@ return MINFACTOR;
 		double factor = 0;
 
 		// Walk over all markers.
-		for (int j = startmark + 1; j <= endmark; j++)
+		int d = 1;
+		int firstmark = startmark;
+		int lastmark = endmark;
+		if (updateend & ANALYZE_FLAG_BACKWARD)
 		{
-			double startpos = markerposes[j - 1];
+			d = -1;
+			swap(firstmark, lastmark);
+		}
+
+		for (int j = firstmark + d; j != lastmark + d; j += d)
+		{
+			double startpos = markerposes[j - d];
 			double endpos = markerposes[j];
 			int genotype = -1;
+
+			if (updateend & ANALYZE_FLAG_BACKWARD) swap(startpos, endpos);
 
 			bool tofind = stopdata.fixtofind(genotype, startpos, endpos, j);
 
@@ -1584,7 +1759,7 @@ return MINFACTOR;
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for the previous
 				// marker. Used to maximize the caching.
-				if (!((updateend & 2) && (j == startmark + 1))) adjustprobs(tb, probs, j - 1, factor, ruleout, f2use);
+				if (!((updateend & 2) && (j == startmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
 			}
 			else
 			{
@@ -1632,7 +1807,7 @@ return MINFACTOR;
 					{
 						for (int k = 0; k < 2; k++)
 						{
-						  recprob[gen][k] = 0.5 * (1.0 - exp((gen == 2 ? selfgen : 1) * getactrec(stopdata, startpos, endpos, k, j, gen) * (dist)));
+						  recprob[gen][k] = 0.5 * (1.0 - exp((gen == 2 ? selfgen : 1) * getactrec(stopdata, startpos, endpos, k, j - d + 1, gen) * (dist)));
 							//					if (iter == tofind) recprob[k] = max(recprob[k], 1e-5);
 						}
 					}
@@ -1654,7 +1829,7 @@ return MINFACTOR;
 						}
 					}
 
-					boost::array<double, NONSELFNUMTYPES> recombprec;
+					std::array<double, NONSELFNUMTYPES> recombprec;
 					
 #pragma ivdep
 					for (int index = 0; index < NONSELFNUMTYPES; index++)
@@ -1720,14 +1895,23 @@ return MINFACTOR;
 					}
 				}
 
-				startpos = endpos;
-				endpos = markerposes[j];
+				// startpos and enpos are always defined in the forward sense, i.e. startpos being upstream of endpos
+				if (updateend & ANALYZE_FLAG_BACKWARD)
+				{
+					endpos = startpos;
+					startpos = markerposes[j];
+				}
+				else
+				{
+					startpos = endpos;
+					endpos = markerposes[j];
+				}
 			}			
 		}
 
 		if (updateend & 1)
 		{
-			adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO
+			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
 		}
 
 		return factor;
@@ -2653,7 +2837,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 
 template<int N> struct valuereporter
 {
-	array<double, N> probs;
+	std::array<double, N> probs;
 
 	valuereporter()
 	{
@@ -2700,6 +2884,25 @@ struct statereporter : valuereporter<NUMTYPES>
 	}
 };
 
+void resizecaches()
+{
+	// Some heaps are not properly synchronized. Putting a critical section here makes the operations not safe,
+	// but *safer*.
+#pragma omp critical(uglynewhack)
+	for (int t = 0; t < NUMSHIFTS; t++)
+	{
+#if !DOFB 
+		factors[t].resize(markerposes.size());
+		cacheprobs[t].resize(markerposes.size());
+		done[t].resize(markerposes.size());
+#else
+		fwbwfactors[t].resize(markerposes.size());
+		fwbw[t].resize(markerposes.size());
+		fwbwdone[t] = 0;
+#endif
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -2716,7 +2919,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 	int count = 0;
-	vector<vector<boost::array<float, 2> > > realgeno;	
+	vector<vector<std::array<float, 2> > > realgeno;	
 
 	realgeno.resize(dous.size());
 
@@ -2755,7 +2958,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	iter++;
 
 
-	map<pair<individ*, individ*>, map<int, boost::array<double, 8> > > nsm;
+	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
 	if (doprint)
 	{
 		//fprintf(out, "%d %d\n", count, chromstarts.size() - 1);
@@ -2831,15 +3034,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			threadblock tb = tborig;
 
 
-			// Some heaps are not properly synchronized. Putting a critical section here makes the operations not safe,
-			// but *safer*.
-#pragma omp critical(uglynewhack)
-			for (int t = 0; t < NUMSHIFTS; t++)
-			{
-				factors[t].resize(markerposes.size());
-				cacheprobs[t].resize(markerposes.size());
-				done[t].resize(markerposes.size());
-			}
+			resizecaches();
 
 			if (dous[j]->markerdata.size())
 			{				
@@ -4458,9 +4653,9 @@ continueloop:;
 					}
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 					map<individ*, double> bestshift;
-					for (map<pair<individ*, individ*>, map<int, boost::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
+					for (map<pair<individ*, individ*>, map<int, std::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
 					{
-						for (map<int, boost::array<double, 8> >::iterator j = i->second.begin(); j != i->second.end(); j++)
+						for (map<int, std::array<double, 8> >::iterator j = i->second.begin(); j != i->second.end(); j++)
 						{
 							// 1-3 allows shifts, but not genotype switches
 							// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
