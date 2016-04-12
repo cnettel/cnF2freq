@@ -2841,7 +2841,7 @@ struct negshifter
 		for (int p = minstart + 1; p < (int) chromstarts[c + 1]; p++)
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
-			if (ind->n < 2327) ind->haploweight[p] = 1.0f - ind->haploweight[p];
+			ind->haploweight[p] = 1.0f - ind->haploweight[p];
 		}
 	}
 };
@@ -3783,7 +3783,7 @@ continueloop:;
 														if (s & shiftignore) continue;
 									int marker = -q - 1000;
 									double val = rawvals[g][s];
-									//fprintf(out, "rawvals: %d %d %d %d %lf\n", dous[j]->n, marker, g, s, rawervals[g][s] / rawervals[0][s] -1);
+									fprintf(out, "rawvals: %d %d %d %d %lf\n", j, marker, g, s, rawervals[g][s] / rawervals[0][s]);
 									// Consider switching to all-log
 									if (!_finite(val) || val < 1e-10) val = 1e-10;
 
