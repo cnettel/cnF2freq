@@ -3783,7 +3783,7 @@ continueloop:;
 														if (s & shiftignore) continue;
 									int marker = -q - 1000;
 									double val = rawvals[g][s];
-									fprintf(out, "rawvals: %d %d %d %d %lf\n", j, marker, g, s, rawervals[g][s] / rawervals[0][s]);
+									//fprintf(out, "rawvals: %d %d %d %d %lf\n", j, marker, g, s, rawervals[g][s] / rawervals[0][s]);
 									// Consider switching to all-log
 									if (!_finite(val) || val < 1e-10) val = 1e-10;
 
@@ -4780,10 +4780,10 @@ continueloop:;
 
 
 
-					for (int c = 0; c < (int) chromstarts.size() - 1; c++)
+					/*for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 					{
 						for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
-					}
+					}*/
 				}
 			}
 		}

@@ -1,3 +1,7 @@
+// Do forward-backward, value 1
+// Do original cnF2freq tree evaluation, value 0
+#define DOFB 1
+
 // F2 with haplotyping
 const bool DOINFPROBS = false;
 const bool SELFING = false;
