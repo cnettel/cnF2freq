@@ -1,7 +1,9 @@
-// cnF2freq, (c) Carl Nettelblad, Department of Cell and Molecular Biology, Uppsala University
-// 2008-2015
+// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
+// 2008-2016
 //
-// Modified version of Plantimpute with haplotype skewness values written.
+// PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
+// algorithm. This reduces mamoery requirements and speeds up imputation. A lot. Still
+// som e kinks to work out. Please contact the author regarding proper references.
 //
 // carl.nettelblad@it.uu.se
 //
