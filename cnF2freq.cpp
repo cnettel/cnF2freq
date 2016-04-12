@@ -1549,7 +1549,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 	while (stopdata.okstep(startmark, newstart))
 	{
 		int stepsize;
-		for (stepsize = 1; stepsize < (endmark - startmark + allowfull) &&
+		for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
 			stopdata.okstep(newstart, newstart + stepsize); stepsize *= 2)
 		{
 		}
