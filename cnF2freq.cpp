@@ -1554,21 +1554,21 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 		{
 		}
 
+		if (stepsize == 1) break;
+
 		stepsize /= 2;
 		newstart += stepsize;
 	}
 
-	// KLAGA OM PROBS REDAN ÄR SATT???
-	// LÄS IN FORWARD
-	double factor = 0;
-	probs = fwbw[*tb.shiftflagmode][0][newstart];
+	double factor = fwbwfactors[*tb.shiftflagmode][newstart][0];
+	probs = fwbw[*tb.shiftflagmode][newstart][0];
 	startmark = newstart;
-	// LOOPA FRAMÅT STEG FÖR STEG TILLS CANQUICKEND ÄR OKEJ	
+
 	while (startmark < endmark)
 	{
 		int stepsize = 1;
 
-		bool willquickend = (turner.canquickend() && canquickend(startmark, stopdata));
+		bool willquickend = /*(turner.canquickend() && canquickend(startmark, stopdata))*/ stopdata.okstep(startmark + 1, endmark);
 		int genotype = stopdata.getgenotype(startmark);
 
 		if (willquickend)
@@ -1576,12 +1576,14 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 			// If we are doing a quick end
 			factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 			double sum = 0;
-
+			
 			for (int k = 0; k < NUMTYPES; k++)
 			{
-				probs[k] *= (genotype >= 0) && (k != genotype) ? 0 : fwbw[*tb.shiftflagmode][1][startmark][k];
+				probs[k] *= fwbw[*tb.shiftflagmode][startmark][1][k];
 				sum += probs[k];
-			}
+			}	
+
+			factor += fwbwfactors[*tb.shiftflagmode][startmark][1];
 
 			if (sum <= 0)
 			{
@@ -1597,10 +1599,12 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 				}
 				factor -= log(sum);
 			}
+
+			return factor;
 		}
 		else
 		{
-			//printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
+			printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
 			factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 		}
 
@@ -1675,22 +1679,26 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 				probs[i] = EVENGEN * (SELFING ?
 					selfingfactors[i >> TYPEBITS] : 1.0);
 			}
-			// TODO, INGET STOPP, INGEN TURNER
-			// TODO VAD ÄR ENDMARK?
-			realanalyze<ANALYZE_FLAG_STORE & ANALYZE_FLAG_FORWARD & 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			
+			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
 			
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = 1.0;
 			}
-			realanalyze<ANALYZE_FLAG_STORE & ANALYZE_FLAG_BACKWARD & 2 & 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 2 | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+
+			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
 		}
 
 		double factor = quickanalyze<true, T>(tb, turner, startmark, endmark, stopdata, flag2, ruleout, probs, minfactor);
 		bool small = !_finite(factor) || minfactor >= factor;
 
-		if (!small) adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO, the very last marker can be somewhat distorted
-
+		//if (!small) adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO, the very last marker can be somewhat distorted
+		if (small)
+		{
+			//printf("Small!\n");
+		}
 		return factor;
 	}
 #endif
@@ -1736,6 +1744,15 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 		{
 			d = -1;
 			swap(firstmark, lastmark);
+#if DOFB
+			if ((updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
 		}
 
 		for (int j = firstmark + d; j != lastmark + d; j += d)
@@ -1755,6 +1772,16 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 				f2use = flag2;
 			}
 
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
+
 			if (genotype != -2)
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for the previous
@@ -1772,7 +1799,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 			// of no fixated position.
 			for (int iter = 0; iter <= (int) tofind; iter++)
 			{
-				// If iter is 1, we have currently handled the transition all the way to the fixated position. Now filter to keep only
+				// If iter is 1, we have currently hanfwdled the transition all the way to the fixated position. Now filter to keep only
 				// a single state value positive.
 				if (iter)
 				{
@@ -1906,12 +1933,31 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 					startpos = endpos;
 					endpos = markerposes[j];
 				}
-			}			
+			}
+
+#if DOFB
+			if ((updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][j][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][j][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
 		}
 
 		if (updateend & 1)
 		{
 			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][lastmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][lastmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
 		}
 
 		return factor;
@@ -3298,6 +3344,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 
+								// This is the big main call
 								val = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, classicstop(q, g),
 									flag2, true, 0, -15.0 + factor) - factor;
 
