@@ -690,7 +690,6 @@ template<class G> double getactrec(const G& stopdata, double startpos, double en
 template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double startpos, double endpos, int k, int j, int gen)
 {
 	int index = j - 1 + stopdata.lockpos + 1000;
-	//  printf("getactrec: %d %d %d %d\n", k, j, index, stopdata.lockpos);
 
 	if (index == 0 || index == 1) return stopdata.actrec[k][index];
 
