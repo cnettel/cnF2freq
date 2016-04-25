@@ -2269,7 +2269,6 @@ void readmarkerinfo(FILE* in)
 			{
 				double v;
 				fscanf(in, "%lf", &v);
-				//v = 1;
 				j += v;
 
 				for (int p = 0; p < 2 / sexc; p++)
