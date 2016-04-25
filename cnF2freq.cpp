@@ -4034,60 +4034,22 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								for (map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
 								{
-									//double factor = sums[a][i->first.second] / (sums[0][i->first.second] + sums[1][i->first.second]);
 									double factor = 1;
 
 									double sureness = i->second / factor / sum;
-									// Add extra uncertainty
-									/*								double extra = 1.0 - min(0.5 / (sum), 0.5);
-
-									if (sureness > extra)
-									{
-									sureness -= (sureness - extra) * 0.5;
-									}*/
 									double origsureness = sureness;
 
-									if ((&(ind->markerdata[j].first))[a] == UnknownMarkerVal)
+									if (!(&(ind->markerdata[j].first))[a] == UnknownMarkerVal)
 									{
-										/*if ((&(ind->markersure[j].first))[a] > 1e-3)
+										if (i->first != (&(ind->markerdata[j].first))[a])
 										{
-										sureness -= (1 - (&(ind->markersure[j].first))[a]);
-										sureness /= (&(ind->markersure[j].first))[a];
-										}*/
-									}
-									else
-										if (i->first == (&(ind->markerdata[j].first))[a])
-										{
-											/*						  double bigdenom = 1.0 / (((sum - i->second) / ((&(ind->markersure[j].first))[a] + 1e-5)) + i->second);
-											origsureness = i->second * bigdenom;
-											sureness = origsureness;*/
-										}
-										else
-										{
-											/*						  double bigdenom = 1.0 / (i->second / ((&(ind->markersure[j].first))[a] + 1e-5) + sum - i->second);
-											sureness = i->second / ((&(ind->markersure[j].first))[a] + 1e-5) * bigdenom;
-											//sureness = i->second / ((&(ind->markersure[j].first))[a]) / sum;
-											origsureness = sureness;*/
-
-											//sureness = origsureness;
 											if (sureness > 0.9999)
 											{
-												//									fprintf(out, "Was 1: %lf %d %d\n", sureness, ind->n, j);
 												sureness = 0.9999;
 											}
-											//							origsureness = sureness;
-											//if (origsureness < 0.5) origsureness = 0.5;
 										}
 
-									if (/*ind->unknowninfprobs[j][a] > 0.001 &&*/ origsureness > 0.9999) origsureness = 0.9999;
-
-									/*origsureness -= 0.5;
-									origsureness *= 2;*/
-
-									//origsureness = 1 - ((1 - origsureness) / origsureness);
-
-
-									//									if ((ind->n == 1633 || ind->n == 1726) && j < 600) fprintf(out, "Sureness: %lf %d %d %d %lf\n", sureness, i->first, j, a, sum);
+									if (origsureness > 0.9999) origsureness = 0.9999;
 									surenesses[i->first] += 1 - origsureness;
 
 									if (sureness > bestval)
@@ -4098,10 +4060,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 								}
 
-
 								double origsum = sum;
 								double sureness = bestval;
-
 								if (sureness > ((iter % 30 == 19 && false) ? 0.99 : 0.49))
 								{
 									bestvals[a] = bestmarker;
