@@ -2959,10 +2959,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
-	if (doprint)
-	{
-		//fprintf(out, "%d %d\n", count, chromstarts.size() - 1);
-	}
 
 	for (int i = 0; i < INDCOUNT; i++)
 	{
@@ -2978,7 +2974,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			ind->haplobase[j] = 0.0f;
 		}
 
-		//		fprintf(out, "B%d:%d\n", world.rank(), i);
 #ifdef F2MPI
 		broadcast(world, ind->haploweight, 0);
 
@@ -2986,7 +2981,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 		world.barrier();
 #endif
-		//		fflush(out);
 
 	}
 
@@ -3008,10 +3002,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 	{
-		if (doprint)
-		{
-			//fprintf(out, "%d %d\n", i + 1, (int) markerposes[chromstarts[i + 1] - 1]);
-		}
 		//printf("Chromosome %d\n", i + 1);
 
 		// The output for all individuals in a specific iteration is stored, as we have parallelized the logic and 
