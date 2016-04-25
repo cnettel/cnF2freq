@@ -1434,15 +1434,12 @@ struct individ
 					}
 					else
 					{
-						//printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
 						factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 					}
 
-					// This will work.
 					if (!_finite(factor) || factor <= minfactor)
-					{
-						//			    			    if (startmark) printf("%d;%d;%d : %lf\n", n, shiftflagmode, startmark, factor);
-						if (!_finite(factor)) printf("Non-finiteA %d %d\n", n, startmark);
+					{						
+						if (!_finite(factor)) fprintf(stderr, "Non-finiteA %d %d\n", n, startmark);
 						return MINFACTOR;
 					}
 					if (willquickend)
@@ -1461,7 +1458,6 @@ struct individ
 							tb.quickendprobs[*tb.shiftflagmode][genotype][genotype] = 1.0;
 							double superfactor = realanalyze<0 | 2, T>(tb, turner, startmark, startmark + stepsize, NONESTOP, -1, ruleout, &tb.quickendprobs[*tb.shiftflagmode][genotype]);
 
-							//						printf("Setting!\n");
 							superfactor += quickanalyze<true, T>(tb, turner, startmark + stepsize, endmark, NONESTOP, flag2, ruleout, tb.quickendprobs[*tb.shiftflagmode][genotype],
 								// all uses of this precalced data will have the
 								// quickfactor component in common, so taking that
@@ -1506,7 +1502,7 @@ struct individ
 
 			if (!_finite(factor) || factor <= minfactor)
 			{
-				if (!_finite(factor)) printf("Non-finiteB %d %d\n", n, startmark);
+				if (!_finite(factor)) fprintf(stderr, "Non-finiteB %d %d\n", n, startmark);
 				if (!frommem && !stopdata.okstep(startmark, endmark))
 				{
 					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
