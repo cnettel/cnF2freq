@@ -3,10 +3,11 @@
 #define DOFB 1
 
 const int INDCOUNT = 1000000;
-
-// F2 with haplotyping
+const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = false;
 const bool SELFING = false;
+
+// F2 with haplotyping
 const int NUMGEN = 3;
 const int TYPEBITS = (1 << NUMGEN) - 2;
 const int TYPESEXES[TYPEBITS + SELFING * 2] = { 0, 0, 1, 1, 0, 1/*, 0, 0*/ };

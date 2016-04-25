@@ -3165,7 +3165,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				factor += log(realfactor);
 				printf("%lf %d\n", factor, shiftend);
 				fflush(stdout);
-				if (_isnan(factor) || factor < MINFACTORm) continue;
+				if (_isnan(factor) || factor < MINFACTOR) continue;
 
 				// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
 				for (int q = qstart; q != qend; q += qd)
@@ -3183,7 +3183,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (shiftflagmode & shiftignore) continue;
 							if (factor - factors[shiftflagmode] > 10) continue;
-							if (q <= -1000 && false)
+							if (q <= -1000 && DOREMAPDISTANCES)
 							{
 								double val;
 								for (int g2 = 0; g2 < NUMTYPES; g2++)
