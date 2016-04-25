@@ -1584,7 +1584,6 @@ struct individ
 			}
 			else
 			{
-				printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
 				factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 			}
 
