@@ -3491,31 +3491,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						if (DOINFPROBS) {
 #pragma omp critical(infprobs)
 						{
-
-							// Add some diffusion to avoid numerical runaway scenarios for essentially symmetrical cases
-							/*if (dous[j]->pars[0] && dous[j]->pars[1])
-							for (int a = 0; a < 2; a++)
-							{
-							for (int b = 0; b < 2; b++)
-							{
-							if ((&(dous[j]->pars[0]->markerdata[marker].first))[a] !=
-							(&(dous[j]->pars[1]->markerdata[marker].first))[b]) continue;
-
-							double diff = (&(dous[j]->pars[0]->markersure[marker].first))[a] -
-							(&(dous[j]->pars[1]->markersure[marker].first))f[b];
-
-							if (fabs(diff) < 0.001)
-							{
-							diff *= 0.001 - fabs(diff);
-							diff /= 0.001;
-
-							(&(dous[j]->pars[0]->markersure[marker].first))[a] -= diff;
-							(&(dous[j]->pars[1]->markersure[marker].first))[b] += diff;
-							}
-							}
-							}*/
-
-
 							for (int a = 0; a < 2; a++)
 							{
 								if (!dous[j]->pars[a]) continue;
