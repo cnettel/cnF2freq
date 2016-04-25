@@ -3861,7 +3861,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (!prevlow)
 							{
-								//						fprintf(stdout, "prevlow: %d %d %lf\n", ind->n, p, ind->negshift[p]);
 								negshiftcand ourtuple(ind, 0, p);
 								negshiftcands[c].insert(ourtuple);
 							}
