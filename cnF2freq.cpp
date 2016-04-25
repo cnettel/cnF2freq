@@ -1125,7 +1125,7 @@ struct individ
 				{
 					if (pars[k])
 					{
-						int u = ((k ^ flag2 /*^ *tb.shiftflagmode*/) & 1);
+						int u = ((k ^ flag2 & 1);
 						if (latephase || (&themarker.first)[u] != UnknownMarkerVal)
 #pragma omp critical (parmarkerval)
 						{
