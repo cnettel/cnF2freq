@@ -3280,11 +3280,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										// parindex = !parindex;
 										int flag2parindex = (flag2 >> (index + 1)) & 1;
 
-										/*int otherindex = (!i) * (TYPEBITS / 2);
-										int oparindex = ((flag2 >> (otherindex + 1)) /*^ (g >> index)*) & 1;*/
-
 										int updateval = f2n ^ i;
-
 										double factor = 1;
 										individ* parnow = dous[j]->pars[i];
 
@@ -3304,7 +3300,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										pival *= factor;
 									}
 
-									if (false) for (int i = 0; i < 2; i++)
+									if (DOINFPROBS) for (int i = 0; i < 2; i++)
 									{
 										int index = i * (TYPEBITS / 2);
 										int r = dous[j]->n;
@@ -3312,9 +3308,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										// FOR g shift
 										// parindex = !parindex;
 										int flag2parindex = (flag2 >> (index + 1)) & 1;
-
-										/*int otherindex = (!i) * (TYPEBITS / 2);
-										int oparindex = ((flag2 >> (otherindex + 1)) /*^ (g >> index)*) & 1;*/
 
 										int updateval = f2n ^ i;
 
@@ -3341,14 +3334,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											dous[j]->parinfprobs[marker][i][parindex][updateval][evil] += pival;
 
 										}
-
-										/*if ((!dous[j]->pars[+i] || (&(dous[j]->pars[+i]->markerdata[marker].first))[+parindex] == UnknownMarkerVal) &&
-										(!dous[j]->pars[!i] || (&(dous[j]->pars[!i]->markerdata[marker].first))[oparindex] == UnknownMarkerVal) &&
-										(dous[j]->markerdata[marker].first != dous[j]->markerdata[marker].second))
-										{
-										evil = true;
-										}*/
-
 									}
 									int mapval = 0;
 									/*if (HAPLOTYPING)
