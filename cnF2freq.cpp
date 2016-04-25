@@ -981,8 +981,6 @@ struct individ
 				}
 			}
 
-
-
 			if (!baseval)
 			{
 				continue;
