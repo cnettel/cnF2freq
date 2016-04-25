@@ -3336,28 +3336,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										}
 									}
 									int mapval = 0;
-									/*if (HAPLOTYPING)
-									{
-										for (int lev1 = 0; lev1 < 2; lev1++)
-										{
-											individ* lev1i = dous[j]->pars[lev1];
-											if (!lev1i) continue;
-											int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
-											int genbase = lev1 * ((1 << (TYPEBITS / 2)));
-											if (NUMGEN > 2)
-											{
-												int f2what =
-												for (int lev2 = 0; lev2 < 2; lev2++)
-												{
-													individ* lev2i = lev1i->pars[lev2];
-													if (!lev2i) continue;
-
-													int f2ninner = (bool) (flag2 & (flag2base << (lev2 + 1)));
-													mapval += (&(lev2i->markerdata[-q-1000].first))[f2ninner] == (2 * MarkerValue);
-												}
-											}
-										}
-									}*/
 									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
