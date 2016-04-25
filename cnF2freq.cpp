@@ -3612,16 +3612,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (s & shiftignore) continue;
 									int marker = -q - 1000;
 									double val = rawvals[g][s];
-									//fprintf(out, "rawvals: %d %d %d %d %lf\n", j, marker, g, s, rawervals[g][s] / rawervals[0][s]);
 									// Consider switching to all-log
 									if (!_finite(val) || val < 1e-10) val = 1e-10;
-
-									//									if (_finite(val) && val > 1e-10)
+									
 									{
-
-										{
-
-										}
 										int g2 = g;
 										if (!g) g2 = (1 << 15) - 1;
 
