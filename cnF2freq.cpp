@@ -4011,14 +4011,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								for (map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
 								{
-									double factor = sums[a][i->first.second] / (sums[0][i->first.second] + sums[1][i->first.second] + 1e-10);
-									//									fprintf(out, "Factor: %lf %lf %d %d %d %d %lf %lf\n", i->second, factor, ind->n, j, i->first.first, i->first.second, sums[0][i->first.second], sums[1][i->first.second]);
-									factor += 1e-10;
-
-									factor = 1;
-
-									sum += i->second / factor;
-									infprobs[i->first.first] += i->second / factor;
+									sum += i->second;
+									infprobs[i->first.first] += i->second;
 								}
 								if (sum <= 1e-12)
 								{
@@ -4034,9 +4028,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								for (map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
 								{
-									double factor = 1;
-
-									double sureness = i->second / factor / sum;
+									double sureness = i->second / sum;
 									double origsureness = sureness;
 
 									if (!(&(ind->markerdata[j].first))[a] == UnknownMarkerVal)
