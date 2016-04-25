@@ -1164,9 +1164,10 @@ struct individ
 		}
 	}
 
-	// Adjust the probability, i.e. filter all probability values based on the haplotype weights and overall admissibility for the different
-	// states.
-	void adjustprobs(const threadblock& tb, PerStateArray<double>::T& probs, const unsigned int marker, double& factor, const bool oldruleout, int flag99)
+	// Adjust the probability, i.e. filter all probability values based on the haplotype weights and overall admissibility
+	// for the different states.
+	void adjustprobs(const threadblock& tb, PerStateArray<double>::T& probs, const unsigned int marker, double& factor,
+		const bool oldruleout, int flag99)
 	{
 		double sum = 0;
 		PerStateArray<double>::T probs2;
