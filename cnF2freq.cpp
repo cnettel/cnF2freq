@@ -1394,8 +1394,8 @@ struct individ
 				stopdata.okstep(startmark, startmark + stepsize) &&
 				!(startmark & (stepsize - 1)); stepsize *= 2);
 
-				// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the way down
-				// the tree.
+				// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the
+				// way down the tree.
 				if (stepsize <= 2)
 				{
 					stepsize = 1;
