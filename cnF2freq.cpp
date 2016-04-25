@@ -2117,15 +2117,11 @@ void readqtlmas14()
 		markertranslation[n - 1] = n - 1;
 		if (c != oldc)
 		{
-			//if (oldc != -1)
-			{
-				chromstarts.push_back(n - 1);
-			}
+			chromstarts.push_back(n - 1);			
 			n2 = 0;
 			oldc = c;
 		}
 		markerposes.push_back(bppos / 1000000.0);
-		if (markerposes.size() > 1975) break;
 		for (int t = 0; t < 2; t++)
 		{
 			actrec[t].push_back(baserec[t]);
@@ -2133,7 +2129,6 @@ void readqtlmas14()
 		n2++;
 	}
 	chromstarts.push_back(n);
-	//chromstarts.push_back(n + 1);
 	markertranslation[n] = n;
 	markertranslation[n + 1] = n + 1;
 	markerposes.push_back(0);
