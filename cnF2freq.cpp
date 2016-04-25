@@ -4190,33 +4190,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									ind->markerdata[j] = make_pair(bestvals[0], bestvals[1]);
 									ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
 								}
-								/*else if (ind->markerdata[j].first == ind->markerdata[j].second && ind->markerdata[j].first == UnknownMarkerVal)
-								{
-								for (int a = 0; a < 2 && !foundbest; a++)
-								{
-								map<MarkerVal, double> sums;
-								double sum = 0;
-
-								for (map<pair<MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
-								{
-								sums[i->first] += i->second;
-								sum += i->second;
-								}
-								if (sum < 0.1) sum = 0.1;
-
-								for (map<pair<MarkerVal>, double>::iterator i = sums.begin(); i != sums.end() && !foundbest; i++)
-								{
-								//							  fprintf(out, "Individual %d stochastic tryout at marker %d, :%d:, was %d:%d %lf M\n", ind->n, j, i->first, i->first, ind->markerdata[j].second, i->second / sum);
-								if (i->second >= sum * 0.5)
-								{
-								ind->markerdata[j] = make_pair(i->first, UnknownMarkerVal);
-								ind->markersure[j] = make_pair(0.999, 0);
-								fprintf(out, "Individual %d stochastic fix at marker %d, :%d:, was %d:%d %lf M\n", ind->n, j, i->first, ind->markerdata[j].first, ind->markerdata[j].second, i->second / sum);
-								foundbest = true;
-								}
-								}
-								}
-								}*/
 							}
 							for (int a = 0; a < 2; a++)
 							{
