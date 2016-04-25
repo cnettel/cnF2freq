@@ -3436,8 +3436,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 
 						double summw = (mwval[0] + mwval[1] + mwval[2] + mwval[3]);
-						//						if (summw > 1e-4)
-						//												printf("%.3lf\t%.3lf\n", infosum[0], infosum[1]);
 						for (int z = 0; z < 2; z++)
 						{
 							infosum[z] /= NUMTYPES * NUMTYPES;
@@ -3447,15 +3445,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							acc3 = 1;
 							infosum[0] = 0;
 							infosum[1] = 0;
-							//						    printf("Zero sum: %d\n", dous[j]->n);
 						}
 
 
 						double delta = 0;
 #pragma omp critical(markerweights)					       
 						{
-							//						  summw /= relinfo1 * relinfo2;
-							//summw /= infosum;
 							for (int t = 0; t < 4; t++)
 							{
 								int tbase = (t >> 1) << 1;
@@ -3467,14 +3462,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								markerweight[-q - 1000][t] += dval;
 								if (t == 0) delta = dval;
 							}
-							//														printf("%.3lf\t%.3lf\t\t%.4lf\t%.4lf\n", markerweight[-q - 1000][0], markerweight[-q - 1000][1], mwval[0], mwval[1]);
 							markerweight[-q - 1000][4] = min(markerweight[-q - 1000][4], acc4);
 						}
-
 						if (delta < -0.1 && q > qend + 2) fprintf(out, "RECOMB:\t%d\t%d\t%lf\n", dous[j]->n, q, delta);
 					}
 
-					//					fprintf(stderr, "marker: %d\n", -q - 1000);
 					if (!full)
 					{
 						int marker = -q - 1000;
