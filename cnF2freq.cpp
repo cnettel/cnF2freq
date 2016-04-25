@@ -967,23 +967,12 @@ struct individ
 			else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
-				//if (baseval == 0.5) printf("%d\n", n);
 			}
 			else
 			{
 				if (HAPLOTYPING)
 				{
-					//if (selfingNOW) baseval *= realf2n == selfindex; else
 					baseval *= fabs((f2n ? 1.0 : 0.0) - (selfingNOW ? 0 : haploweight[marker]));
-					//if (selfingNOW) baseval *= 0;
-
-					if (themarker[realf2n] == UnknownMarkerVal && selfingNOW && baseval/* && themarker[!realf2n] == markerval*/)
-					{
-						//						baseval *= 0.95;
-						/*if (baseval > 0.75) baseval = 0.75;*/
-
-						//baseval = 0.5; // This is wicked
-					}
 				}
 				else
 				{
