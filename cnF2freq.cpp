@@ -3701,14 +3701,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 
-
 					reporter.report(outqueue[j]);
 
-
-
-					//						if (oqp[j] > 50000) printf("%d\t%d\n", j, oqp[j]);
-					/*						strcpy(&outqueue[j][oqp[j]], lineout);
-					oqp[j] += strlen(lineout);*/
 					if (!full)
 					{
 						int marker = -q - 1000;
