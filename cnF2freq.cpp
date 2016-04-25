@@ -1670,15 +1670,7 @@ struct individ
 			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
 		}
 
-		double factor = quickanalyze<true, T>(tb, turner, startmark, endmark, stopdata, flag2, ruleout, probs, minfactor);
-		bool small = !_finite(factor) || minfactor >= factor;
-
-		//if (!small) adjustprobs(tb, probs, endmark, factor, ruleout, -1); // TODO, the very last marker can be somewhat distorted
-		if (small)
-		{
-			//printf("Small!\n");
-		}
-		return factor;
+		return quickanalyze<true, T>(tb, turner, startmark, endmark, stopdata, flag2, ruleout, probs, minfactor);
 	}
 #endif
 
