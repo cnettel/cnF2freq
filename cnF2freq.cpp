@@ -4359,23 +4359,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										fprintf(out, "Locking: %d %d %lf\n", ind->n, j, ind->negshift[j]);
 										ind->haploweight[j] = (intended < 0.5) ? 0 : 1;
 									}
-									else
-										//							if ((j == 5 || j == 6 || j == 4) && (ind->n == 2334)) fprintf(out, "B1B2: %d %d %lf %lf\n", ind->n, j, b1, b2);
-
-										//printf("---\n");
-										/*for (int q = 0; q < 20; q++)
-										{
-										double b12 = b1 * intended;
-										double b22 = b2 * (1.0 - intended);
-										intended = b12 / (b12 + b22);
-										printf("%lf\n", intended);
-										}*/
-
-										//				double intended = ind->haplobase[j] / ind->haplocount[j];
-										//double intended2 = intended * (1.0 - ind->haploweight[j]) +
-										//(1.0 - intended) * ind->haploweight[j];
-
-										//if (early)
+									else								
 									{
 										// Cap the change if the net difference is small/miniscule
 										/*double nnn = 1 + 0.5 * (b1 + b2);						*/
@@ -4393,15 +4377,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										double lim = min(limn / limd1, limn / limd2);
 
 										double diff = intended - ind->haploweight[j];
-										/*			if (ind->haploweight[j] > 0.5 && i == 2827)
-										{
-										fprintf(stderr, "2827: %lf %lf %lf %lf %lf %lf %lf\n", limn, limd1, limd2, lim, intended, b1, b2);
-										}*/
-
-										/*if (fabs(diff) > lim)
-										{
-										intended = ind->haploweight[j] + diff / fabs(diff) * lim;
-										}*/
 
 										if (diff > limn / limd1)
 										{
@@ -4414,12 +4389,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										}
 
 										//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-
 										intended = min((float)intended, 1.0f - maxdiff);
 										if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 										{
 											ind->haploweight[j] = max((float)intended, maxdiff);
 
+											// Nudging flag currently not respected
 											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff &&
 												fabs(b1 * 2 - b1 + b2) < 0.001)
 											{
@@ -4433,33 +4408,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									allhalf[cno] = false;
 									}*/
 								}
-								else
-								{
-									if (ind->haploweight[j] && ind->haploweight[j] != 0.5)
-									{
-										/*								fprintf(stderr, "H c w: %d %d\n", i, j);
-										fflush(stderr);*/
-									}
-								}
-
-
-							}
-
-							//										if (ind->n < 2327)
-							for (int k = 0; k < chromstarts.size() - 1; k++)
-							{
-								/*if (nudgeme[k] != -1 && ind->haploweight[nudgeme[k]] != 0.5)
-								{
-								fprintf(out, "Nudging %04d:%02d\n", ind->n, nudgeme[k]);
-								ind->haploweight[nudgeme[k]] += ind->haploweight[nudgeme[k]] < 0.5 ? (-0.10) : 0.10;
-								ind->haploweight[nudgeme[k]] = min(ind->haploweight[nudgeme[k]], (float) (1.0f - maxdiff));
-								ind->haploweight[nudgeme[k]] = max((float) maxdiff, ind->haploweight[nudgeme[k]]);
-								}*/
-								/*					  						if (allhalf[k] && anyinfo[k])
-								{
-								fprintf(out, "Locking haplos %d %d\n", ind->n, k);
-								lockhaplos(ind, k);
-								}*/
 							}
 						}
 					}
