@@ -3518,11 +3518,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											dous[j]->pars[a]->infprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
 												+= dous[j]->parinfprobs[marker][a][c][b][d];
 
-											/*if ((dous[j]->pars[a]->n == 1633 || dous[j]->pars[a]->n == 1726))
-											{
-											fprintf(out, "%d %d contributes %lf to %d for %d, phase %d, evil %d\n", dous[j]->n, marker, dous[j]->parinfprobs[marker][a][c][b][d],
-											(&(dous[j]->markerdata[marker].first))[b], dous[j]->pars[a]->n, c, d);
-											}*/
 											partsum += dous[j]->parinfprobs[marker][a][c][b][d];
 										}
 
