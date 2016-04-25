@@ -3514,17 +3514,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												continue;
 											}
 
-
 											dous[j]->pars[a]->infprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
 												+= dous[j]->parinfprobs[marker][a][c][b][d];
-
 											partsum += dous[j]->parinfprobs[marker][a][c][b][d];
 										}
 
 										if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal) continue;
-
-										//										if ((&(dous[j]->markerdata[marker].first))[b] == 1 * MarkerValue && dous[j]->pars[a]->n == 1726 && marker == 276 && out) fprintf(out, "Oddone: %d %lf\n", dous[j]->n, dous[j]->parinfprobs[marker][a][c][b][0]);
-
 										if (dous[j]->parinfprobs[marker][a][c][b][0] > maxval) maxval = dous[j]->parinfprobs[marker][a][c][b][0];
 									}
 
