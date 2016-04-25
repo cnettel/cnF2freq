@@ -1755,8 +1755,8 @@ struct individ
 
 			if (genotype != -2)
 			{
-				// If we are at the very first position, and the specific flag was set, include the emission probabilities for the previous
-				// marker. Used to maximize the caching.
+				// If we are at the very first position, and the specific flag was set, include the emission probabilities for
+				// the previous marker. Used to maximize the caching.
 				if (!((updateend & 2) && (j == startmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
 			}
 			else
@@ -1766,12 +1766,12 @@ struct individ
 				// is ignored!
 			}
 
-			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers, and the simple case
-			// of no fixated position.
+			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers,
+			// and the simple case of no fixated position.
 			for (int iter = 0; iter <= (int)tofind; iter++)
 			{
-				// If iter is 1, we have currently hanfwdled the transition all the way to the fixated position. Now filter to keep only
-				// a single state value positive.
+				// If iter is 1, we have currently hanfwdled the transition all the way to the fixated position. Now filter to keep
+				// only a single state value positive.
 				if (iter)
 				{
 					turner(probs);
