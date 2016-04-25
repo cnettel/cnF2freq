@@ -4080,35 +4080,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 										double sum = (bestsure[0] + bestsure[1]) / 2;
 										double diff = fabs(bestsure[0] / sum - 1) + fabs(bestsure[1] / sum - 1);
-
-										/*if (diff < 0.05)
-										{
-										bestsure[0] = sum * 0.9;
-										bestsure[1] = sum * 1.1;
-										}*/
-
-										/*bestsure[0] += 0.03;
-										bestsure[1] -= 0.03;
-										bestsure[0] = min(0.99999, bestsure[0]);
-										bestsure[1] = max(0.00001, bestsure[1]);*/
-										/*int index = bestsure[0] > bestsure[1];
-										float sumsure = (1 - bestsure[0]) + (1 - bestsure[1]);
-
-										if (sumsure < 1.4)
-										{
-										bestsure[index] /= 2;
-										bestsure[!index] = 0;
-										bestvals[!index] = UnknownMarkerVal;
-										}*/
-
-										/*bestsure[index] = sumsure;
-										if (bestsure[index] > 0.999) bestsure[index] = 0.999;
-
-										sumsure -= bestsure[index];
-										bestsure[!index] = sumsure;
-
-										bestsure[0] = 1 - bestsure[0];
-										bestsure[1] = 1 - bestsure[1];*/
 									}
 									if (fabs(0.5 - ind->haploweight[j]) == 0.5)
 									{
