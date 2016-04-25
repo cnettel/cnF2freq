@@ -3193,10 +3193,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									val = exp(val);
 									mwvals[g][g2] += val;
-									if (q == -1010 && false)
-									{
-										printf("%d: %d -> %d: %lf\n", dous[j]->n, g, g2, val);
-									}
 								}
 
 								val = 0;
@@ -3386,7 +3382,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 
-					if (q <= -1000 && false)
+					// Coordinate estimated distancse from all individuals.
+					if (q <= -1000 && DOREMAPDISTANCES)
 					{
 						double colsums[NUMTYPES] = { 0 };
 						double rowsums[NUMTYPES] = { 0 };
@@ -3410,7 +3407,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							colsums[g] -= (acc2 * acc2) / NUMTYPES;
 							rowsums[g] -= (acc1 * acc1) / NUMTYPES;
 						}
-						//												  printf("\t\t%d:%d\t%lf\t\t%lf\n", -q - 1000, dous[j]->n, acc3, acc4);
 
 						double relinfo1 = 0;
 						double relinfo2 = 0;
@@ -3422,7 +3418,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							recprob[k] = 0.5 * (1.0 - exp(actrec[k][-q - 1000 + 1] * (dist)));
 							recprob[k] = max(1e-8, recprob[k]);
-							//					if (iter == tofind) recprob[k] = max(recprob[k], 1e-5);
 						}
 
 						for (int g = 0; g < NUMTYPES; g++)
@@ -3432,7 +3427,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (int g2 = 0; g2 < NUMTYPES; g2++)
 							{
 								double infofactor = /*rowsums[g] * colsums[g2]*/ 1;
-
 								double val = mwvals[g][g2] * infofactor;
 
 								int mask = g ^ g2;
