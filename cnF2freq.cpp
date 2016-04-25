@@ -292,8 +292,8 @@ EXTERNFORGCC IAT impossible;
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-EXTERNFORGCC std::array<std::array<float, 2>, 1000000> haplos;
-EXTERNFORGCC std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+EXTERNFORGCC std::array<std::array<float, 2>, INDCOUNT> haplos;
+EXTERNFORGCC std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 
 #if !DOFB
 // done, factors and cacheprobs all keep track of the same data
@@ -323,14 +323,14 @@ EXTERNFORGCC map<individ*, int> relmap;
 
 #ifdef DOEXTERNFORGCC
 IAT impossible;
-std::array<std::array<float, 2>, 1000000> haplos;
+std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #else
 vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
 vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
@@ -358,7 +358,7 @@ struct threadblock
 	PerStateArray<int>::T* const quickendmarker;
 #endif
 	IAT* const impossible;
-	std::array<std::array<float, 2>, 1000000>* const haplos;
+	std::array<std::array<float, 2>, INDCOUNT>* const haplos;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -370,7 +370,7 @@ struct threadblock
 	vector<std::array<double, 2> >* fwbwfactors;
 	int* fwbwdone;
 #endif	
-	std::array<std::array<map<MarkerVal, float>, 2>, 1000000>* infprobs;
+	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 
 	threadblock() : generation(&::generation), shiftflagmode(&::shiftflagmode), impossible(&::impossible),
 		haplos(&::haplos), infprobs(&::infprobs), lockpos(::lockpos),
@@ -1967,7 +1967,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 };
 
 // Oh, how we waste memory, in a pseudo-O(1) manner
-individ* individer[1000000];
+individ* individer[INDCOUNT];
 // dous contains those individuals that really should be analyzed
 vector<individ*> dous;
 
@@ -2484,7 +2484,7 @@ void readhaploweights(FILE* in)
 	FILE* indmarkers = fopen("indmarkers.out", "w");
 	for (int gen = 0; gen <= 2; gen++)
 	{
-		for (int i = 0; i < 1000000; i++)
+		for (int i = 0; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i, true);		  
 
@@ -2661,12 +2661,12 @@ void postmarkerdata()
 	{
 #pragma omp parallel for schedule(dynamic,32)
 		// all haploweights MUST be non-zero at this point, as we do not explore all shiftflagmode values
-		for (int i = 1; i < 1000000; i++)
+		for (int i = 1; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
-		for (int i = 1; i < 1000000; i++)
+		for (int i = 1; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
@@ -2692,7 +2692,7 @@ void postmarkerdata()
 
 		any = 0;
 		anyrem = 0;
-		for (int i = 1; i < 1000000; i++)
+		for (int i = 1; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
@@ -2784,7 +2784,7 @@ void postmarkerdata()
 	}
 	while (any > anyrem);
 
-	for (int i = 1; i < 1000000; i++)
+	for (int i = 1; i < INDCOUNT; i++)
 	{
 		individ* ind = getind(i);
 
@@ -3012,7 +3012,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//fprintf(out, "%d %d\n", count, chromstarts.size() - 1);
 	}
 
-	for (int i = 0; i < 1000000; i++)
+	for (int i = 0; i < INDCOUNT; i++)
 	{
 		individ* ind = getind(i);
 		if (!ind) continue;
@@ -4018,7 +4018,7 @@ continueloop:;
 			vector<set<negshiftcand> > negshiftcands;
 			negshiftcands.resize(chromstarts.size());
 
-			for (unsigned int i = 0; i < 1000000; i++)
+			for (unsigned int i = 0; i < INDCOUNT; i++)
 			{
 				individ* ind = getind(i);
 				if (!ind || !ind->haplocount.size()) continue;
@@ -4118,7 +4118,7 @@ continueloop:;
 #endif
 			{
 
-				for (unsigned int i = 0; i < 1000000; i++)
+				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
 					individ* ind = getind(i, false);
 					if (!ind || !ind->haplocount.size()) continue;
@@ -5467,7 +5467,7 @@ int main(int argc, char* argv[])
 			fflush(stdout);
 			fflush(out);
 
-			for (unsigned int i2 = 0; i2 < 1000000; i2++)
+			for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 			{
 				individ* ind = getind(i2);
 				if (!ind) continue;
