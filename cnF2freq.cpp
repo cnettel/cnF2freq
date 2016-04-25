@@ -2102,8 +2102,6 @@ void readqtlmas()
 
 void readqtlmas14()
 {
-	//	FILE* inpheno = fopen("phenotype.txt", "r");
-	// /bubo/home/h24/nettel/
 	FILE* ingeno = fopen("genotypes.txt", "r");
 	FILE* inminfo = fopen("marker-info.txt", "r");
 	FILE* inped = fopen("pedigree.txt", "r");
