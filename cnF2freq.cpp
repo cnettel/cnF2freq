@@ -1074,23 +1074,18 @@ struct individ
 	{
 		MarkerValPair& themarker = markerdata[marker];
 		individ* parp[3] = { pars[0], pars[1], this };
-		int az = 0;
 
 #pragma omp critical (parmarkerval)
 		for (int i = 0; i < 3; i++)
 		{
 			if (parp[i])
 			{
-				az += parp[i]->markerdata[marker].first == UnknownMarkerVal;
-				az += parp[i]->markerdata[marker].second == UnknownMarkerVal;
 				while (parp[i]->markervals.size() <= marker)
 				{
 					parp[i]->markervals.resize(markerdata.size());
 				}
 			}
 		}
-
-		//if (!az) return;		
 
 		double okvals[2] = { 0 };
 		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one intepretation has gained acceptance,
