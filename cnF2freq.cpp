@@ -2999,7 +2999,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 	}
 
-
 	for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 	{
 		//printf("Chromosome %d\n", i + 1);
@@ -3007,9 +3006,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		// The output for all individuals in a specific iteration is stored, as we have parallelized the logic and 
 		// want the output to be done in order.
 		vector<vector<char> > outqueue;
-
 		outqueue.resize(dous.size());
-
 
 #pragma omp parallel for schedule(dynamic,1)
 		for (int j = 0; j < (int)dous.size(); j++)
@@ -3022,7 +3019,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			generation++;
 			threadblock tborig;
 			threadblock tb = tborig;
-
 
 			resizecaches();
 
@@ -3131,6 +3127,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				bool anygood = false;
 				anygood |= dous[j]->pars[0] && !dous[j]->pars[0]->empty;
 				anygood |= dous[j]->pars[1] && !dous[j]->pars[1]->empty;
+
 				//if (!anygood) shiftend = 2;
 				if (!anygood)
 				{
@@ -3163,35 +3160,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				factor -= log(1 << countf2i);
 
+				// This output can get ugly due to race conditions. One shouldn't rely on it.
 				printf("%d,%03d,%03d: %lf\t", dous[j]->n, flag2ignore, shiftignore, factor);
 				factor += log(realfactor);
 				printf("%lf %d\n", factor, shiftend);
 				fflush(stdout);
+				if (_isnan(factor) || factor < MINFACTORm) continue;
 
-				//fflush(stdout);
-				// Flushing can be useful for debugging, but not for performance!
-				// This output can get ugly due to race conditions. One shouldn't rely on it.
-
-				if (_isnan(factor)) continue;
-
-				char lineout[255];
-
-				/*				// States are mapped onto values describing the line/strain origin, in the sense of 00, 01, 10 or 11 (old comment)
-								PerStateArray<int>::T maptogeno;
-								shiftflagmode = 0;
-								for (int g = 0; g < NUMTYPES; g++)
-								{
-									int sum = 0;
-									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0
-										, 0, g * 2, 0, 0, trackpossibleparams(0, &sum));u
-
-									maptogeno[g] = sum;
-									printf("Maptogeno %d\n", sum);
-								}*/
-
-								// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
-
-
+				// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
 				for (int q = qstart; q != qend; q += qd)
 				{
 					reporterclass reporter;
@@ -3199,7 +3175,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					//double mwfvals[NUMTYPES] = {0};
 					double mwvals[1][1];
 					double mwfvals[1];
-
 					double mwval[4] = { 0 };
 
 					for (int g = 0; g < NUMTYPES; g++)
@@ -3211,12 +3186,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (q <= -1000 && false)
 							{
 								double val;
-
 								for (int g2 = 0; g2 < NUMTYPES; g2++)
 								{
 									val = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, twicestop(q, g, g2),
 										-1, true, 0, -5000.0 + factor) - factor;
-
 
 									val = exp(val);
 									mwvals[g][g2] += val;
@@ -3224,8 +3197,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										printf("%d: %d -> %d: %lf\n", dous[j]->n, g, g2, val);
 									}
-									//									fprintf(stderr, "%d:%d %d %d %lf\n", dous[j]->n, q, g, g2, val);
-
 								}
 
 								val = 0;
