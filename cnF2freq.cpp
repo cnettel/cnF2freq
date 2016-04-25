@@ -3743,11 +3743,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									//									}
 									//									else
 									//										base = 0;
-									//
-									//									if (i == 1633 && marker < 10)
-									//									{
-									//										fprintf(out, "HAPLOS: %02d %lf %lf %lf %lf %lf %lf\n", marker, (double) reltree[k]->haploweight[marker], (double) haplos[i][0], (double) haplos[i][1], (double) (haplos[i][0] - base * reltree[k]->haploweight[marker]), (double) (haplos[i][1] + haplos[i][0] - base), (double) base);
-									//									}
+									//									
 									//#pragma omp critical(update)
 									//									{
 									//										getind(i)->haplobase[marker] += haplos[i][0] - base * reltree[k]->haploweight[marker];
