@@ -1323,7 +1323,7 @@ struct individ
 			double step = (tb.factors[*tb.shiftflagmode])[index][i] - factor;
 			if (probs[i] == 0.0 || step <= -100.0f) continue;
 			double basef = exp((double)step) * probs[i];
-			//			if (basef == 0.0 || !_finite(basef)) continue;
+			if (basef == 0.0) continue;
 			const double* probsource = &(tb.cacheprobs[*tb.shiftflagmode])[index][i][0];
 #pragma ivdep
 			for (int j = 0; j < NUMTYPES; j++)
