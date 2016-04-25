@@ -724,7 +724,7 @@ struct individ
 	vector<pair<float, float> > markersure;
 
 	// Temporary storage of all possible marker values, used in fixparents.
-  vector<map<MarkerVal, pair<int, double> > > markervals;
+	vector<map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
 	vector<float> haploweight;
 	// The cost-benefit value of inverting the haplotype assignment from an arbitrary marker point on.
