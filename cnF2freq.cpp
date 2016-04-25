@@ -36,10 +36,10 @@ const int ANALYZE_FLAG_FORWARD = 0;
 const int ANALYZE_FLAG_BACKWARD = 16;
 const int ANALYZE_FLAG_STORE = 32;
 
-float templgeno[8] = {-1, -0.5,
+float templgeno[8] = { -1, -0.5,
 	0,  0.5,
 	0,  0.5,
-	1, -0.5};
+	1, -0.5 };
 
 
 
@@ -106,7 +106,7 @@ using namespace boost::units;
 
 mt19937 rng;
 int myrand(int max)
-{	
+{
 	uniform_int<> orig(0, max - 1);
 
 	return orig(rng);
@@ -118,7 +118,7 @@ struct negtrue
 {
 	const int value;
 	negtrue(bool neg, int value) : value(neg ? -1 : (value >= 0 ? value : 0))
-	{	
+	{
 	}
 
 	operator bool() const
@@ -137,7 +137,7 @@ typedef make_system<MarkerValBaseUnit>::type UnitSystem;
 
 typedef unit<MarkerDimension, UnitSystem> MarkerValUnit;
 
-BOOST_UNITS_STATIC_CONSTANT(MarkerValue,MarkerValUnit);  
+BOOST_UNITS_STATIC_CONSTANT(MarkerValue, MarkerValUnit);
 
 
 typedef quantity<MarkerValUnit, int> MarkerVal;
@@ -145,7 +145,7 @@ typedef quantity<FactorUnit, float> Factor;
 
 typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 
-const MarkerVal UnknownMarkerVal = (MarkerVal) 0;
+const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
 
 const float maxdiff = 0.00005;
@@ -205,7 +205,7 @@ public:
 /*namespace boost { namespace mpi {
 
 template<class T>
-struct is_commutative<vectorplus<vector<T> >, vector<T> > 
+struct is_commutative<vectorplus<vector<T> >, vector<T> >
 : mpl::true_ { };
 
 } }*/
@@ -440,12 +440,12 @@ public:
 
 		for (int i = 0; i < NUMTYPES; i++)
 		{
-		  int newval = i ^ turn;
-		  if (flagmodeshift)
-		    {
-		      // Emulating actually switching parental genotypes around
-		      //		      newval = ((newval & 1) << 1) | ((newval & 2) >> 1);
-		    }
+			int newval = i ^ turn;
+			if (flagmodeshift)
+			{
+				// Emulating actually switching parental genotypes around
+				//		      newval = ((newval & 1) << 1) | ((newval & 2) >> 1);
+			}
 			probs2[newval] = probs[i];
 		}
 
@@ -602,8 +602,8 @@ struct tssmcommon
 	}
 
 protected: tssmcommon(int lockpos) : lockpos(lockpos)
-		   {
-		   }
+{
+}
 };
 
 struct twicestop : tssmcommon
@@ -797,7 +797,7 @@ struct individ
 		int upflagr;
 		int upflag2r;
 		int upshiftr;
-	  double secondval;
+		double secondval;
 		const trackpossibleparams& extparams;
 		const int genwidth;
 		const MarkerVal markerval;
@@ -808,8 +808,8 @@ struct individ
 		int impossibleval;
 		bool prelok;
 
-	  recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, int genwidth, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams) :
-	    genwidth(genwidth), extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval)
+		recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, int genwidth, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams) :
+			genwidth(genwidth), extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval)
 
 		{
 			upflagr = upflagit(upflag, firstpar, genwidth);
@@ -819,14 +819,14 @@ struct individ
 			prelok = true;
 			if (!zeropropagate && genwidth == (1 << (NUMGEN - 1)))
 			{
-			  if (false)
-			    {
-				impossibleref = &(*tb.impossible)[*(tb.shiftflagmode) & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3];
-			    }
-			  else
-			    {
-			      impossibleref = 0;
-			    }
+				if (false)
+				{
+					impossibleref = &(*tb.impossible)[*(tb.shiftflagmode) & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3];
+				}
+				else
+				{
+					impossibleref = 0;
+				}
 				impossibleval = (*tb.generation) * markerposes.size() + marker;
 
 				if (impossibleref && *impossibleref == impossibleval)
@@ -840,18 +840,18 @@ struct individ
 		{
 			if (!prelok)
 			{
-			  return 0;
+				return 0;
 			}
 
 			double baseval =
-			  mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
-				upflagr,
-				upflag2r,
-				upshiftr, extparams, genwidth >> 1);
+				mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
+					upflagr,
+					upflag2r,
+					upshiftr, extparams, genwidth >> 1);
 
 			if (impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
 			{
-			  *impossibleref = impossibleval;
+				*impossibleref = impossibleval;
 			}
 
 			return baseval;
@@ -872,7 +872,7 @@ struct individ
 	// individuals in the analysis.
 	// extparams: external parameters.
 	// genwidth: The width of the generation flags.
-  template<bool update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
+	template<bool update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
 		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
 		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
 	{
@@ -897,7 +897,7 @@ struct individ
 		{
 			upflag2 = flag99 >> 1;
 			f2s = flag99;
-			f2end = flag99 + 1;			
+			f2end = flag99 + 1;
 		}
 
 		int firstpar = flag & 1;
@@ -911,50 +911,50 @@ struct individ
 		// assigned to that test, and which parent to match against that value.
 		for (int flag2 = f2s; flag2 < f2end && (HAPLOTYPING || !ok); flag2++)
 		{
-		  int f2n = (flag2 & 1);
-		  if (selfingNOW)
-		    {
-		      int selfindex = (selfval >> 1) ^ f2n;
-		      selfmarker[0] = UnknownMarkerVal;
-		      selfmarker[1] = UnknownMarkerVal;
-		      selfsure[0] = 0;
-		      selfsure[1] = 0;
-		      MarkerVal first = markerdata[marker].first;
-		      
-		      if (!markermiss<false>(first, markerdata[marker].second))
+			int f2n = (flag2 & 1);
+			if (selfingNOW)
 			{
-			  selfmarker[selfindex] = first;
-			  selfsure[selfindex] = 1 - (1 - markersure[marker].first) * (1 - markersure[marker].second);
+				int selfindex = (selfval >> 1) ^ f2n;
+				selfmarker[0] = UnknownMarkerVal;
+				selfmarker[1] = UnknownMarkerVal;
+				selfsure[0] = 0;
+				selfsure[1] = 0;
+				MarkerVal first = markerdata[marker].first;
+
+				if (!markermiss<false>(first, markerdata[marker].second))
+				{
+					selfmarker[selfindex] = first;
+					selfsure[selfindex] = 1 - (1 - markersure[marker].first) * (1 - markersure[marker].second);
+				}
+				else
+				{
+					selfmarker[selfindex] = markerdata[marker].second;
+					if (markersure[marker].first == 0) { return 0; }
+					selfsure[selfindex] = 1 - (markersure[marker].first) * (1 - markersure[marker].second);
+				}
 			}
-		      else
-			{
-			  selfmarker[selfindex] = markerdata[marker].second;
-			  if (markersure[marker].first == 0) { return 0; }
-			  selfsure[selfindex] = 1 - (markersure[marker].first) * (1 - markersure[marker].second);
-			}
-		    }
 
 
-		  bool allthesame = themarker[0] == themarker[1];
+			bool allthesame = themarker[0] == themarker[1];
 			MarkerVal markerval = inmarkerval;
 			double baseval;
 
-			
+
 			int realf2n = f2n;
 
 			double mainsecondval = 0;
 			// If this marker value is not compatible, there is no point in trying.
 			if (markermiss<zeropropagate>(markerval, themarker[f2n]))
 			{
-			  baseval = themarkersure[f2n] + (1.0 - themarkersure[f2n]) * secondval;
+				baseval = themarkersure[f2n] + (1.0 - themarkersure[f2n]) * secondval;
 			}
 			else
 			{
-			  if (themarkersure[f2n]) mainsecondval = (themarkersure[f2n]) / (1.0 - themarkersure[f2n]);
-			  baseval = 1.0 - themarkersure[f2n] + themarkersure[f2n] * secondval;
+				if (themarkersure[f2n]) mainsecondval = (themarkersure[f2n]) / (1.0 - themarkersure[f2n]);
+				baseval = 1.0 - themarkersure[f2n] + themarkersure[f2n] * secondval;
 			}
 
-			if (!baseval) continue;			
+			if (!baseval) continue;
 
 			// Normalize, in some sense.
 			f2n ^= ((firstpar ^ localshift) & 1);
@@ -964,7 +964,7 @@ struct individ
 				baseval *= 0.5;
 			}
 			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-						else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
+			else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
 				//if (baseval == 0.5) printf("%d\n", n);
@@ -974,11 +974,11 @@ struct individ
 				if (HAPLOTYPING)
 				{
 					//if (selfingNOW) baseval *= realf2n == selfindex; else
-					baseval *= fabs((f2n ? 1.0 : 0.0) - (selfingNOW  ? 0: haploweight[marker]));
+					baseval *= fabs((f2n ? 1.0 : 0.0) - (selfingNOW ? 0 : haploweight[marker]));
 					//if (selfingNOW) baseval *= 0;
 
 					if (themarker[realf2n] == UnknownMarkerVal && selfingNOW && baseval/* && themarker[!realf2n] == markerval*/)
-					{						
+					{
 						//						baseval *= 0.95;
 						/*if (baseval > 0.75) baseval = 0.75;*/
 
@@ -1018,37 +1018,37 @@ struct individ
 				// These do a lookup in a special hash for combinations known to be 0, to avoid unnecessary calls
 				// Both are checked before either branch of the pedigree is actually traced.
 				recursetrackpossible<update, zeropropagate> subtrack1 =
-				  recursetrackpossible<update, zeropropagate>(this, tb, markerval, mainsecondval, marker,
-					upflag,
-					upflag2,
-					upshift,
-					genwidth,
-					f2n,
-					firstpar,
-					0,
-					extparams);
+					recursetrackpossible<update, zeropropagate>(this, tb, markerval, mainsecondval, marker,
+						upflag,
+						upflag2,
+						upshift,
+						genwidth,
+						f2n,
+						firstpar,
+						0,
+						extparams);
 
-				if (subtrack1.prelok && (!zeropropagate || (genwidth == 1 << (NUMGEN - 1))) )
-				  {					  
-				    double secsecondval = 0;
-				    if (themarkersure[!realf2n])
-				      {
-					baseval *= (1 - themarkersure[!realf2n]);
-					secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
-				      }
-				    baseval *= recursetrackpossible<update, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
-											   marker,
-					upflag,
-					upflag2,
-					upshift,
-					genwidth,
-					f2n,
-					!firstpar,
-					1,
-					extparams);
+				if (subtrack1.prelok && (!zeropropagate || (genwidth == 1 << (NUMGEN - 1))))
+				{
+					double secsecondval = 0;
+					if (themarkersure[!realf2n])
+					{
+						baseval *= (1 - themarkersure[!realf2n]);
+						secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
+					}
+					baseval *= recursetrackpossible<update, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
+						marker,
+						upflag,
+						upflag2,
+						upshift,
+						genwidth,
+						f2n,
+						!firstpar,
+						1,
+						extparams);
 
 					if (selfingNOW && extparams.gstr && !(selfval & (1 << !firstpar))) *extparams.gstr = 0;
-				  }
+				}
 				if (!baseval) continue;
 
 				if (!(selfingNOW && extparams.gstr && !(selfval & (1 << firstpar))))
@@ -1073,8 +1073,8 @@ struct individ
 	// calltrackpossible is a slight wrapper that hides at least some of the interanl parameters needed for the recursion from outside callers
 	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
-	{		
-	  return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
+	{
+		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
 			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
 	}
 
@@ -1086,7 +1086,7 @@ struct individ
 	void fixparents(unsigned int marker, bool latephase)
 	{
 		MarkerValPair& themarker = markerdata[marker];
-		individ* parp[3] = {pars[0], pars[1], this};
+		individ* parp[3] = { pars[0], pars[1], this };
 		int az = 0;
 
 #pragma omp critical (parmarkerval)
@@ -1105,10 +1105,10 @@ struct individ
 
 		//if (!az) return;		
 
-		double okvals[2] = {0};
+		double okvals[2] = { 0 };
 		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one intepretation has gained acceptance,
 		// no need to retest it.
-		for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode+=1)
+		for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
 		{
 			threadblock tb;
 			for (int i = 0; i < NUMTYPES; i++)
@@ -1133,7 +1133,7 @@ struct individ
 			markersure[marker] = make_pair(0.0, 0.0);
 		}
 
-		if ((((bool) okvals[0]) ^ ((bool) okvals[1])) || latephase)
+		if ((((bool)okvals[0]) ^ ((bool)okvals[1])) || latephase)
 		{
 			for (int flag2 = 0; flag2 < 2; flag2++)
 			{
@@ -1147,28 +1147,28 @@ struct individ
 						if (latephase || (&themarker.first)[u] != UnknownMarkerVal)
 #pragma omp critical (parmarkerval)
 						{
-						  double old1 = 1;
-						  int old2 = 0;
-						  map<MarkerVal, pair<int, double> >::iterator i = pars[k]->markervals[marker].find((&themarker.first)[u]);
-						  if (i != pars[k]->markervals[marker].end())
-						    {
-						      old1 = i->second.second;
-						      old2 = i->second.first;
-						    }
-						  double probit = (markersure[marker].first + markersure[marker].second);
-						  probit /= (1 - probit);
-						  pars[k]->markervals[marker][(&themarker.first)[u]] = make_pair(old2 + 1, old1 * probit);
+							double old1 = 1;
+							int old2 = 0;
+							map<MarkerVal, pair<int, double> >::iterator i = pars[k]->markervals[marker].find((&themarker.first)[u]);
+							if (i != pars[k]->markervals[marker].end())
+							{
+								old1 = i->second.second;
+								old2 = i->second.first;
+							}
+							double probit = (markersure[marker].first + markersure[marker].second);
+							probit /= (1 - probit);
+							pars[k]->markervals[marker][(&themarker.first)[u]] = make_pair(old2 + 1, old1 * probit);
 						}
 					}
 				}
 			}
-		}		
+		}
 	}
 
 	// Verifies that an update should take place and performs it. Just a wrapper to calltrackpossible.
 	void updatehaplo(const threadblock& tb, const unsigned int marker, const unsigned int i, const int flag2, const double updateval)
 	{
-		MarkerValPair& themarker = markerdata[marker];		
+		MarkerValPair& themarker = markerdata[marker];
 
 		double ok = calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 
@@ -1192,7 +1192,7 @@ struct individ
 		const MarkerValPair& themarker = markerdata[marker];
 		const bool ruleout = true; // TODO
 
-		for (int q = 0; q <= (int) !ruleout; q++)
+		for (int q = 0; q <= (int)!ruleout; q++)
 		{
 			int f2start = 0;
 			int f2end = NUMPATHS;
@@ -1222,16 +1222,16 @@ struct individ
 				for (int flag2 = f2start; flag2 < f2end; flag2++)
 				{
 					realok += calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2);
-				}					
+				}
 
 				// TODO UGLY CAPPING
 				if (HAPLOTYPING)
 				{
-					probs[i] *= (double) realok;
+					probs[i] *= (double)realok;
 				}
 				else
 				{
-					probs[i] *= (bool) realok;
+					probs[i] *= (bool)realok;
 				}
 				sum += probs[i];
 			}
@@ -1259,20 +1259,20 @@ struct individ
 		}
 
 		if (sum <= 0)
-		  {
-		    factor = MINFACTOR;
-		  }
+		{
+			factor = MINFACTOR;
+		}
 		else
-		  {
-		    // Normalize, update auxiliary exponent
-		    for (int i = 0; i < NUMTYPES; i++)
-		      {
-			probs[i] /= sum;
-		      }
-		    factor += log(sum);
-		  }
+		{
+			// Normalize, update auxiliary exponent
+			for (int i = 0; i < NUMTYPES; i++)
+			{
+				probs[i] /= sum;
+			}
+			factor += log(sum);
+		}
 	}
-		
+
 	// Append a "multi-step" transition. If the cached values (essentially a N * N transition matrix for the steps from startmark to
 	// endmark) are missing, calculate them first.
 #if !DOFB
@@ -1283,7 +1283,7 @@ struct individ
 
 			for (unsigned int i = 0; i < NUMTYPES; i++)
 			{
-				PerStateArray<double>::T probs2 = {{0}};
+				PerStateArray<double>::T probs2 = { {0} };
 				probs2[i] = 1;
 
 				// Note ruleout here, could be set to false if we "prime" with an evenly distributed probs first
@@ -1305,15 +1305,15 @@ struct individ
 
 				sum *= NUMTYPES;
 				if (sum <= 0)
-				  {
-				    (tb.factors[*tb.shiftflagmode])[index][i] = MINFACTOR;
-				    sum = 0;
-				  }
+				{
+					(tb.factors[*tb.shiftflagmode])[index][i] = MINFACTOR;
+					sum = 0;
+				}
 				else
-				  {
-				    (tb.factors[*tb.shiftflagmode])[index][i] += log(sum);
-				    sum = 1/sum;
-				  }
+				{
+					(tb.factors[*tb.shiftflagmode])[index][i] += log(sum);
+					sum = 1 / sum;
+				}
 				double* probdest = &(tb.cacheprobs[*tb.shiftflagmode])[index][i][0];
 
 #pragma ivdep
@@ -1325,21 +1325,21 @@ struct individ
 			(tb.done[*tb.shiftflagmode])[index] = (*tb.generation);
 		}
 
-	        double factor = MINFACTOR;
+		double factor = MINFACTOR;
 		for (int i = 0; i < NUMTYPES; i++)
 		{
-		  if (probs[i] == 0.0) continue;
+			if (probs[i] == 0.0) continue;
 
 			factor = max(factor, (tb.factors[*tb.shiftflagmode])[index][i]);
 		}
 
-		PerStateArray<double>::T probs2 = {{0}};
+		PerStateArray<double>::T probs2 = { {0} };
 
 		for (int i = 0; i < NUMTYPES; i++)
 		{
 			double step = (tb.factors[*tb.shiftflagmode])[index][i] - factor;
 			if (probs[i] == 0.0 || step <= -100.0f) continue;
-			double basef = exp((double) step) * probs[i];
+			double basef = exp((double)step) * probs[i];
 			//			if (basef == 0.0 || !_finite(basef)) continue;
 			const double* probsource = &(tb.cacheprobs[*tb.shiftflagmode])[index][i][0];
 #pragma ivdep
@@ -1358,20 +1358,20 @@ struct individ
 		}
 
 		if (sum <= 0)
-		  {
-		    factor = MINFACTOR;
-		    sum = 0;
-		  }
+		{
+			factor = MINFACTOR;
+			sum = 0;
+		}
 		else
-		  {
-		    factor += log(sum);
-		    sum = 1 / sum;
-		  }
-		    
+		{
+			factor += log(sum);
+			sum = 1 / sum;
+		}
+
 		for (int i = 0; i < NUMTYPES; i++)
-		  {
-		    probs[i] = probs2[i] * sum;
-		  }
+		{
+			probs[i] = probs2[i] * sum;
+		}
 
 
 		return factor;
@@ -1397,7 +1397,7 @@ struct individ
 			}
 
 			startmark = tb.quickmark[*tb.shiftflagmode];
-//			printf("STARTING FROM MARKER: %d\n", startmark);
+			//			printf("STARTING FROM MARKER: %d\n", startmark);
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = tb.quickmem[*tb.shiftflagmode][i];
@@ -1411,210 +1411,210 @@ struct individ
 				stopdata.okstep(startmark, startmark + stepsize) &&
 				!(startmark & (stepsize - 1)); stepsize *= 2);
 
-			// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the way down
-			// the tree.
-			if (stepsize <= 2)
-			{
-				stepsize = 1;
-
-				if (!frommem && !stopdata.okstep(startmark, startmark + 1))
+				// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the way down
+				// the tree.
+				if (stepsize <= 2)
 				{
-					// If we have a fixated genotype at marker x in one call, it is very likely that the next call will also
-					// be a fixated genotype at marker x. Possibly another one, but still fixated. The fixated genotype does not
-					// change the probability values leading up to this position, so they are cached.
-					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
-					tb.quickmark[*tb.shiftflagmode] = startmark;
-					tb.lockpos[*tb.shiftflagmode] = (int) stopdata;
-					tb.quickfactor[*tb.shiftflagmode] = factor;
+					stepsize = 1;
 
-					for (int i = 0; i < NUMTYPES; i++)
+					if (!frommem && !stopdata.okstep(startmark, startmark + 1))
 					{
-						tb.quickmem[*tb.shiftflagmode][i] = probs[i];
-						tb.quickendmarker[*tb.shiftflagmode][i] = -1;
-						tb.quickendfactor[*tb.shiftflagmode][i] = 1.0;
+						// If we have a fixated genotype at marker x in one call, it is very likely that the next call will also
+						// be a fixated genotype at marker x. Possibly another one, but still fixated. The fixated genotype does not
+						// change the probability values leading up to this position, so they are cached.
+						tb.quickgen[*tb.shiftflagmode] = *tb.generation;
+						tb.quickmark[*tb.shiftflagmode] = startmark;
+						tb.lockpos[*tb.shiftflagmode] = (int)stopdata;
+						tb.quickfactor[*tb.shiftflagmode] = factor;
+
+						for (int i = 0; i < NUMTYPES; i++)
+						{
+							tb.quickmem[*tb.shiftflagmode][i] = probs[i];
+							tb.quickendmarker[*tb.shiftflagmode][i] = -1;
+							tb.quickendfactor[*tb.shiftflagmode][i] = 1.0;
+						}
+						frommem = true;
 					}
-					frommem = true;
-				}
-				bool willquickend = (frommem && turner.canquickend() && canquickend(startmark, stopdata));
-				int genotype = stopdata.getgenotype(startmark);
+					bool willquickend = (frommem && turner.canquickend() && canquickend(startmark, stopdata));
+					int genotype = stopdata.getgenotype(startmark);
 
-				if (genotype < 0) willquickend = false;
+					if (genotype < 0) willquickend = false;
 
-				if (willquickend)
-				{
-					if (factor + tb.quickendfactor[*tb.shiftflagmode][genotype] <= minfactor)
+					if (willquickend)
 					{
+						if (factor + tb.quickendfactor[*tb.shiftflagmode][genotype] <= minfactor)
+						{
+							return MINFACTOR;
+						}
+						// If we are doing a quick end
+						factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+					}
+					else
+					{
+						//printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
+						factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+					}
+
+					// This will work.
+					if (!_finite(factor) || factor <= minfactor)
+					{
+						//			    			    if (startmark) printf("%d;%d;%d : %lf\n", n, shiftflagmode, startmark, factor);
+						if (!_finite(factor)) printf("Non-finiteA %d %d\n", n, startmark);
 						return MINFACTOR;
 					}
-					// If we are doing a quick end
-					factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+					if (willquickend)
+					{
+						double wasval = probs[genotype];
+						if (tb.quickendfactor[*tb.shiftflagmode][genotype] > 0.0 || tb.quickendmarker[*tb.shiftflagmode][genotype] != startmark)
+						{
+							// Precalc the full set of transitions from this very marker, for all states, all the way to the end
+							// That way, any new analysis starting from this marker can be solved with no recomputation at all.
+							// Note that only the latest marker used is stored here, but as we generally loop over all states and possibly
+							// multiple flag values, it still helps.
+							for (int i = 0; i < NUMTYPES; i++)
+							{
+								tb.quickendprobs[*tb.shiftflagmode][genotype][i] = 0;
+							}
+							tb.quickendprobs[*tb.shiftflagmode][genotype][genotype] = 1.0;
+							double superfactor = realanalyze<0 | 2, T>(tb, turner, startmark, startmark + stepsize, NONESTOP, -1, ruleout, &tb.quickendprobs[*tb.shiftflagmode][genotype]);
+
+							//						printf("Setting!\n");
+							superfactor += quickanalyze<true, T>(tb, turner, startmark + stepsize, endmark, NONESTOP, flag2, ruleout, tb.quickendprobs[*tb.shiftflagmode][genotype],
+								// all uses of this precalced data will have the
+								// quickfactor component in common, so taking that
+								// into account for the limit is not problematic
+								// any strong filtering at this specific locus can be
+								// handled by the return MINFACTOR line above
+								minfactor - tb.quickfactor[*tb.shiftflagmode]);
+
+							tb.quickendmarker[*tb.shiftflagmode][genotype] = startmark;
+							tb.quickendfactor[*tb.shiftflagmode][genotype] = superfactor;
+						}
+
+						factor += tb.quickendfactor[*tb.shiftflagmode][genotype];
+						factor += log(wasval);
+						if (factor <= minfactor) return MINFACTOR;
+
+						for (int i = 0; i < NUMTYPES; i++)
+						{
+							probs[i] = tb.quickendprobs[*tb.shiftflagmode][genotype][i];
+						}
+
+						return factor;
+					}
 				}
 				else
 				{
-					//printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
-					factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
-				}
+					// Use a stored multi-step transition.
+					stepsize /= 2;
 
-				// This will work.
-				if (!_finite(factor) || factor <= minfactor)
-				{
-					//			    			    if (startmark) printf("%d;%d;%d : %lf\n", n, shiftflagmode, startmark, factor);
-			  if (!_finite(factor)) printf("Non-finiteA %d %d\n", n, startmark);					
-return MINFACTOR;
-				}
-				if (willquickend)
-				{
-					double wasval = probs[genotype];
-					if (tb.quickendfactor[*tb.shiftflagmode][genotype] > 0.0 || tb.quickendmarker[*tb.shiftflagmode][genotype] != startmark)
+					int base = 0;
+					for (int q = stepsize / 2; q > 1; q /= 2)
 					{
-						// Precalc the full set of transitions from this very marker, for all states, all the way to the end
-						// That way, any new analysis starting from this marker can be solved with no recomputation at all.
-						// Note that only the latest marker used is stored here, but as we generally loop over all states and possibly
-						// multiple flag values, it still helps.
-						for (int i = 0; i < NUMTYPES; i++)
-						{
-							tb.quickendprobs[*tb.shiftflagmode][genotype][i] = 0;				     
-						}
-						tb.quickendprobs[*tb.shiftflagmode][genotype][genotype] = 1.0;				 
-						double superfactor = realanalyze<0 | 2, T>(tb, turner, startmark, startmark + stepsize, NONESTOP, -1, ruleout, &tb.quickendprobs[*tb.shiftflagmode][genotype]);
-
-//						printf("Setting!\n");
-						superfactor += quickanalyze<true, T>(tb, turner, startmark + stepsize, endmark, NONESTOP, flag2, ruleout, tb.quickendprobs[*tb.shiftflagmode][genotype],
-							// all uses of this precalced data will have the
-							// quickfactor component in common, so taking that
-							// into account for the limit is not problematic
-							// any strong filtering at this specific locus can be
-							// handled by the return MINFACTOR line above
-							minfactor - tb.quickfactor[*tb.shiftflagmode]);
-
-						tb.quickendmarker[*tb.shiftflagmode][genotype] = startmark;
-						tb.quickendfactor[*tb.shiftflagmode][genotype] = superfactor;
+						base += markerposes.size() / q;
 					}
 
-					factor += tb.quickendfactor[*tb.shiftflagmode][genotype];
-					factor += log(wasval);
-					if (factor <= minfactor) return MINFACTOR;
+					base += startmark / stepsize;
 
-					for (int i = 0; i < NUMTYPES; i++)
-					{
-						probs[i] = tb.quickendprobs[*tb.shiftflagmode][genotype][i];
-					}
-
-					return factor;
+					factor += fillortake(tb, base, startmark, startmark + stepsize, probs);
 				}
-			}
-			else
-			{
-				// Use a stored multi-step transition.
-				stepsize /= 2;
-
-				int base = 0;
-				for (int q = stepsize / 2; q > 1; q /= 2)
-				{
-					base += markerposes.size() / q;
-				}
-
-				base += startmark / stepsize;
-
-				factor += fillortake(tb, base, startmark, startmark + stepsize, probs);
-			}
 			startmark += stepsize;
 			allowfull |= true;
 
 			if (!_finite(factor) || factor <= minfactor)
 			{
-			  if (!_finite(factor)) printf("Non-finiteB %d %d\n", n, startmark);
+				if (!_finite(factor)) printf("Non-finiteB %d %d\n", n, startmark);
 				if (!frommem && !stopdata.okstep(startmark, endmark))
 				{
 					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
-					tb.lockpos[*tb.shiftflagmode] = (int) stopdata;
+					tb.lockpos[*tb.shiftflagmode] = (int)stopdata;
 					tb.quickfactor[*tb.shiftflagmode] = MINFACTOR;
 				}
 
 				return MINFACTOR;
 			}
-		}		
+		}
 
 		return factor;
 	}
 #else
 // Analyze for a specific range, including a possible fixed specific state at some position (determined by stopdata)
-template<bool inclusive, class T, class G> double quickanalyze(const threadblock& tb, const T& turner, unsigned int startmark,
-	const unsigned int endmark, const G &stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
-	float minfactor = MINFACTOR)
-{
-	// Probe the distance to test
-	int newstart = startmark;
-	bool allowfull = inclusive;
-
-	while (stopdata.okstep(startmark, newstart))
+	template<bool inclusive, class T, class G> double quickanalyze(const threadblock& tb, const T& turner, unsigned int startmark,
+		const unsigned int endmark, const G &stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
+		float minfactor = MINFACTOR)
 	{
-		int stepsize;
-		for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
-			stopdata.okstep(newstart, newstart + stepsize); stepsize *= 2)
+		// Probe the distance to test
+		int newstart = startmark;
+		bool allowfull = inclusive;
+
+		while (stopdata.okstep(startmark, newstart))
 		{
+			int stepsize;
+			for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
+				stopdata.okstep(newstart, newstart + stepsize); stepsize *= 2)
+			{
+			}
+
+			if (stepsize == 1) break;
+
+			stepsize /= 2;
+			newstart += stepsize;
 		}
 
-		if (stepsize == 1) break;
+		double factor = fwbwfactors[*tb.shiftflagmode][newstart][0];
+		probs = fwbw[*tb.shiftflagmode][newstart][0];
+		startmark = newstart;
 
-		stepsize /= 2;
-		newstart += stepsize;
-	}
-
-	double factor = fwbwfactors[*tb.shiftflagmode][newstart][0];
-	probs = fwbw[*tb.shiftflagmode][newstart][0];
-	startmark = newstart;
-
-	while (startmark < endmark)
-	{
-		int stepsize = 1;
-
-		bool willquickend = /*(turner.canquickend() && canquickend(startmark, stopdata))*/ stopdata.okstep(startmark + 1, endmark);
-		int genotype = stopdata.getgenotype(startmark);
-
-		if (willquickend)
+		while (startmark < endmark)
 		{
-			// If we are doing a quick end
-			factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
-			double sum = 0;
-			
-			for (int k = 0; k < NUMTYPES; k++)
-			{
-				probs[k] *= fwbw[*tb.shiftflagmode][startmark][1][k];
-				sum += probs[k];
-			}	
+			int stepsize = 1;
 
-			factor += fwbwfactors[*tb.shiftflagmode][startmark][1];
+			bool willquickend = /*(turner.canquickend() && canquickend(startmark, stopdata))*/ stopdata.okstep(startmark + 1, endmark);
+			int genotype = stopdata.getgenotype(startmark);
 
-			if (sum <= 0)
+			if (willquickend)
 			{
-				factor = MINFACTOR;
+				// If we are doing a quick end
+				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				double sum = 0;
+
+				for (int k = 0; k < NUMTYPES; k++)
+				{
+					probs[k] *= fwbw[*tb.shiftflagmode][startmark][1][k];
+					sum += probs[k];
+				}
+
+				factor += fwbwfactors[*tb.shiftflagmode][startmark][1];
+
+				if (sum <= 0)
+				{
+					factor = MINFACTOR;
+				}
+				else
+				{
+					// Normalize, update auxiliary exponent
+					sum = 1 / sum;
+					for (int i = 0; i < NUMTYPES; i++)
+					{
+						probs[i] *= sum;
+					}
+					factor -= log(sum);
+				}
+
+				return factor;
 			}
 			else
 			{
-				// Normalize, update auxiliary exponent
-				sum = 1 / sum;
-				for (int i = 0; i < NUMTYPES; i++)
-				{
-					probs[i] *= sum;
-				}
-				factor -= log(sum);
+				printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
+				factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 			}
 
-			return factor;
-		}
-		else
-		{
-			printf("Not a quick end %d %d\n", startmark, stopdata.getgenotype(startmark));
-			factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+			startmark += stepsize;
+			allowfull |= true;
 		}
 
-		startmark += stepsize;
-		allowfull |= true;
+		return factor;
 	}
-
-	return factor;
-}
 #endif
 
 #if !DOFB
@@ -1635,7 +1635,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 			double selfingfactors[4];
 			if (SELFING)
 			{
-			  int selfgen = gen - 2;
+				int selfgen = gen - 2;
 				selfingfactors[0] = 1.0 / (1 << selfgen);
 				selfingfactors[1] = (1 - selfingfactors[0]) * 0.5;
 				selfingfactors[2] = (1 - selfingfactors[0]) * 0.5;
@@ -1669,7 +1669,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 			double selfingfactors[4];
 			if (SELFING)
 			{
-			  int selfgen = gen - 2;
+				int selfgen = gen - 2;
 				selfingfactors[0] = 1.0 / (1 << selfgen);
 				selfingfactors[1] = (1 - selfingfactors[0]) * 0.5;
 				selfingfactors[2] = (1 - selfingfactors[0]) * 0.5;
@@ -1680,9 +1680,9 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 				probs[i] = EVENGEN * (SELFING ?
 					selfingfactors[i >> TYPEBITS] : 1.0);
 			}
-			
+
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
-			
+
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = 1.0;
@@ -1798,7 +1798,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 
 			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers, and the simple case
 			// of no fixated position.
-			for (int iter = 0; iter <= (int) tofind; iter++)
+			for (int iter = 0; iter <= (int)tofind; iter++)
 			{
 				// If iter is 1, we have currently hanfwdled the transition all the way to the fixated position. Now filter to keep only
 				// a single state value positive.
@@ -1823,7 +1823,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 				// Compute transitions, assuming there is any distance to transfer over.
 				if (dist > 0)
 				{
-					PerStateArray<double>::T probs2 = {{0}};
+					PerStateArray<double>::T probs2 = { {0} };
 					double recprob[2 + SELFING][2];
 
 #pragma ivdep
@@ -1835,7 +1835,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 					{
 						for (int k = 0; k < 2; k++)
 						{
-						  recprob[gen][k] = 0.5 * (1.0 - exp((gen == 2 ? selfgen : 1) * getactrec(stopdata, startpos, endpos, k, j - d + 1, gen) * (dist)));
+							recprob[gen][k] = 0.5 * (1.0 - exp((gen == 2 ? selfgen : 1) * getactrec(stopdata, startpos, endpos, k, j - d + 1, gen) * (dist)));
 							//					if (iter == tofind) recprob[k] = max(recprob[k], 1e-5);
 						}
 					}
@@ -1858,7 +1858,7 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 					}
 
 					std::array<double, NONSELFNUMTYPES> recombprec;
-					
+
 #pragma ivdep
 					for (int index = 0; index < NONSELFNUMTYPES; index++)
 					{
@@ -1867,18 +1867,18 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 
 					double selfprec[2 * SELFING + 1][2 * SELFING + 1];
 					if (SELFING)
-					  {
-					    selfprec[0][1] = selfprec[0][2] = recprob[2][0];
-					    selfprec[0][0] = 1 - 2 * recprob[2][0];
-					    selfprec[1][0] = selfgen ? selfprec[0][1] * 2.0 / ((1 << selfgen) - 1) : 1;
-					    selfprec[1][2] = selfprec[1][0] * selfprec[0][1]; // TODO, UNDERESTIMATED!
-					    selfprec[2][0] = selfprec[1][0];
-					    selfprec[2][1] = selfprec[1][2];
-					    selfprec[2][2] = selfprec[1][1] = 1 - selfprec[1][0] - selfprec[1][2];
-					  }
+					{
+						selfprec[0][1] = selfprec[0][2] = recprob[2][0];
+						selfprec[0][0] = 1 - 2 * recprob[2][0];
+						selfprec[1][0] = selfgen ? selfprec[0][1] * 2.0 / ((1 << selfgen) - 1) : 1;
+						selfprec[1][2] = selfprec[1][0] * selfprec[0][1]; // TODO, UNDERESTIMATED!
+						selfprec[2][0] = selfprec[1][0];
+						selfprec[2][1] = selfprec[1][2];
+						selfprec[2][2] = selfprec[1][1] = 1 - selfprec[1][0] - selfprec[1][2];
+					}
 					else
-					  {
-					  }
+					{
+					}
 
 
 					// Compute probabilities for arbitrary xor values of current and future state
@@ -1899,14 +1899,14 @@ template<bool inclusive, class T, class G> double quickanalyze(const threadblock
 					// For the 4-state model, this is an inefficient way to go about it, but it is quite a bit more efficient for
 					// the 64-state model (or beyond).
 					for (int from = 0; from < VALIDSELFNUMTYPES; from++) // SELFING condition removes the double-bit set case, which is not allowed
- 					{
+					{
 						if (probs[from] < MINFACTOR || !probs[from]) continue;
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							probs2[to] += probs[from] * recombprec[(from ^ to) & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1);
 						}
 					}
- 
+
 					for (int c = 0; c < NUMTYPES; c++)
 					{
 						probs[c] = probs2[c];
@@ -1972,13 +1972,13 @@ vector<individ*> dous;
 
 // retrieve the individual with a specific number
 #ifdef _MSC_VER
-individ* const getind(int n, bool real = false) 
+individ* const getind(int n, bool real = false)
 #else
-individ* const __attribute__((const)) getind(int n, bool real = false) 
+individ* const __attribute__((const)) getind(int n, bool real = false)
 #endif
 {
 	if (!real && !individer[n]) n = 0;
-	if (n <= 0) return 0;	
+	if (n <= 0) return 0;
 
 	if (!individer[n])
 	{
@@ -1987,37 +1987,37 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		individer[n]->n = n;
 		individ* ind = individer[n];
 		ind->empty = false;
-		  ind->markerdata.resize(markerposes.size());
-		  ind->haplobase.resize(markerposes.size());
-		  ind->haplocount.resize(markerposes.size());
-		  ind->haploweight.resize(markerposes.size());
-		  ind->negshift.resize(markerposes.size());
-      
-		  ind->infprobs.resize(markerposes.size());
-		  ind->sureinfprobs.resize(markerposes.size());
-		  ind->unknowninfprobs.resize(markerposes.size());
-		  ind->parinfprobs.resize(markerposes.size());
-		  ind->markersure.resize(markerposes.size());
-		  for (int x = 0; x < markerposes.size(); x++)
-		    {
-		      ind->markerdata[x] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
-		      ind->haplobase[x] = 0;
-		      ind->haplocount[x] = 0;
-		      ind->haploweight[x] = 0.5;
-		      ind->negshift[x] = 0;
-		      ind->markersure[x] = make_pair(0, 0);
-		    }
-		  
-				//		ind->semishift.resize(5000);
-		  ind->lastinved.resize(chromstarts.size());
-		  ind->lockstart.resize(chromstarts.size());
-      
-		  for (int i = 0; i < chromstarts.size(); i++)
+		ind->markerdata.resize(markerposes.size());
+		ind->haplobase.resize(markerposes.size());
+		ind->haplocount.resize(markerposes.size());
+		ind->haploweight.resize(markerposes.size());
+		ind->negshift.resize(markerposes.size());
+
+		ind->infprobs.resize(markerposes.size());
+		ind->sureinfprobs.resize(markerposes.size());
+		ind->unknowninfprobs.resize(markerposes.size());
+		ind->parinfprobs.resize(markerposes.size());
+		ind->markersure.resize(markerposes.size());
+		for (int x = 0; x < markerposes.size(); x++)
 		{
-		  ind->lastinved[i] = -1;
-		  ind->lockstart[i] = 0;
+			ind->markerdata[x] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
+			ind->haplobase[x] = 0;
+			ind->haplocount[x] = 0;
+			ind->haploweight[x] = 0.5;
+			ind->negshift[x] = 0;
+			ind->markersure[x] = make_pair(0, 0);
 		}
-      
+
+		//		ind->semishift.resize(5000);
+		ind->lastinved.resize(chromstarts.size());
+		ind->lockstart.resize(chromstarts.size());
+
+		for (int i = 0; i < chromstarts.size(); i++)
+		{
+			ind->lastinved[i] = -1;
+			ind->lockstart[i] = 0;
+		}
+
 
 	}
 
@@ -2152,7 +2152,7 @@ void readqtlmas14()
 			//if (oldc != -1)
 			{
 				chromstarts.push_back(n - 1);
-			}		
+			}
 			n2 = 0;
 			oldc = c;
 		}
@@ -2233,7 +2233,7 @@ void readqtlmas14()
 				ind->haploweight[i] = 0.5;
 			}
 
-		}		
+		}
 
 		//		if (ind->n > 2360) break;
 	}
@@ -2264,11 +2264,11 @@ void readqtlmas14()
 					ind->markerdata[i] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 				}
 				else
-				  if (i == 1181) fprintf(stderr, "Input check: %d %d %d\n", indn, a, b);
+					if (i == 1181) fprintf(stderr, "Input check: %d %d %d\n", indn, a, b);
 			}
 
 		}
-		
+
 		//		if (indn > 2360) break;
 	}
 	fprintf(stderr, "Individuals read: %d\n", indread);
@@ -2302,7 +2302,7 @@ void readmarkerinfo(FILE* in)
 	int pos = 0;
 	for (int i = 0; i < n; i++)
 	{
-		chromstarts.push_back(pos);		
+		chromstarts.push_back(pos);
 
 		vector<double> part[2];
 		for (int t = 0; t < sexc; t++)
@@ -2345,7 +2345,7 @@ void readmarkerinfo(FILE* in)
 				}
 
 				if (avgdist)
-				{					
+				{
 					actrec[t].push_back(baserec[t] * (part[t][k] - part[t][k - 1]) / avgdist);
 				}
 				else
@@ -2467,7 +2467,7 @@ void readhaploweights(FILE* in)
 				ind->haploweight[i] = 1 - ind->haploweight[i];
 			}
 			if (ind->haploweight[i]) ind->haploweight[i] = 0.5;
-		}	  
+		}
 		ind->genotypegrid.resize(end + 1);
 
 		if (!ind->pars[0] && !ind->pars[1])
@@ -2485,12 +2485,12 @@ void readhaploweights(FILE* in)
 	{
 		for (int i = 0; i < INDCOUNT; i++)
 		{
-			individ* ind = getind(i, true);		  
+			individ* ind = getind(i, true);
 
 			if ((ind && ind->gen == gen && ind->genotypegrid.size()) /*&& ind->pars[0] && ind->pars[1]*/)
 			{
 				fprintf(indmarkers, "%d ", i);
-				fprintf(indgrid, "%d ", i);		  
+				fprintf(indgrid, "%d ", i);
 
 				int phase = myrand(4);
 				int marker = 0;
@@ -2520,9 +2520,9 @@ void readhaploweights(FILE* in)
 							int mask = 1 << p;
 							bool parhalf = phase & mask;
 
-							gval |= mask * ((bool) (ind->pars[p]->genotypegrid[i] & (1 << parhalf)));
+							gval |= mask * ((bool)(ind->pars[p]->genotypegrid[i] & (1 << parhalf)));
 
-							for (;markerposes[marker] < i + 1 && marker < chromstarts[1]; marker++)
+							for (; markerposes[marker] < i + 1 && marker < chromstarts[1]; marker++)
 							{
 								if ((&ind->markerdata[marker].first)[p] != UnknownMarkerVal)
 								{
@@ -2549,11 +2549,11 @@ void readhaploweights(FILE* in)
 						ind->genotypegrid[i] = gval;
 					}
 
-					fprintf(indgrid, " %d", ind->genotypegrid[i]);			  
+					fprintf(indgrid, " %d", ind->genotypegrid[i]);
 				}
 				for (int marker = 0; marker < chromstarts[1]; marker++)
 				{
-				  fprintf(indmarkers, " %d %d", ind->markerdata[marker].first.value(), ind->markerdata[marker].second.value());
+					fprintf(indmarkers, " %d %d", ind->markerdata[marker].first.value(), ind->markerdata[marker].second.value());
 				}
 
 				fprintf(indmarkers, "\n");
@@ -2587,9 +2587,9 @@ void lockhaplos(individ* ind, int i)
 	for (j = max(chromstarts[i], ind->lockstart[i]); j != chromstarts[i + 1]; j++)
 	{
 		if (ind->markerdata[j].first == ind->markerdata[j].second) continue;
-		if (fabs(ind->haploweight[j] - 0.5) > 0.49999) continue;	
+		if (fabs(ind->haploweight[j] - 0.5) > 0.49999) continue;
 
-		individ* pars[3] = {ind, ind->pars[0], ind->pars[1]};
+		individ* pars[3] = { ind, ind->pars[0], ind->pars[1] };
 		double count = 0;
 
 		for (int p = 0; p < 3; p++)
@@ -2598,19 +2598,19 @@ void lockhaplos(individ* ind, int i)
 
 			for (int i = 0; i < 2; i++)
 			{
-			  if ((&(pars[p]->markerdata[j].first))[i] != UnknownMarkerVal)
-			    {
-			      count += 1.0 - (&(pars[p]->markersure[j].first))[i];
-			    }
-			}			
-			if (p == 0) count *= 2;						
+				if ((&(pars[p]->markerdata[j].first))[i] != UnknownMarkerVal)
+				{
+					count += 1.0 - (&(pars[p]->markersure[j].first))[i];
+				}
+			}
+			if (p == 0) count *= 2;
 		}
 
 		if (count > bestcount)
 		{
 			bestcount = count;
 			bestpos = j;
-		}	
+		}
 	}
 
 	if (bestpos == -1)
@@ -2632,19 +2632,19 @@ void lockhaplos(individ* ind, int i)
 
 double dosureval(int what, pair<int, double> val)
 {
-  if (val.second == 0) return 0;
+	if (val.second == 0) return 0;
 
-  /*  double toret = log(val.second);
-  toret += log(0.5) * (what * 0.5 - val.first);
-  toret *= 2;
-  toret /= what;*/
-  double toret = log(val.second);
-  toret /= what;
-  toret *= 4;
-  toret = exp(toret);
-  toret /= (1 + toret);
+	/*  double toret = log(val.second);
+	toret += log(0.5) * (what * 0.5 - val.first);
+	toret *= 2;
+	toret /= what;*/
+	double toret = log(val.second);
+	toret /= what;
+	toret *= 4;
+	toret = exp(toret);
+	toret /= (1 + toret);
 
-  return toret;
+	return toret;
 }
 
 // Some operations performed when marker data has been read, independent of format.
@@ -2671,12 +2671,12 @@ void postmarkerdata()
 			if (!ind) continue;
 
 			for (int j = 0; j < 2; j++)
-			  {
-			  if (ind->pars[j])
-			    {
-			      ind->pars[j]->children++;
-			    }
-			  }
+			{
+				if (ind->pars[j])
+				{
+					ind->pars[j]->children++;
+				}
+			}
 
 			if (ind->markerdata.size())
 			{
@@ -2698,9 +2698,9 @@ void postmarkerdata()
 			// Only run for sex 2, tailored to half sibships
 			if (!ind->sex) continue;
 
-			for (int g = 0; g < (int) ind->markervals.size(); g++)
+			for (int g = 0; g < (int)ind->markervals.size(); g++)
 			{
-			  //				if (g == 1) continue;
+				//				if (g == 1) continue;
 
 				int startsize = ind->markervals[g].size();
 				const int known =
@@ -2724,7 +2724,7 @@ void postmarkerdata()
 				startsize = ind->markervals[g].size();
 
 				// map insert preserves existing value if present
-				if (ind->markerdata[g].first  != UnknownMarkerVal) ind->markervals[g].insert(make_pair(ind->markerdata[g].first, make_pair(ind->children, ind->markersure[g].first)));
+				if (ind->markerdata[g].first != UnknownMarkerVal) ind->markervals[g].insert(make_pair(ind->markerdata[g].first, make_pair(ind->children, ind->markersure[g].first)));
 				if (ind->markerdata[g].second != UnknownMarkerVal) ind->markervals[g].insert(make_pair(ind->markerdata[g].second, make_pair(ind->children, ind->markersure[g].second)));
 
 				if (ind->markervals[g].size() >= 3)
@@ -2733,7 +2733,7 @@ void postmarkerdata()
 				}
 				if (!latephase && ind->markervals[g].size() == 2)
 				{
-				  int knowncount = ind->markervals[g].begin()->second.first + (++ind->markervals[g].begin())->second.first;
+					int knowncount = ind->markervals[g].begin()->second.first + (++ind->markervals[g].begin())->second.first;
 					ind->markerdata[g] = make_pair(ind->markervals[g].begin()->first, (++ind->markervals[g].begin())->first);
 					ind->markersure[g] = make_pair(dosureval(knowncount, ind->markervals[g].begin()->second), dosureval(knowncount, (++ind->markervals[g].begin())->second));
 					any++;
@@ -2741,9 +2741,9 @@ void postmarkerdata()
 				if (latephase && ind->markervals[g].size() == 1 && startsize == 1 && known == 1 && !ind->pars[0] && !ind->pars[1])
 				{
 					if (ind->markerdata[g].first == UnknownMarkerVal || ind->markerdata[g].second == UnknownMarkerVal) any++;
-					ind->markerdata[g] = make_pair(ind->markervals[g].begin()->first, ind->markervals[g].begin()->first);		
+					ind->markerdata[g] = make_pair(ind->markervals[g].begin()->first, ind->markervals[g].begin()->first);
 					ind->markersure[g] = make_pair(dosureval(ind->children, ind->markervals[g].begin()->second),
-								       dosureval(ind->children, ind->markervals[g].begin()->second));		       
+						dosureval(ind->children, ind->markervals[g].begin()->second));
 				} // DANGEROUS ASSUMPTIONS
 				else if (!latephase && ind->markervals[g].size() == 1 && known == 0)
 				{
@@ -2752,14 +2752,14 @@ void postmarkerdata()
 					ind->markersure[g] = make_pair(dosureval(ind->children, ind->markervals[g].begin()->second), 0.0);
 				}
 
-				
+
 				if (any != oldany) printf("Correction at %d, marker %d (%d;%d) (%lf;%lf)\n", i, g,
-							  ind->markerdata[g].first.value(), ind->markerdata[g].second.value(),
-							  ind->markersure[g].first, ind->markersure[g].second);
+					ind->markerdata[g].first.value(), ind->markerdata[g].second.value(),
+					ind->markersure[g].first, ind->markersure[g].second);
 
 			}
 
-			for (int g = 0; g < (int) ind->markervals.size(); g++)
+			for (int g = 0; g < (int)ind->markervals.size(); g++)
 			{
 				if (ind->markerdata[g].first == sexmarkerval) {
 					ind->markerdata[g] = make_pair(ind->markerdata[g].second, ind->markerdata[g].first);
@@ -2774,14 +2774,13 @@ void postmarkerdata()
 		}
 		else
 		{
-		  /*			if (!any && !latephase)
-			{
-				any++;
-				latephase = true;
-				}*/
+			/*			if (!any && !latephase)
+			  {
+				  any++;
+				  latephase = true;
+				  }*/
 		}
-	}
-	while (any > anyrem);
+	} while (any > anyrem);
 
 	for (int i = 1; i < INDCOUNT; i++)
 	{
@@ -2797,8 +2796,8 @@ void postmarkerdata()
 			// Doing so would be much more opaque, though...
 			for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 			{
-			  if (!ind->pars[0] && !ind->pars[1])
-				lockhaplos(ind, i);				
+				if (!ind->pars[0] && !ind->pars[1])
+					lockhaplos(ind, i);
 			}
 		}
 	}
@@ -2839,7 +2838,7 @@ struct negshifter
 		int minstart = b.get<2>();
 		individ* ind = b.get<0>();
 		ind->lastinved[c] = minstart;
-		for (int p = minstart + 1; p < (int) chromstarts[c + 1]; p++)
+		for (int p = minstart + 1; p < (int)chromstarts[c + 1]; p++)
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
 			ind->haploweight[p] = 1.0f - ind->haploweight[p];
@@ -2849,34 +2848,34 @@ struct negshifter
 
 bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, int>& relmap)
 {
-  int flag2filter = (1 << 30) - 1;
-  // Below lines relied on incorrect assumption of remapping of inheritance
-  /*  const int selfval = g >> TYPEBITS;
-    if (SELFING && selfval)
-      {
-	int basefilter = (HALFNUMPATHS - 1) << 1;
-        if ((((flag2 ^ (g * 2)) / HALFNUMPATHS) ^ (flag2 ^ (g * 2))) & basefilter)
-	  {
-	    return true;
-	  }
-	flag2filter = basefilter * (selfval == 1 ? HALFNUMPATHS : 1);
-	flag2filter |= 1;
-	//	printf("Selfval is %d, flag2filter is %d, flag2ignore is %d\n", selfval, flag2filter, flag2ignore);
-	}*/
-    if (flag2 & (flag2ignore & flag2filter)) return true;
+	int flag2filter = (1 << 30) - 1;
+	// Below lines relied on incorrect assumption of remapping of inheritance
+	/*  const int selfval = g >> TYPEBITS;
+	  if (SELFING && selfval)
+		{
+	  int basefilter = (HALFNUMPATHS - 1) << 1;
+		  if ((((flag2 ^ (g * 2)) / HALFNUMPATHS) ^ (flag2 ^ (g * 2))) & basefilter)
+		{
+		  return true;
+		}
+	  flag2filter = basefilter * (selfval == 1 ? HALFNUMPATHS : 1);
+	  flag2filter |= 1;
+	  //	printf("Selfval is %d, flag2filter is %d, flag2ignore is %d\n", selfval, flag2filter, flag2ignore);
+	  }*/
+	if (flag2 & (flag2ignore & flag2filter)) return true;
 
-	int marker = -q-1000;
+	int marker = -q - 1000;
 	for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
 	{
-	  int currfilter = (i->second & flag2filter);
+		int currfilter = (i->second & flag2filter);
 		int filtered = ((flag2 ^ (g * 2)) & currfilter);
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
 		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && (!SELFING || currfilter != 1 /*|| selfgen == 0*/))
-			{
-			  				return true;
-							}
+		{
+			return true;
+		}
 	}
 	return false;
 }
@@ -2956,9 +2955,9 @@ void resizecaches()
 // marker positions.
 template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #ifdef F2MPI
-							  , mpi::communicator& world
+	, mpi::communicator& world
 #endif
-							  )
+	)
 {
 	const bool doprint = full;
 #ifdef F2MPI
@@ -2966,7 +2965,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 	int count = 0;
-	vector<vector<std::array<float, 2> > > realgeno;	
+	vector<vector<std::array<float, 2> > > realgeno;
 
 	realgeno.resize(dous.size());
 
@@ -3037,7 +3036,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	}
 
-	for (int j = 0; j < (int) dous.size(); j++)
+	for (int j = 0; j < (int)dous.size(); j++)
 	{
 
 		for (int i = 0; i < 2; i++)
@@ -3069,10 +3068,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 #pragma omp parallel for schedule(dynamic,1)
-		for (int j = 0; j < (int) dous.size(); j++)
+		for (int j = 0; j < (int)dous.size(); j++)
 		{
 #ifdef F2MPI
-			if (j % world.size() != world.rank()) continue;			
+			if (j % world.size() != world.rank()) continue;
 #endif
 			//			realgeno[j].resize(markerposes[chromstarts[1] - 1] + 1);
 
@@ -3084,7 +3083,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			resizecaches();
 
 			if (dous[j]->markerdata.size())
-			{				
+			{
 				int qstart = -1000 - chromstarts[i];
 				int qend = -1000 - chromstarts[i + 1];
 				int qd = -1;
@@ -3119,9 +3118,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						if (!lev1i) continue;
 						int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
 						if (!lev1i->empty)
-							{
-								flag2ignore |= flag2base;
-								relmap[lev1i] |= flag2base;
+						{
+							flag2ignore |= flag2base;
+							relmap[lev1i] |= flag2base;
 						}
 
 						bool anypars = false;
@@ -3134,18 +3133,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (!lev2i) continue;
 
 								if (!lev2i->empty)
-									{
-										flag2ignore |= (flag2base << (lev2 + 1));
-										relmap[lev2i] |= (flag2base << (lev2 + 1));
+								{
+									flag2ignore |= (flag2base << (lev2 + 1));
+									relmap[lev2i] |= (flag2base << (lev2 + 1));
 								}
 								anypars = true;
 								reltree.push_back(lev2i);
 							}
 						}
 						if (anypars)
-						  {
-						    shiftignore |= 2 << lev1;
-						  }
+						{
+							shiftignore |= 2 << lev1;
+						}
 					}
 
 					flag2ignore ^= (NUMPATHS - 1);
@@ -3173,8 +3172,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				if (full)
 				{
-					qstart = (int) markerposes[chromstarts[i]];
-					qend = (int) markerposes[chromstarts[i + 1] - 1] + 1;
+					qstart = (int)markerposes[chromstarts[i]];
+					qend = (int)markerposes[chromstarts[i + 1] - 1] + 1;
 					qd = 1;
 					f2s = -1;
 					f2end = 0;
@@ -3191,8 +3190,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				//if (!anygood) shiftend = 2;
 				if (!anygood)
 				{
-						shiftignore = 7;
-						flag2ignore = 0;
+					shiftignore = 7;
+					flag2ignore = 0;
 				}
 
 				double factor = -1e15;
@@ -3200,9 +3199,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 				{
 					if (shiftflagmode & shiftignore) //continue;
-							factors[shiftflagmode] = -1e30;
+						factors[shiftflagmode] = -1e30;
 					else
- 						factors[shiftflagmode] = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, NONESTOP, -1, false, 0, -10000 + factor);
+						factors[shiftflagmode] = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, NONESTOP, -1, false, 0, -10000 + factor);
 					factor = max(factor, factors[shiftflagmode]);
 				}
 
@@ -3220,10 +3219,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				factor -= log(1 << countf2i);
 
-								printf("%d,%03d,%03d: %lf\t", dous[j]->n, flag2ignore, shiftignore, factor);
+				printf("%d,%03d,%03d: %lf\t", dous[j]->n, flag2ignore, shiftignore, factor);
 				factor += log(realfactor);
-								printf("%lf %d\n", factor, shiftend);
-								fflush(stdout);
+				printf("%lf %d\n", factor, shiftend);
+				fflush(stdout);
 
 				//fflush(stdout);
 				// Flushing can be useful for debugging, but not for performance!
@@ -3233,23 +3232,23 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				char lineout[255];
 
-/*				// States are mapped onto values describing the line/strain origin, in the sense of 00, 01, 10 or 11 (old comment)
-				PerStateArray<int>::T maptogeno;
-				shiftflagmode = 0;
-				for (int g = 0; g < NUMTYPES; g++)
-				{
-					int sum = 0;
-					dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0
-						, 0, g * 2, 0, 0, trackpossibleparams(0, &sum));u
+				/*				// States are mapped onto values describing the line/strain origin, in the sense of 00, 01, 10 or 11 (old comment)
+								PerStateArray<int>::T maptogeno;
+								shiftflagmode = 0;
+								for (int g = 0; g < NUMTYPES; g++)
+								{
+									int sum = 0;
+									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0
+										, 0, g * 2, 0, 0, trackpossibleparams(0, &sum));u
 
-					maptogeno[g] = sum;
-					printf("Maptogeno %d\n", sum);
-				}*/
+									maptogeno[g] = sum;
+									printf("Maptogeno %d\n", sum);
+								}*/
 
-				// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
+								// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
 
 
-				for (int q = qstart; q != qend; q+=qd)
+				for (int q = qstart; q != qend; q += qd)
 				{
 					reporterclass reporter;
 					//double mwvals[NUMTYPES][NUMTYPES] = {0};
@@ -3257,10 +3256,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					double mwvals[1][1];
 					double mwfvals[1];
 
-					double mwval[4] = {0};
+					double mwval[4] = { 0 };
 
 					for (int g = 0; g < NUMTYPES; g++)
-					{						
+					{
 						for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 						{
 							if (shiftflagmode & shiftignore) continue;
@@ -3275,7 +3274,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										-1, true, 0, -5000.0 + factor) - factor;
 
 
-									val = exp(val);	
+									val = exp(val);
 									mwvals[g][g2] += val;
 									if (q == -1010 && false)
 									{
@@ -3312,7 +3311,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							for (int flag2 = f2s; flag2 < f2end; flag2++)
 							{
-							  if (ignoreflag2(flag2, g, q, flag2ignore, relmap)) continue;
+								if (ignoreflag2(flag2, g, q, flag2ignore, relmap)) continue;
 								//if (flag2 & (flag2ignore)) continue;
 
 								int firstpar = 0;
@@ -3354,7 +3353,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									// shift mode not included, this is the "real" f2n, indicating what value
 									// in the marker pair is used, not the strand phase (strand phase is flag2 xored
 									// with the other stuff)
-									int f2n = ((flag2 /*^ shiftflagmode*/) & 1);
+									int f2n = ((flag2 /*^ shiftflagmode*/)& 1);
 
 
 									val = exp(val);
@@ -3377,7 +3376,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 										double factor = 1;
 										individ* parnow = dous[j]->pars[i];
-										
+
 										if (parnow)
 										{
 											MarkerVal mv = (&(parnow->markerdata[marker].first))[flag2parindex];
@@ -3437,7 +3436,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										(dous[j]->markerdata[marker].first != dous[j]->markerdata[marker].second))
 										{
 										evil = true;
-										}*/										
+										}*/
 
 									}
 									int mapval = 0;
@@ -3451,7 +3450,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											int genbase = lev1 * ((1 << (TYPEBITS / 2)));
 											if (NUMGEN > 2)
 											{
-												int f2what = 
+												int f2what =
 												for (int lev2 = 0; lev2 < 2; lev2++)
 												{
 													individ* lev2i = lev1i->pars[lev2];
@@ -3463,19 +3462,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											}
 										}
 									}*/
-									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q-1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
+									dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
-continueloop:;
+							continueloop:;
 							}
 						}
 					}
 
 					if (q <= -1000 && false)
 					{
-						double colsums[NUMTYPES] = {0};
-						double rowsums[NUMTYPES] = {0};
+						double colsums[NUMTYPES] = { 0 };
+						double rowsums[NUMTYPES] = { 0 };
 						double acc3 = 0;
 						double acc4 = 0;
 						for (int g = 0; g < NUMTYPES; g++)
@@ -3500,9 +3499,9 @@ continueloop:;
 
 						double relinfo1 = 0;
 						double relinfo2 = 0;
-						double infosum[2] = {0};
+						double infosum[2] = { 0 };
 						double recprob[2];
-						double dist = markerposes[ - q - 1000 + 1] - markerposes[-q - 1000];
+						double dist = markerposes[-q - 1000 + 1] - markerposes[-q - 1000];
 
 						for (int k = 0; k < 2; k++)
 						{
@@ -3532,8 +3531,8 @@ continueloop:;
 											// TODO: handle null
 											corr /= dous[j]->pars[i / (TYPEBITS) >> 1]->children;
 										}
-									}	
-									bool switched = ((bool) (mask & (1 << i)));
+									}
+									bool switched = ((bool)(mask & (1 << i)));
 									double expected = !switched ? 1.0 - recprob[TYPESEXES[i]] : recprob[TYPESEXES[i]];
 
 									mwval[TYPESEXES[i] * 2 + switched] += (val / expected) * corr;
@@ -3585,10 +3584,10 @@ continueloop:;
 					if (!full)
 					{
 						int marker = -q - 1000;
-						double pinfsum[2] = {0, 0};
+						double pinfsum[2] = { 0, 0 };
 						for (int a = 0; a < 2; a++)
 						{
-							for (int c = 0; c < 2; c++)							
+							for (int c = 0; c < 2; c++)
 							{
 								for (int b = 0; b < 2; b++)
 								{
@@ -3656,7 +3655,7 @@ continueloop:;
 
 
 											dous[j]->pars[a]->infprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
-											+= dous[j]->parinfprobs[marker][a][c][b][d];
+												+= dous[j]->parinfprobs[marker][a][c][b][d];
 
 											/*if ((dous[j]->pars[a]->n == 1633 || dous[j]->pars[a]->n == 1726))
 											{
@@ -3696,15 +3695,15 @@ continueloop:;
 											if (toadd < 0) continue;
 
 											dous[j]->pars[a]->sureinfprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
-											+= toadd;
+												+= toadd;
 										}
 									}
 								}
 							}
 						}
-					}				
+						}
 					}
-					
+
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
@@ -3713,7 +3712,7 @@ continueloop:;
 						const int NUMTURNS = 1 << (TYPEBITS + 1);
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
-						double sumnegval[TYPEBITS + 1] = {0};
+						double sumnegval[TYPEBITS + 1] = { 0 };
 						for (int g = 0; g < NUMTURNS; g++)
 						{
 							for (int s = 0; s < NUMSHIFTS; s++)
@@ -3724,7 +3723,7 @@ continueloop:;
 						}
 
 						for (int g = 0; g < NUMTURNS; g++)
-						{		
+						{
 							if (g & (flag2ignore >> 1)) continue;
 
 							int c = 0;
@@ -3733,12 +3732,12 @@ continueloop:;
 								if (g & (1 << p)) c++;
 							}
 
-														if (c > 1) continue;
+							if (c > 1) continue;
 
 							aroundturner turn(g);
 							for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 							{
-													if (shiftflagmode & shiftignore) continue;
+								if (shiftflagmode & shiftignore) continue;
 								// If we are above this limit, we are shifting shift moden
 								// within the range and cannot use this heuristic of the
 								// aggregated probability to know anything... anything at all!
@@ -3747,7 +3746,7 @@ continueloop:;
 								int g2 = g;
 								if (!g) g2 = (1 << 15) - 1;
 
-								int oldshift = shiftflagmode;								
+								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
 									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
 								shiftflagmode = oldshift;
@@ -3759,7 +3758,7 @@ continueloop:;
 
 								for (int t = 0; t < TYPEBITS + 1; t++)
 								{
-																		if (g2 & (1 << t))
+									if (g2 & (1 << t))
 									{
 										sumnegval[t] += rawvals[g][shiftflagmode];
 									}
@@ -3781,7 +3780,7 @@ continueloop:;
 							{
 								for (int s = shifts; s < shiftend; s++)
 								{
-														if (s & shiftignore) continue;
+									if (s & shiftignore) continue;
 									int marker = -q - 1000;
 									double val = rawvals[g][s];
 									//fprintf(out, "rawvals: %d %d %d %d %lf\n", j, marker, g, s, rawervals[g][s] / rawervals[0][s]);
@@ -3794,8 +3793,8 @@ continueloop:;
 										{
 
 										}
-										int g2 = g;										
-										if (!g) g2 = (1 << 15) - 1;							      
+										int g2 = g;
+										if (!g) g2 = (1 << 15) - 1;
 
 										// This is hardcoded for the generation count of 3.
 										if (NUMGEN == 3)
@@ -3849,7 +3848,7 @@ continueloop:;
 								}
 							}
 						}
-					}					
+					}
 
 
 					reporter.report(outqueue[j]);
@@ -3860,95 +3859,95 @@ continueloop:;
 					/*						strcpy(&outqueue[j][oqp[j]], lineout);
 					oqp[j] += strlen(lineout);*/
 					if (!full)
-				{
-					int marker = -q - 1000;
-
-					// Contribute haplotype data, but truncate it, i.e. a 50/50 contribution for either interpretation is not added.
-					// Instead, we have a cap later on at the maximum change at any iteration.
-					// critical section outside the loop to maintain symmetry in floating point ops
-#pragma omp critical(update)
 					{
-#pragma ivdep
-						for (int k = 0; k < (int) reltree.size(); k++)
+						int marker = -q - 1000;
+
+						// Contribute haplotype data, but truncate it, i.e. a 50/50 contribution for either interpretation is not added.
+						// Instead, we have a cap later on at the maximum change at any iteration.
+						// critical section outside the loop to maintain symmetry in floating point ops
+#pragma omp critical(update)
 						{
-							int i = reltree[k]->n;
-/*							for (int side = 0; side < 2; side++)
+#pragma ivdep
+							for (int k = 0; k < (int)reltree.size(); k++)
 							{
-								for (map<MarkerVal, float>::iterator i = infprobs[i][side].begin(); i != infprobs[i][side].end(); i++)
+								int i = reltree[k]->n;
+								/*							for (int side = 0; side < 2; side++)
+															{
+																for (map<MarkerVal, float>::iterator i = infprobs[i][side].begin(); i != infprobs[i][side].end(); i++)
+																{
+																	reltree[k]->infprobs[marker]
+																}*/
+								if (haplos[i][0] || haplos[i][1])
 								{
-									reltree[k]->infprobs[marker]
-								}*/
-							if (haplos[i][0] || haplos[i][1])
-							{
-								float base;
+									float base;
 
-								bool zerobase = false;
-								/*for (int z = 0; z < 2; z++)
-								{
-								if ((&(reltree[k]->markerdata[marker].first))[z] == UnknownMarkerVal)
-								{
-								haplos[i][z] -= haplos[i][!z];
-								if (haplos[i][z] < 0) haplos[i][z] = 0;
-								//zerobase = true;
-								}
-								}*/
-
-								//									if (/*reltree[k] != dous[j] || true*/ !zerobase && fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
-								//									{
-								//										base = min(haplos[i][0] / reltree[k]->haploweight[marker], haplos[i][1] / (1.0f - reltree[k]->haploweight[marker]));
-								//									}
-								//									else
-								//										base = 0;
-								//
-								//									if (i == 1633 && marker < 10)
-								//									{
-								//										fprintf(out, "HAPLOS: %02d %lf %lf %lf %lf %lf %lf\n", marker, (double) reltree[k]->haploweight[marker], (double) haplos[i][0], (double) haplos[i][1], (double) (haplos[i][0] - base * reltree[k]->haploweight[marker]), (double) (haplos[i][1] + haplos[i][0] - base), (double) base);
-								//									}
-								//#pragma omp critical(update)
-								//									{
-								//										getind(i)->haplobase[marker] += haplos[i][0] - base * reltree[k]->haploweight[marker];
-								//										getind(i)->haplocount[marker] += haplos[i][1] + haplos[i][0] - base;
-								//									}
-
-
-								if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
-								{
-									double b1 =  (haplos[i][0] + maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;
-									double b2 = (haplos[i][1] + maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;
-
-									double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
-									//intended -= reltree[k]->haploweight[marker];
-
-									bool neg = intended < 0;
-
-									//intended /= sqrt(fabs(intended) + 1.0);
-									// if (neg) intended = -intended;
-
+									bool zerobase = false;
+									/*for (int z = 0; z < 2; z++)
 									{
-										reltree[k]->haplobase[marker] += log(b1/b2);
-										reltree[k]->haplocount[marker] += 1;
+									if ((&(reltree[k]->markerdata[marker].first))[z] == UnknownMarkerVal)
+									{
+									haplos[i][z] -= haplos[i][!z];
+									if (haplos[i][z] < 0) haplos[i][z] = 0;
+									//zerobase = true;
 									}
+									}*/
+
+									//									if (/*reltree[k] != dous[j] || true*/ !zerobase && fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
+									//									{
+									//										base = min(haplos[i][0] / reltree[k]->haploweight[marker], haplos[i][1] / (1.0f - reltree[k]->haploweight[marker]));
+									//									}
+									//									else
+									//										base = 0;
+									//
+									//									if (i == 1633 && marker < 10)
+									//									{
+									//										fprintf(out, "HAPLOS: %02d %lf %lf %lf %lf %lf %lf\n", marker, (double) reltree[k]->haploweight[marker], (double) haplos[i][0], (double) haplos[i][1], (double) (haplos[i][0] - base * reltree[k]->haploweight[marker]), (double) (haplos[i][1] + haplos[i][0] - base), (double) base);
+									//									}
+									//#pragma omp critical(update)
+									//									{
+									//										getind(i)->haplobase[marker] += haplos[i][0] - base * reltree[k]->haploweight[marker];
+									//										getind(i)->haplocount[marker] += haplos[i][1] + haplos[i][0] - base;
+									//									}
+
+
+									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
+									{
+										double b1 = (haplos[i][0] + maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;
+										double b2 = (haplos[i][1] + maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;
+
+										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
+										//intended -= reltree[k]->haploweight[marker];
+
+										bool neg = intended < 0;
+
+										//intended /= sqrt(fabs(intended) + 1.0);
+										// if (neg) intended = -intended;
+
+										{
+											reltree[k]->haplobase[marker] += log(b1 / b2);
+											reltree[k]->haplocount[marker] += 1;
+										}
+									}
+									haplos[i][0] = 0;
+									haplos[i][1] = 0;
 								}
-								haplos[i][0] = 0;
-								haplos[i][1] = 0;
 							}
 						}
 					}
-				}
 				}
 
 			}
 		}
 
 
-				for (unsigned int j = 0; j < outqueue.size(); j++)
+		for (unsigned int j = 0; j < outqueue.size(); j++)
 		{
 			outqueue[j].push_back(0);
-		if (out && printalot) fprintf(out, "%s:%d\n", dous[j]->name.c_str(), i + 1);
-		if (out && printalot) fprintf(out, "%s\n", &outqueue[j].front());
+			if (out && printalot) fprintf(out, "%s:%d\n", dous[j]->name.c_str(), i + 1);
+			if (out && printalot) fprintf(out, "%s\n", &outqueue[j].front());
 		}
-			     
-				if (out) fflush(out);
+
+		if (out) fflush(out);
 
 #ifdef F2MPI
 		if (false) reduce(world, markerweight, markerweight2, vectorplus<MWTYPE>(), 0);
@@ -3988,7 +3987,7 @@ continueloop:;
 						if (prob2 > 3) prob2 = 3;
 						actrec[t][q + 1] *= prob2;*/
 
-						double prob2 = - (markerweight[q][t * 2 + 1] - markerweight[q][t * 2]) / dous.size() / dist;
+						double prob2 = -(markerweight[q][t * 2 + 1] - markerweight[q][t * 2]) / dous.size() / dist;
 						if (prob2 > 0.3) prob2 = 0.3;
 						if (prob2 < -0.3) prob2 = -0.3;
 
@@ -4049,17 +4048,17 @@ continueloop:;
 				if (world.rank()) continue;
 #endif	      	      		 
 
-				if (/*ind->pars[0] || ind->pars[1] || */!ind->haplocount.size()) continue;		  
+				if (/*ind->pars[0] || ind->pars[1] || */!ind->haplocount.size()) continue;
 
 				// Perform the inversions indicated by the negshift data, at most a single one per individual
 				// and chromosome, maybe 0.
-				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
+				for (int c = 0; c < (int)chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-5;
 					bool prevlow = false;
 
-					for (int p = chromstarts[c]; p < (int) chromstarts[c + 1]; p++)
+					for (int p = chromstarts[c]; p < (int)chromstarts[c + 1]; p++)
 					{
 						if (ind->negshift[p] < minval)
 						{
@@ -4127,8 +4126,8 @@ continueloop:;
 					{
 						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 
-						MarkerVal bestvals[2] = {UnknownMarkerVal, UnknownMarkerVal};
-						double bestsure[2] = {ind->markersure[j].first, ind->markersure[j].second};
+						MarkerVal bestvals[2] = { UnknownMarkerVal, UnknownMarkerVal };
+						double bestsure[2] = { ind->markersure[j].first, ind->markersure[j].second };
 						bool foundbest = true;
 						bool surefound = false;
 
@@ -4178,7 +4177,7 @@ continueloop:;
 									factor = 1;
 
 									sum += i->second / factor;
-									infprobs[i->first.first] += i->second / factor;  
+									infprobs[i->first.first] += i->second / factor;
 								}
 								if (sum <= 1e-12)
 								{
@@ -4217,8 +4216,8 @@ continueloop:;
 									}
 									else
 										if (i->first == (&(ind->markerdata[j].first))[a])
-										{				
-											/*						  double bigdenom = 1.0 / (((sum - i->second) / ((&(ind->markersure[j].first))[a] + 1e-5)) + i->second);		     
+										{
+											/*						  double bigdenom = 1.0 / (((sum - i->second) / ((&(ind->markersure[j].first))[a] + 1e-5)) + i->second);
 											origsureness = i->second * bigdenom;
 											sureness = origsureness;*/
 										}
@@ -4239,23 +4238,23 @@ continueloop:;
 											//if (origsureness < 0.5) origsureness = 0.5;
 										}
 
-										if (/*ind->unknowninfprobs[j][a] > 0.001 &&*/ origsureness > 0.9999) origsureness = 0.9999;
+									if (/*ind->unknowninfprobs[j][a] > 0.001 &&*/ origsureness > 0.9999) origsureness = 0.9999;
 
-										/*origsureness -= 0.5;
-										origsureness *= 2;*/
+									/*origsureness -= 0.5;
+									origsureness *= 2;*/
 
-										//origsureness = 1 - ((1 - origsureness) / origsureness);
+									//origsureness = 1 - ((1 - origsureness) / origsureness);
 
 
-										//									if ((ind->n == 1633 || ind->n == 1726) && j < 600) fprintf(out, "Sureness: %lf %d %d %d %lf\n", sureness, i->first, j, a, sum);
-										surenesses[i->first] += 1 - origsureness;
+									//									if ((ind->n == 1633 || ind->n == 1726) && j < 600) fprintf(out, "Sureness: %lf %d %d %d %lf\n", sureness, i->first, j, a, sum);
+									surenesses[i->first] += 1 - origsureness;
 
-										if (sureness > bestval) 
-										{
-											bestval = sureness;
-											bestval2 = origsureness;
-											bestmarker = i->first;
-										}
+									if (sureness > bestval)
+									{
+										bestval = sureness;
+										bestval2 = origsureness;
+										bestmarker = i->first;
+									}
 								}
 
 
@@ -4271,7 +4270,7 @@ continueloop:;
 								{
 									printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
 									foundbest = false;
-								}								
+								}
 							}
 						}
 
@@ -4368,7 +4367,7 @@ continueloop:;
 										bestsure[1] = 1 - bestsure[1];*/
 									}
 									if (fabs(0.5 - ind->haploweight[j]) == 0.5)
-									{							 
+									{
 										int min = 0;
 										if (bestsure[1] < bestsure[0]) min = 1;
 										if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
@@ -4477,7 +4476,7 @@ continueloop:;
 									ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
 								}
 								/*else if (ind->markerdata[j].first == ind->markerdata[j].second && ind->markerdata[j].first == UnknownMarkerVal)
-								{				    
+								{
 								for (int a = 0; a < 2 && !foundbest; a++)
 								{
 								map<MarkerVal, double> sums;
@@ -4501,7 +4500,7 @@ continueloop:;
 								foundbest = true;
 								}
 								}
-								}					  
+								}
 								}*/
 							}
 							for (int a = 0; a < 2; a++)
@@ -4560,7 +4559,7 @@ continueloop:;
 
 
 								if (ind->haplocount[j] && ind->haploweight[j] && ind->haploweight[j] != 1)
-								{							
+								{
 									/*double b1 = ind->haplobase[j];
 									double b2 = ind->haplocount[j] - ind->haplobase[j];							*/
 									double b1 = 1;
@@ -4626,42 +4625,42 @@ continueloop:;
 										double limd1 = -1 - (nnn - 1.0) * ind->haploweight[j];
 										double limd2 = (nnn - 1.0) * ind->haploweight[j] - nnn;
 
-										double lim = min(limn/limd1, limn/limd2);
+										double lim = min(limn / limd1, limn / limd2);
 
 										double diff = intended - ind->haploweight[j];
 										/*			if (ind->haploweight[j] > 0.5 && i == 2827)
 										{
 										fprintf(stderr, "2827: %lf %lf %lf %lf %lf %lf %lf\n", limn, limd1, limd2, lim, intended, b1, b2);
-										}*/									
+										}*/
 
 										/*if (fabs(diff) > lim)
 										{
 										intended = ind->haploweight[j] + diff / fabs(diff) * lim;
 										}*/
 
-										if (diff > limn/limd1)
+										if (diff > limn / limd1)
 										{
-											intended = ind->haploweight[j] + limn/limd1;
+											intended = ind->haploweight[j] + limn / limd1;
 										}
 
-										if (diff < -limn/limd2)
+										if (diff < -limn / limd2)
 										{
-											intended = ind->haploweight[j] - limn/limd2;
+											intended = ind->haploweight[j] - limn / limd2;
 										}
 
 										//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 
-										intended = min((float) intended, 1.0f - maxdiff);
+										intended = min((float)intended, 1.0f - maxdiff);
 										if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 										{
-											ind->haploweight[j] = max((float) intended, maxdiff);
+											ind->haploweight[j] = max((float)intended, maxdiff);
 
 											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff &&
-												fabs(b1 * 2 - b1 + b2) < 0.001 )
+												fabs(b1 * 2 - b1 + b2) < 0.001)
 											{
 												nudgeme[cno] = j;
 											}
-										}							
+										}
 									}
 
 									/*							if (ind->haploweight[j] != 0.5)
@@ -4737,14 +4736,14 @@ continueloop:;
 							}
 
 							int phase = allnegshifts[k].second.get<2>();
-							individ* inds[2] = {allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>()};
+							individ* inds[2] = { allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>() };
 							if (rand() > RAND_MAX / 10) continue;
 
 							printf("Inv: %d %d %d %d %lf\n", inds[0]->n, inds[1]->n, phase, allnegshifts[k].second.get<3>(), allnegshifts[k].first);
 							for (int m = allnegshifts[k].second.get<3>() + 1; m < chromstarts[c]; m++)
 							{
 								for (int z = 0; z < 2; z++)
-								{			  
+								{
 									if (phase & 4)
 									{
 										// These days, we are just emulating the shifts
@@ -4770,7 +4769,7 @@ continueloop:;
 									if (phase & (1 << z))
 									{
 										//			      printf("Inv %d at %d, was %lf\n", inds[z]->n, m, inds[z]->haploweight[m]);
-										inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];  
+										inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];
 									}
 
 								}
@@ -4877,9 +4876,9 @@ individ* getind(string name)
 {
 	while (indmap.find(name) == indmap.end())
 	{
-		int origindex = indmap.size();	  
-	  individ* ind = indmap[name] = getind(origindex, true);
-	  if (ind) ind->name= name;
+		int origindex = indmap.size();
+		individ* ind = indmap[name] = getind(origindex, true);
+		if (ind) ind->name = name;
 	}
 
 	return indmap[name];
@@ -4891,7 +4890,7 @@ void readalphaped(FILE* in)
 	getind("0");
 	char me[255], father[255], mother[255];
 	while (fscanf(in, "%s %s %s", me, father, mother) == 3)
-	{	
+	{
 		char line[255];
 		fgets(line, 255, in);
 		int gen = 0;
@@ -4899,17 +4898,17 @@ void readalphaped(FILE* in)
 
 		// We are all empty until we get some data, not implemented in getind yet due
 		// to possible regressions.
-		individ* ime = getind(me);	       
+		individ* ime = getind(me);
 		individ* ifounderf = getind(father);
 		individ* ifounderm = getind(mother);
-		
+
 		if (ime) ime->empty = true;
 		if (ifounderf) ifounderf->empty = true;
 		if (ifounderm) ifounderm->empty = true;
 
 		if (gen >= 2 && !ifounderf->gen && !ifounderm->gen)
 		{
-			individ* realpars[2] = {getind(me + (string) "_aux_realf"), getind(me + (string) "_aux_realm")};
+			individ* realpars[2] = { getind(me + (string) "_aux_realf"), getind(me + (string) "_aux_realm") };
 			for (int k = 0; k < 2; k++)
 			{
 				ime->pars[k] = realpars[k];
@@ -4929,9 +4928,9 @@ void readalphaped(FILE* in)
 
 		if (gen >= 2)
 		{
-		  dous.push_back(ime);
+			dous.push_back(ime);
 		}
-	}      
+	}
 }
 
 void readalphadata(FILE* in)
@@ -4960,7 +4959,7 @@ void readalphadata(FILE* in)
 			if (numread == 1)
 			{
 				pair<MarkerVal, MarkerVal> marker;
-				switch (data) 
+				switch (data)
 				{
 				case 0:
 					marker = make_pair(1 * MarkerValue, 1 * MarkerValue);
@@ -4980,7 +4979,7 @@ void readalphadata(FILE* in)
 			}
 			else
 			{
-			  printf("%s %d\n", datastr, numread);
+				printf("%s %d\n", datastr, numread);
 				if (data == data2 && !data)
 				{
 					ime->markerdata[x] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
@@ -5000,7 +4999,7 @@ void readalphadata(FILE* in)
 						{
 							int l1 = rl1;
 							int l2 = rl2;
-							double overallprob = (data ? boost::math::pdf(dist1, l1) : 1) * (data2 ? boost::math::pdf(dist2, l2) : 1);													
+							double overallprob = (data ? boost::math::pdf(dist1, l1) : 1) * (data2 ? boost::math::pdf(dist2, l2) : 1);
 
 							double sureb1;
 							double sureb2;
@@ -5009,10 +5008,10 @@ void readalphadata(FILE* in)
 								sureb1 = 0.5;
 								sureb2 = 0.5;
 								if (l1 + l2)
-									sureb1 = l1 / (double) (l1 + l2);
-								
-								if (data + data2 - l1 - l2) 
-									sureb2 = (data2 - l2) / (double) (data + data2 - l1 - l2);
+									sureb1 = l1 / (double)(l1 + l2);
+
+								if (data + data2 - l1 - l2)
+									sureb2 = (data2 - l2) / (double)(data + data2 - l1 - l2);
 
 								if (sureb1 + 1e-9 > 1 - sureb2) break;
 								l1 = data - l1;
@@ -5096,9 +5095,9 @@ void readmerlinmap(FILE* mapfile)
 
 		markerposes.push_back(cmpos - cmbase);
 		for (int t = 0; t < 2; t++)
-	    {
-	      actrec[t].push_back(baserec[t]);
-	    }
+		{
+			actrec[t].push_back(baserec[t]);
+		}
 
 	}
 
@@ -5116,7 +5115,7 @@ void readmerlinped(FILE* pedfile)
 	double pheno;
 	while (fscanf(pedfile, "%255s %255s %255s %255s %d %lf", famname, indname, pname, mname, &sex, &pheno) == 6)
 	{
-	  printf("Reading main line for individual %s\n", indname);
+		printf("Reading main line for individual %s\n", indname);
 		individ* ind = getind(indname);
 		ind->pars[0] = getind(pname);
 		ind->pars[1] = getind(mname);
@@ -5129,37 +5128,37 @@ void readmerlinped(FILE* pedfile)
 			ind->gen++;
 		}
 
-			ind->markerdata.resize(markerposes.size());
-      ind->haplobase.resize(markerposes.size());
-      ind->haplocount.resize(markerposes.size());
-      ind->haploweight.resize(markerposes.size());
-      ind->negshift.resize(markerposes.size());
-      
-      ind->infprobs.resize(markerposes.size());
-      ind->sureinfprobs.resize(markerposes.size());
-      ind->unknowninfprobs.resize(markerposes.size());
-      ind->parinfprobs.resize(markerposes.size());
-      ind->markersure.resize(markerposes.size());
-			//		ind->semishift.resize(5000);
-      ind->lastinved.resize(chromstarts.size());
-      ind->lockstart.resize(chromstarts.size());
-      
-      for (int i = 0; i < chromstarts.size(); i++)
+		ind->markerdata.resize(markerposes.size());
+		ind->haplobase.resize(markerposes.size());
+		ind->haplocount.resize(markerposes.size());
+		ind->haploweight.resize(markerposes.size());
+		ind->negshift.resize(markerposes.size());
+
+		ind->infprobs.resize(markerposes.size());
+		ind->sureinfprobs.resize(markerposes.size());
+		ind->unknowninfprobs.resize(markerposes.size());
+		ind->parinfprobs.resize(markerposes.size());
+		ind->markersure.resize(markerposes.size());
+		//		ind->semishift.resize(5000);
+		ind->lastinved.resize(chromstarts.size());
+		ind->lockstart.resize(chromstarts.size());
+
+		for (int i = 0; i < chromstarts.size(); i++)
 		{
 			ind->lastinved[i] = -1;
 			ind->lockstart[i] = 0;
 		}
-      
-	  int a, b;
-      for (int k = 0; k < markerposes.size(); k++)
+
+		int a, b;
+		for (int k = 0; k < markerposes.size(); k++)
 		{
-		  ind->haploweight[k] = 0.5;
-		  fscanf(pedfile, "%d %d", &a, &b);
-	  
-		  // Assume 1 percent allele error rate
-			  ind->markersure[k] = make_pair(a ? 1e-7 : 0.0, b ? 1e-7 : 0.0);
-	      
-		  ind->markerdata[k] = make_pair(a * MarkerValue, b * MarkerValue);
+			ind->haploweight[k] = 0.5;
+			fscanf(pedfile, "%d %d", &a, &b);
+
+			// Assume 1 percent allele error rate
+			ind->markersure[k] = make_pair(a ? 1e-7 : 0.0, b ? 1e-7 : 0.0);
+
+			ind->markerdata[k] = make_pair(a * MarkerValue, b * MarkerValue);
 
 		}
 	}
@@ -5169,34 +5168,34 @@ int family = 1;
 
 void domerlinind(FILE* pedfile, individ* ind)
 {
-  int pn[2] = {0};
+	int pn[2] = { 0 };
 
-  for (int j = 0; j < 2; j++)
-    {
-      if (ind->pars[j]) pn[j] = ind->pars[j]->n;
-    }
+	for (int j = 0; j < 2; j++)
+	{
+		if (ind->pars[j]) pn[j] = ind->pars[j]->n;
+	}
 
-  fprintf(pedfile, "%d\t%d\t%d\t%d\t%d", family, ind->n, pn[0], pn[1], ind->sex + 1);
-  for (int k = 0; k < chromstarts[1]; k++)
-    {
-      fprintf(pedfile, "\t%d\t%d", ind->markerdata[k].first.value(), ind->markerdata[k].second.value());
-    }
+	fprintf(pedfile, "%d\t%d\t%d\t%d\t%d", family, ind->n, pn[0], pn[1], ind->sex + 1);
+	for (int k = 0; k < chromstarts[1]; k++)
+	{
+		fprintf(pedfile, "\t%d\t%d", ind->markerdata[k].first.value(), ind->markerdata[k].second.value());
+	}
 
-  fprintf(pedfile, "\n");
+	fprintf(pedfile, "\n");
 }
 
 
 
 void readhaplodata(FILE* in, int swap)
 {
-  char tlf[255];
+	char tlf[255];
 	bool inind = false;
 	bool inact = false;
 	individ* ind = 0;
 	int mnum = 0;
 	int mcc = 0;
 	int ncc = 0;
-	
+
 	int mixes[] = {
 	  0, 0,
 	  1215, 1739,
@@ -5224,8 +5223,8 @@ void readhaplodata(FILE* in, int swap)
 	  1953, 2288,
 	  2012, 2233,
 	  2034, 2293,
-	  2118, 2237,		       		       
-	  0, 0};
+	  2118, 2237,
+	  0, 0 };
 
 	printf("Reading haplos\n");
 	while (fgets(tlf, 255, in))
@@ -5238,59 +5237,59 @@ void readhaplodata(FILE* in, int swap)
 		{
 			if (ind)
 			{
-			  int i = mnum;
-			  if ((!((a == ind->markerdata[i].first.value() && b == ind->markerdata[i].second.value()) ||
-				 (b == ind->markerdata[i].first.value() && a == ind->markerdata[i].second.value()))) && (a || b))
-			  {
-			    printf("Mismatch: %d %d\t%d %d %d %d\n", ind->n, mnum, a, b, ind->markerdata[i].first.value(), ind->markerdata[i].second.value());
-			    mcc++;
-			  }
-			  if (!(a || b)) ncc++;
+				int i = mnum;
+				if ((!((a == ind->markerdata[i].first.value() && b == ind->markerdata[i].second.value()) ||
+					(b == ind->markerdata[i].first.value() && a == ind->markerdata[i].second.value()))) && (a || b))
+				{
+					printf("Mismatch: %d %d\t%d %d %d %d\n", ind->n, mnum, a, b, ind->markerdata[i].first.value(), ind->markerdata[i].second.value());
+					mcc++;
+				}
+				if (!(a || b)) ncc++;
 
 				ind->haploweight[mnum++] = w;
 			}
 		}
 		else
-		  {
+		{
 			float a1, a2;
 
 			if (sscanf(tlf, "%d", &a) == 1)
 			{
-			  int i = 0;
-			  int n = a;
-			  /*      if (n <= 220 && swap)
-	{
-	  if (n > 20)
-	{
-	  n -= 21;
-	  n /= 10;
-	  n++;
-	}
-      else
-	{
-	  n--;
-	  n *= 10;
-	  n += 21;
-	}
-	}*/
-      a = n;
-			  while (mixes[i])
-			    {
-			      for (int j = 0; j < 2; j++)
+				int i = 0;
+				int n = a;
+				/*      if (n <= 220 && swap)
+	  {
+		if (n > 20)
+	  {
+		n -= 21;
+		n /= 10;
+		n++;
+	  }
+		else
+	  {
+		n--;
+		n *= 10;
+		n += 21;
+	  }
+	  }*/
+				a = n;
+				while (mixes[i])
 				{
-				  if (a == mixes[i + j])
-				    {
-				      a = mixes[i + (!j)];
-				      break;
-				    }
+					for (int j = 0; j < 2; j++)
+					{
+						if (a == mixes[i + j])
+						{
+							a = mixes[i + (!j)];
+							break;
+						}
+					}
+					i += 2;
 				}
-			      i += 2;
-			    }
 
-			  if (mnum)
-			    {
-			      printf("%d Ind %d, %d mismatches (%d)\n", swap, ind->n, mcc, ncc);
-			    }
+				if (mnum)
+				{
+					printf("%d Ind %d, %d mismatches (%d)\n", swap, ind->n, mcc, ncc);
+				}
 
 				ind = getind(a);
 				printf("Reading ind %d, was at marker %d\n", a, mnum);
@@ -5337,7 +5336,7 @@ int main(int argc, char* argv[])
 
 	//	scanf("%lf", &discstep);
 
-	printf("Number of sexes in map: ");	
+	printf("Number of sexes in map: ");
 	//	scanf("%d", &sexc);
 	discstep = 1;
 	sexc = 2;
@@ -5388,10 +5387,10 @@ int main(int argc, char* argv[])
 	fclose(in);	*/
 
 	if (argc < 5)
-	  {
-	    printf("Three args expected: map, ped and geno file, followed by output filename.\n");
-	    return -1;
-	  }
+	{
+		printf("Three args expected: map, ped and geno file, followed by output filename.\n");
+		return -1;
+	}
 
 	FILE* mapfile = fopen(argv[1], "rt");
 	readalphamap(mapfile);
@@ -5476,7 +5475,7 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 					if (!world.rank())
 #endif
-					  /*if (i == COUNT - 1)*/						fprintf(stdout, "%d %s\n", i2, ind->name.c_str());
+						/*if (i == COUNT - 1)*/						fprintf(stdout, "%d %s\n", i2, ind->name.c_str());
 					// Printing of haplotype data for each iteration
 					for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
 
@@ -5487,8 +5486,8 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 							if (!world.rank())
 #endif
-							  /*if (i == COUNT - 1)*/ fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
-									    ind->markersure[j].first, ind->markersure[j].second);
+								/*if (i == COUNT - 1)*/ fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+									ind->markersure[j].first, ind->markersure[j].second);
 							ind->negshift[j] = 0;
 						}
 						//if (!world.rank()) fprintf(out, "\n");
@@ -5499,6 +5498,6 @@ int main(int argc, char* argv[])
 			fflush(out);
 		}
 
-		return 0;
+	return 0;
 }
 
