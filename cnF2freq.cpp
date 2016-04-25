@@ -3763,9 +3763,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		if (out) fflush(out);
 
 #ifdef F2MPI
+		// TODO: Shouldn't this be turned on if F2MPI is enabled?
 		if (false) reduce(world, markerweight, markerweight2, vectorplus<MWTYPE>(), 0);
 #endif
-		if (false
+		if (DOREMAPDISTANCES
 #ifdef F2MPI
 			&& world.rank() == 0
 #endif
@@ -3779,32 +3780,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					for (int t = 0; t < 2; t++)
 					{
-						/*double prob = markerweight[q][t * 2 + 1] / (markerweight[q][t * 2 + 1] + markerweight[q][t * 2]);
-						prob -= 0.5;
-						prob *= 2;
-
-						if (prob > 0)
-						{
-						const double newpart = 0.99;
-						prob = log(prob);
-						prob /= dist;
-						actrec[t][q + 1] = prob * newpart + actrec[t][q + 1] * (1 - newpart);
-						}
-						else
-						{
-						fprintf(out, "Strange prob in marker %d : %lf     %lf:%lf\n", q, prob, markerweight[q][t*2], markerweight[q][t*2+1]);
-						}*/
-						/*				  double prob2 = (markerweight[q][t * 2 + 1] - markerweight[q][t * 2]) / dous.size() / 2;
-						prob2 += 1;
-						if (prob2 < 0.5) prob2 = 0.5;
-						if (prob2 > 3) prob2 = 3;
-						actrec[t][q + 1] *= prob2;*/
-
 						double prob2 = -(markerweight[q][t * 2 + 1] - markerweight[q][t * 2]) / dous.size() / dist;
 						if (prob2 > 0.3) prob2 = 0.3;
 						if (prob2 < -0.3) prob2 = -0.3;
 
-						//				  actrec[t][q + 1] *= 2;
 						actrec[t][q + 1] += prob2;
 						if (actrec[t][q + 1] > -1e-5) actrec[t][q + 1] = -1e-4;
 						if (actrec[t][q + 1] < -20) actrec[t][q + 1] = -10;
