@@ -2166,44 +2166,36 @@ void readqtlmas14()
 
 		ind->n = indn;
 
-		//if (ind->gen > 0) dous.push_back(ind);
-		if (indn > 2326 && ind->n < 2332) dous.push_back(ind);
-		//		if (indn > 3196 && ind->n < 3227) dous.push_back(ind);
+		if (ind->gen > 0) dous.push_back(ind);
 
 		ind->sex = (sex[0] == 'F');
 		ind->strain = 1;
 		ind->markerdata.resize(markerposes.size());
 
-		//if (ind->n >= 1600)
+		ind->haplobase.resize(markerposes.size());
+		ind->haplocount.resize(markerposes.size());
+		ind->haploweight.resize(markerposes.size());
+		ind->negshift.resize(markerposes.size());
+
+		ind->infprobs.resize(markerposes.size());
+		ind->sureinfprobs.resize(markerposes.size());
+		ind->unknowninfprobs.resize(markerposes.size());
+		ind->parinfprobs.resize(markerposes.size());
+		ind->markersure.resize(markerposes.size());
+		//		ind->semishift.resize(5000);
+		ind->lastinved.resize(chromstarts.size());
+		ind->lockstart.resize(chromstarts.size());
+
+		for (int i = 0; i < chromstarts.size(); i++)
 		{
-			ind->haplobase.resize(markerposes.size());
-			ind->haplocount.resize(markerposes.size());
-			ind->haploweight.resize(markerposes.size());
-			ind->negshift.resize(markerposes.size());
-
-			ind->infprobs.resize(markerposes.size());
-			ind->sureinfprobs.resize(markerposes.size());
-			ind->unknowninfprobs.resize(markerposes.size());
-			ind->parinfprobs.resize(markerposes.size());
-			ind->markersure.resize(markerposes.size());
-			//		ind->semishift.resize(5000);
-			ind->lastinved.resize(chromstarts.size());
-			ind->lockstart.resize(chromstarts.size());
-
-			for (int i = 0; i < chromstarts.size(); i++)
-			{
-				ind->lastinved[i] = -1;
-				ind->lockstart[i] = 0;
-			}
-
-			for (int i = 0; i < markerposes.size(); i++)
-			{
-				ind->haploweight[i] = 0.5;
-			}
-
+			ind->lastinved[i] = -1;
+			ind->lockstart[i] = 0;
 		}
 
-		//		if (ind->n > 2360) break;
+		for (int i = 0; i < markerposes.size(); i++)
+		{
+			ind->haploweight[i] = 0.5;
+		}
 	}
 
 	int indread = 0;
