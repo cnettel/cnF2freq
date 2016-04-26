@@ -4247,31 +4247,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								if (ind->haplocount[j] && ind->haploweight[j] && ind->haploweight[j] != 1)
 								{
-									/*double b1 = ind->haplobase[j];
-									double b2 = ind->haplocount[j] - ind->haplobase[j];							*/
-									double b1 = 1;
-									double b2 = 1;
-
-									/*b1 /= ind->haploweight[j];
-									b2 /= (1.0 - ind->haploweight[j]);*/
-
-									/*if (ind->markerdata[j].first == UnknownMarkerVal) b1 /= 1.5;
-									if (ind->markerdata[j].second == UnknownMarkerVal) b1 *= 1.5;*/
-
-									/*b1 += 1e-10;
-									b2 += 1e-10;*/
+									
 									double val = exp(ind->haplobase[j] / ind->haplocount[j]);
 									val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
 
 									double intended = exp(log(val) * 0.1 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
 									intended = intended / (intended + 1.0);
-
-									if (fabs(b1 + b2) < 1e-4)
-									{
-										intended = 0.500;
-										//if (ind->haploweight[j] == 0.5) ind->negshift[j] -= 1e-4;
-									}
 
 									if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 										ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
@@ -4284,11 +4266,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									else								
 									{
 										// Cap the change if the net difference is small/miniscule
-										/*double nnn = 1 + 0.5 * (b1 + b2);						*/
-										double nnn = 1.6;
-										//								if (nnn > 1.3) nnn = 1.3;
-										/*if (ind->markerdata[j].first == UnknownMarkerVal ||
-										ind->markerdata[j].second == UnknownMarkerVal) nnn = (nnn - 1.0) / 5 + 1.0;*/
+										double nnn = 1.6;										
 										if (nnn < 1.0) nnn = 1.0;
 
 										double limn = (nnn - 1.0) * ind->haploweight[j] * (-1 + ind->haploweight[j]);
@@ -4317,8 +4295,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											ind->haploweight[j] = max((float)intended, maxdiff);
 
 											// Nudging flag currently not respected
-											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff &&
-												fabs(b1 * 2 - b1 + b2) < 0.001)
+											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
 											{
 												nudgeme[cno] = j;
 											}
