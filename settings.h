@@ -1,19 +1,24 @@
 // Do forward-backward, value 1
 // Do original cnF2freq tree evaluation, value 0
 #define DOFB 1
+const int SELFBITS = 2;
 
 const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = false;
 const bool SELFING = false;
+const bool RELSKEWS = true;
 
 // F2 with haplotyping
 const int NUMGEN = 3;
 const int TYPEBITS = (1 << NUMGEN) - 2;
-const int TYPESEXES[TYPEBITS + SELFING * 2] = { 0, 0, 1, 1, 0, 1/*, 0, 0*/ };
+const int TYPESEXES[TYPEBITS + SELFING * SELFBITS + RELSKEWS] = { 0, 0, 1, 1, 0, 1/*, 0, 0*//*, 0*/ };
 //const int TYPEGENS[TYPEBITS] = {1, 0, 0, 1, 0, 0};
-const int TYPEGENS[TYPEBITS + SELFING * 2] = { 1, 0, 0, 1, 0, 0/*, 2, 2*/ };
-const int NUMTYPES = 1 << (TYPEBITS + (SELFING ? 2 : 0));
+const int TYPEGENS[TYPEBITS + SELFING * 2] = { 1, 0, 0, 1, 0, 0/*, 2, 2*//*, 3*/ };
+
+const int BITS_W_SELF = TYPEBITS + (SELFING ? SELFBITS : 0);
+const int TOTBITS = BITS_W_SELF + (RELSKEWS ? 1 : 0);
+const int NUMTYPES = 1 << TOTBITS;
 const double EVENGEN = 1.0 / NUMTYPES;
 const float MINFACTOR = -1e15;
 const unsigned int NUMFLAG2GEN = NUMGEN;

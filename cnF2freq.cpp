@@ -879,8 +879,18 @@ struct individ
 		if (this == NULL) return 1;
 
 		// TYPEBITS are the ordinary TYPEBITS. Anything set beyond those indicates selfing. g is multiplied by 2 to become flag, hence TYPEBITS + 1
-		const int selfval = (flag >> (TYPEBITS + 1));
-		const bool selfingNOW = SELFING && (genwidth == (1 << (NUMGEN - 1))) && selfval;
+		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
+		bool selfingNOW = false;
+		bool relskewingNOW = false;
+		const int selfval = (flag >> (TYPEBITS + 1)) & ((1 << SELFBITS) - 1);
+
+		if (rootgen)
+		{
+			selfingNOW = SELFING && selfval;
+			relskewingNOW = RELSKEWS;
+		}
+		
+		const bool selfingNOW = SELFING &&  && selfval;
 
 		MarkerVal selfmarker[2];
 		float selfsure[2];
@@ -898,6 +908,13 @@ struct individ
 			upflag2 = flag99 >> 1;
 			f2s = flag99;
 			f2end = flag99 + 1;
+		}
+
+		if (relskewingNOW)
+		{
+			const int relskewval = (flag >> (BITS_W_SELF + 1));
+			f2s = max(f2s, relskewval);
+			f2end = min(f2end, relskewval + 1);
 		}
 
 		int firstpar = flag & 1;
@@ -3281,7 +3298,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										int flag2parindex = (flag2 >> (index + 1)) & 1;
 
 										int updateval = f2n ^ i;
-										double factor = 1;
+										double parfactor = 1;
 										individ* parnow = dous[j]->pars[i];
 
 										if (parnow)
@@ -3289,15 +3306,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											MarkerVal mv = (&(parnow->markerdata[marker].first))[flag2parindex];
 											if (mv == UnknownMarkerVal || mv == (&(dous[j]->markerdata[marker].first))[updateval])
 											{
-												factor = (&(parnow->markersure[marker].first))[flag2parindex];
+												parfactor = (&(parnow->markersure[marker].first))[flag2parindex];
 											}
 											else
-												factor = 1 - (&(parnow->markersure[marker].first))[flag2parindex];
+												parfactor = 1 - (&(parnow->markersure[marker].first))[flag2parindex];
 										}
-										factor += 1e-5;
-										factor = 1;
+										parfactor += 1e-5;
+										parfactor = 1;
 
-										pival *= factor;
+										pival *= parfactor;
 									}
 
 									if (DOINFPROBS) for (int i = 0; i < 2; i++)
