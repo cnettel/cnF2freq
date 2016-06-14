@@ -1861,7 +1861,7 @@ struct individ
 						recombprec[index] = 1;
 					}
 
-					double selfprec[4 * SELFING][4 * SELFING] = { 0 };
+					double selfprec[4 * SELFING + 1][4 * SELFING + 1] = { 0 };
 					if (SELFING)
 					{
 						selfprec[0][1] = selfprec[0][2] = recprob[2][0];
