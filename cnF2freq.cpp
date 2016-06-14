@@ -73,8 +73,12 @@ float templgeno[8] = { -1, -0.5,
 
 
 #include <boost/spirit/home/x3.hpp>
+#include <boost/spirit/home/x3/support/ast/variant.hpp>
+#include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/io.hpp>
+#include <boost/fusion/include/std_pair.hpp>
+#include <boost/fusion/include/std_tuple.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
-#include <boost/fusion/tuple.hpp>
 #include <boost/fusion/include/at_c.hpp>
 #include <iostream>
 #include <fstream>
@@ -111,11 +115,11 @@ using namespace boost::units;
 
 #ifndef _MSC_VER
 #define _isnan isnan
-#define _finite finite
+#define _finite isfinite
 #endif
 
 
-mt19937 rng;
+boost::random::mt19937 rng;
 int myrand(int max)
 {
 	uniform_int<> orig(0, max - 1);
@@ -4524,10 +4528,10 @@ individ* getind(string name)
 	return indmap[name];
 }
 
+const individ* zeroguy = getind("0");
 
 void readalphaped(FILE* in)
 {
-	getind("0");
 	char me[255], father[255], mother[255];
 	while (fscanf(in, "%s %s %s", me, father, mother) == 3)
 	{
@@ -4824,40 +4828,109 @@ void domerlinind(FILE* pedfile, individ* ind)
 	fprintf(pedfile, "\n");
 }
 
-template<class RuleType, class AttrType> void lineParserWithError(istream& file, RuleType& rule, AttrType& target)
+template<class RuleType, class AttrType> void parseToEndWithError(istream& file, const RuleType& rule, AttrType& target)
 {
 	auto parseriter = boost::spirit::istream_iterator(file);
 	boost::spirit::istream_iterator end;
 
-	bool res = phrase_parse(parseiter, end, rule % eol, space - eol, target);
+	bool res = phrase_parse(parseriter, end, rule % x3::eol, x3::space - x3::eol, target);
 
 	if (!file.eof())
 	{
-		boost::throw_exception(
-			expectation_failure(
-				first, what(this->subject)));
+		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
+	}
+}
+
+template<class RuleType> void parseToEndWithError(istream& file, const RuleType& rule)
+{
+	auto parseriter = boost::spirit::istream_iterator(file);
+	boost::spirit::istream_iterator end;
+
+	bool res = phrase_parse(parseriter, end, rule % x3::eol, x3::space - x3::eol);
+
+	if (!file.eof())
+	{
+		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
 	}
 }
 
 void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 {
+	using namespace x3;
+
 	sampleFile >> std::noskipws;
 	bimFile >> std::noskipws;
 	hapsFile >> std::noskipws;
 	
-	vector<pair<pair<int, std::string>, vector<pair<int, int> > > > snpData;
+	std::vector<std::tuple<int, std::string, std::vector<int>>> snpData;
+	std::vector<std::tuple<std::string, std::string, std::string>> samples;
+	map<std::pair<int, std::string>, int > geneMap;
 
-	using namespace x3;
 	auto word_ = lexeme[+(char_)];
-
-	map<pair<int, std::string>, int> map;
+	
 	auto marker_ = (int_ > word_);
 	auto alleles_ = omit[(word_ > word_)];
 	auto bimLine = (marker_ > omit[float_] > int_ > alleles_);
 	auto hapsLine = (marker_ > omit[float_] > alleles_ > (+int_));
-	auto sampleLine = word_;
+	auto sampleHeader = omit[
+		repeat(7)[word_] > eol >
+			int_ > int_ > int_ > repeat(4)[word_] > eol];
+	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
+	parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+	parseToEndWithError(bimFile, (bimLine[ ([&](auto& context)
+	{
+		using namespace boost::fusion;
+		auto attr = _attr(context);
 
+		geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = at_c<2>(attr);
+	}) ] )
+		% eol);
+	parseToEndWithError(hapsFile, hapsLine % eol, snpData);
+
+	int lastchrom = -1;
+	double lastpos = -1;
+	double basepos = 0;
+
+	// Walk over SNPs to create map info
+	for (auto snp : snpData)
+	{
+		int chrom = get<0>(snp);
+		double pos = snpData[make_pair(chrom, get<1>(snp))] * 1e-6;
+		
+		if (chrom != lastchrom)
+		{
+			chromstarts.push_back(markerposes.size());
+			basepos = pos;
+		}
+
+		markerposes.push_back(pos - basepos);
+		lastpos = pos;
+		lastchrom = chrom;
+	}
+
+	chromstarts.push_back(markerposes.size());
+
+	for (std::tuple<std::string, std::string, std::string> sample : samples)
+	{
+		individ* me = getind(get<0>(sample));
+		// We don't care about sex? Is this OK?
+		me->sex = 0;
+		me->pars[0] = getind(get<1>(sample));
+		me->pars[1] = getind(get<2>(sample));
+
+		dous.push_back(me);
+	}
+
+	for (int i = 0; i < snpData.size(); i++)
+	{
+		const vector<int>& markers = get<2>(snpData[i]);
+		for (int j = 0; j < dous.size(); j++)
+		{
+			dous[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
+			dous[j]->markersure[i] = { 0, 0 };
+		}
+	}
 }
 
 void readhaplodata(FILE* in, int swap)
