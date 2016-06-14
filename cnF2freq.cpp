@@ -72,6 +72,17 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/mpi.hpp>*/
 
 
+#include <boost/spirit/home/x3.hpp>
+#include <boost/spirit/include/support_istream_iterator.hpp>
+#include <boost/fusion/tuple.hpp>
+#include <boost/fusion/include/at_c.hpp>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+using namespace boost::spirit;
+
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -889,8 +900,6 @@ struct individ
 			selfingNOW = SELFING && selfval;
 			relskewingNOW = RELSKEWS;
 		}
-		
-		const bool selfingNOW = SELFING &&  && selfval;
 
 		MarkerVal selfmarker[2];
 		float selfsure[2];
@@ -1852,7 +1861,7 @@ struct individ
 						recombprec[index] = 1;
 					}
 
-					double selfprec[2 * SELFING + 1][2 * SELFING + 1];
+					double selfprec[4 * SELFING][4 * SELFING] = { 0 };
 					if (SELFING)
 					{
 						selfprec[0][1] = selfprec[0][2] = recprob[2][0];
@@ -1890,7 +1899,8 @@ struct individ
 						if (probs[from] < MINFACTOR || !probs[from]) continue;
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
-							probs2[to] += probs[from] * recombprec[(from ^ to) & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1);
+							int xored = from ^ to;
+							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1);
 						}
 					}
 
@@ -3998,7 +4008,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double sureness = i->second / sum;
 									double origsureness = sureness;
 
-									if (!(&(ind->markerdata[j].first))[a] == UnknownMarkerVal)
+									if (!((&(ind->markerdata[j].first))[a] == UnknownMarkerVal))
 									{
 										if (i->first != (&(ind->markerdata[j].first))[a])
 										{
@@ -4007,6 +4017,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												sureness = 0.9999;
 											}
 										}
+									}
 
 									if (origsureness > 0.9999) origsureness = 0.9999;
 									surenesses[i->first] += 1 - origsureness;
@@ -4813,7 +4824,41 @@ void domerlinind(FILE* pedfile, individ* ind)
 	fprintf(pedfile, "\n");
 }
 
+template<class RuleType, class AttrType> void lineParserWithError(istream& file, RuleType& rule, AttrType& target)
+{
+	auto parseriter = boost::spirit::istream_iterator(file);
+	boost::spirit::istream_iterator end;
 
+	bool res = phrase_parse(parseiter, end, rule % eol, space - eol, target);
+
+	if (!file.eof())
+	{
+		boost::throw_exception(
+			expectation_failure(
+				first, what(this->subject)));
+	}
+}
+
+void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
+{
+	sampleFile >> std::noskipws;
+	bimFile >> std::noskipws;
+	hapsFile >> std::noskipws;
+	
+	vector<pair<pair<int, std::string>, vector<pair<int, int> > > > snpData;
+
+	using namespace x3;
+	auto word_ = lexeme[+(char_)];
+
+	map<pair<int, std::string>, int> map;
+	auto marker_ = (int_ > word_);
+	auto alleles_ = omit[(word_ > word_)];
+	auto bimLine = (marker_ > omit[float_] > int_ > alleles_);
+	auto hapsLine = (marker_ > omit[float_] > alleles_ > (+int_));
+	auto sampleLine = word_;
+
+
+}
 
 void readhaplodata(FILE* in, int swap)
 {
