@@ -4893,6 +4893,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
 	parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+	std::cout << samples.size() << " samples read." << std::endl;
+
 	parseToEndWithError(bimFile, (bimLine[ ([&](auto& context)
 	{
 		using namespace boost::fusion;
@@ -4901,7 +4903,10 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = at_c<2>(attr);
 	}) ] )
 		% eol);
+	std::cout << geneMap.size() << " entries read in map." << std::endl;
+
 	parseToEndWithError(hapsFile, hapsLine % eol, snpData);
+	std::cout << snpData.size() << " SNPs read." << std::endl;
 
 	int lastchrom = -1;
 	double lastpos = -1;
