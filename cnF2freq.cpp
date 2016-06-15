@@ -860,6 +860,11 @@ struct individ
 				return 0;
 			}
 
+			if (!mother)
+			{
+				return 1;
+			}
+
 			double baseval =
 				mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
 					upflagr,
