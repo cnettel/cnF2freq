@@ -927,13 +927,14 @@ struct individ
 		if (flag99 != -1 && genwidth >> (NUMGEN - NUMFLAG2GEN) > 0)
 		{
 			upflag2 = flag99 >> 1;
-			f2s = flag99;
-			f2end = flag99 + 1;
+			  f2s = (flag99 & 1);
+			    f2end = (flag99 & 1) + 1;
 		}
 
 		if (relskewingNOW)
 		{
-			const int relskewval = (flag >> BITS_W_SELF);
+		  const int relskewval = (flag >> (BITS_W_SELF + 1));
+		    //std::cout << relskewval << std::endl;
 			f2s = max(f2s, relskewval);
 			f2end = min(f2end, relskewval + 1);
 		}
@@ -5210,6 +5211,8 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
+	  dous.resize(5);
+
 	//	return 0;
 	CORRECTIONINFERENCE = true;
 	postmarkerdata();
@@ -5244,7 +5247,7 @@ int main(int argc, char* argv[])
 	//	sscanf(argv[5], "%d", &chromstarts[1]);
 
 	FILE* out = fopen(argv[4], "w");
-	int COUNT = 1;
+	int COUNT = 3;
 	if (argc == 6) sscanf(argv[5], "%d", &COUNT);
 
 	if (HAPLOTYPING || true)
