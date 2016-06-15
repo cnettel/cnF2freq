@@ -5155,12 +5155,18 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	FILE* mapfile = fopen(argv[1], "rt");
+	/*FILE* mapfile = fopen(argv[1], "rt");
 	readalphamap(mapfile);
 	FILE* pedfile = fopen(argv[2], "rt");
 	readalphaped(pedfile);
 	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);
+	readalphadata(datafile);*/
+	std::ifstream sampleFile(argv[1]);
+	std::ifstream bimFile(argv[2]);
+	std::ifstream hapsFile(argv[3]);
+
+	readhapssample(sampleFile, bimFile, hapsFile);
+
 	//	return 0;
 	CORRECTIONINFERENCE = true;
 	postmarkerdata();
