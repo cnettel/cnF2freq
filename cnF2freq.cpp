@@ -4979,7 +4979,10 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		{
 			dous[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
 			dous[j]->markersure[i] = { 0, 0 };
-			dous[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+			if (RELSKEWS)
+			  { 
+			    dous[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+			  }
 		}
 	}
 }
