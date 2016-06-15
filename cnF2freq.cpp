@@ -860,6 +860,11 @@ struct individ
 				return 0;
 			}
 
+			if (!mother)
+			{
+				return 1;
+			}
+
 			double baseval =
 				mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
 					upflagr,
@@ -2576,7 +2581,6 @@ void readhaploweights(FILE* in)
 void lockhaplos(individ* ind, int i)
 {
 	unsigned int j;
-	if (ind->n > 220) return;
 
 	if (ind->lockstart[i] >= chromstarts[i + 1])
 	{
