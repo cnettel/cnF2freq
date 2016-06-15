@@ -4868,7 +4868,7 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 		throw logic_error("Parsing failed. " + (std::string) __func__);
 	}
 
-	if (!file.eof())
+	if (file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
 	}
@@ -4897,21 +4897,31 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			int_ > int_ > int_ > repeat(4)[word_] > eol];
 	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
-	parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
-	std::cout << samples.size() << " samples read." << std::endl;
-
-	parseToEndWithError(bimFile, (bimLine[ ([&](auto& context)
+	try
 	{
-		using namespace boost::fusion;
-		auto attr = _attr(context);
+		parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+		std::cout << samples.size() << " samples read." << std::endl;
 
-		geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = at_c<2>(attr);
-	}) ] )
-		% eol);
-	std::cout << geneMap.size() << " entries read in map." << std::endl;
+		parseToEndWithError(bimFile, (bimLine[([&](auto& context)
+		{
+			using namespace boost::fusion;
+			auto attr = _attr(context);
 
-	parseToEndWithError(hapsFile, hapsLine % eol, snpData);
-	std::cout << snpData.size() << " SNPs read." << std::endl;
+			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = at_c<2>(attr);
+		})])
+			% eol);
+		std::cout << geneMap.size() << " entries read in map." << std::endl;
+
+		parseToEndWithError(hapsFile, hapsLine % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+	}
+	catch (expectation_failure<char const*> const& x)
+	{
+		std::cerr << "expected: " << x.which();
+		std::cerr << "got: \"" << std::string(x.where()) << '"' << std::endl;
+
+		throw x;
+	}
 
 	int lastchrom = -1;
 	double lastpos = -1;
