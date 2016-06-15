@@ -860,7 +860,7 @@ struct individ
 				return 0;
 			}
 
-			if (!mother)
+			if (!mother || !mother->pars[firstpar])
 			{
 				return 1;
 			}
@@ -898,8 +898,8 @@ struct individ
 		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
 		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
 	{
-		if (this == NULL) return 1;
-		//		std::cout << name << std::endl;
+		// This used to be a nice silent null check. Compilers don't like that, so we abort in order to try to detect those cases.
+		if (this == NULL) abort();
 
 		// TYPEBITS are the ordinary TYPEBITS. Anything set beyond those indicates selfing. g is multiplied by 2 to become flag, hence TYPEBITS + 1
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
