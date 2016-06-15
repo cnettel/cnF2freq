@@ -2575,7 +2575,6 @@ void readhaploweights(FILE* in)
 void lockhaplos(individ* ind, int i)
 {
 	unsigned int j;
-	if (ind->n > 220) return;
 
 	if (ind->lockstart[i] >= chromstarts[i + 1])
 	{
