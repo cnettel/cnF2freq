@@ -4915,10 +4915,10 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		parseToEndWithError(hapsFile, hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 	}
-	catch (expectation_failure<char const*> const& x)
+	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
 	{
 		std::cerr << "expected: " << x.which();
-		std::cerr << "got: \"" << std::string(x.where()) << '"' << std::endl;
+		std::cerr << "got: \"" << x.where() << '"' << std::endl;
 
 		throw x;
 	}
