@@ -4852,10 +4852,12 @@ template<class RuleType, class AttrType> void parseToEndWithError(istream& file,
 
 	if (!res)
 	{
-		throw logic_error("Parsing failed. " + (std::string) __func__);
+	  std::string val;
+	  file >> val;
+		throw logic_error("Parsing failed. " + (std::string) __func__ + " " + val);
 	}
 
-	if (file.eof())
+	if (!file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
 	}
@@ -4870,10 +4872,18 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 
 	if (!res)
 	{
-		throw logic_error("Parsing failed. " + (std::string) __func__);
+	  std::string val;
+	  while (!file.eof())
+	    {
+	      file >> val;
+	      std::cout << val;
+	    }
+	  std::cout << std::endl;
+		throw logic_error("Parsing failed. " + (std::string) __func__ + " # " + val);
+
 	}
 
-	if (file.eof())
+	if (!file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
 	}
@@ -4891,20 +4901,20 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
 	map<std::pair<int, std::string>, int > geneMap;
 
-	auto word_ = lexeme[+(char_)];
+	auto word_ = lexeme[+(char_ - space)];
 	
 	auto marker_ = (int_ > word_);
 	auto alleles_ = omit[(word_ > word_)];
 	auto bimLine = (marker_ > omit[float_] > int_ > alleles_);
 	auto hapsLine = (marker_ > omit[float_] > alleles_ > (+int_));
 	auto sampleHeader = omit[
-		repeat(7)[word_] > eol >
-			int_ > int_ > int_ > repeat(4)[word_] > eol];
+				 repeat(7)[word_] > eol >
+				    int_ > int_ > int_ > repeat(4)[word_] > eol];
 	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
 	try
 	{
-		parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+	  parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
 		std::cout << samples.size() << " samples read." << std::endl;
 
 		parseToEndWithError(bimFile, (bimLine[([&](auto& context)
