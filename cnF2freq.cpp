@@ -1142,7 +1142,7 @@ struct individ
 
 		if (!okvals[0] && !okvals[1])
 		{
-			fprintf(stderr, "Clearing %d:%d\n", this->n, marker);
+			fprintf(stderr, "Clearing %d:%d (was %d,%d)\n", this->n, marker, markerdata[marker].first.value(), markerdata[marker].second.value());
 			markerdata[marker] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 			markersure[marker] = make_pair(0.0, 0.0);
 		}
