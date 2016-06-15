@@ -927,7 +927,7 @@ struct individ
 
 		if (relskewingNOW)
 		{
-			const int relskewval = (flag >> (BITS_W_SELF + 1));
+			const int relskewval = (flag >> BITS_W_SELF + 1);
 			f2s = max(f2s, relskewval);
 			f2end = min(f2end, relskewval + 1);
 		}
