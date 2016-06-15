@@ -894,6 +894,7 @@ struct individ
 		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
 	{
 		if (this == NULL) return 1;
+		//		std::cout << name << std::endl;
 
 		// TYPEBITS are the ordinary TYPEBITS. Anything set beyond those indicates selfing. g is multiplied by 2 to become flag, hence TYPEBITS + 1
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
