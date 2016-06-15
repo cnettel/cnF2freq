@@ -4848,9 +4848,14 @@ template<class RuleType, class AttrType> void parseToEndWithError(istream& file,
 	auto parseriter = boost::spirit::istream_iterator(file);
 	boost::spirit::istream_iterator end;
 
-	bool res = phrase_parse(parseriter, end, rule % x3::eol, x3::space - x3::eol, target);
+	bool res = phrase_parse(parseriter, end, rule, x3::space - x3::eol, target);
 
-	if (!file.eof())
+	if (!res)
+	{
+		throw logic_error("Parsing failed. " + (std::string) __func__);
+	}
+
+	if (file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
 	}
@@ -4861,7 +4866,7 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 	auto parseriter = boost::spirit::istream_iterator(file);
 	boost::spirit::istream_iterator end;
 
-	bool res = phrase_parse(parseriter, end, rule % x3::eol, x3::space - x3::eol);
+	bool res = phrase_parse(parseriter, end, rule, x3::space - x3::eol);
 
 	if (!res)
 	{
