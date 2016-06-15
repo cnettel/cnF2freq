@@ -7,7 +7,7 @@ const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = false;
 const bool SELFING = false;
-const bool RELSKEWS = true;
+const bool RELSKEWS = false;
 
 // F2 with haplotyping
 const int NUMGEN = 3;
@@ -29,7 +29,10 @@ const unsigned int HALFNUMSHIFTS = 1 << ((1 << (NUMSHIFTGEN - 1)) - 1);
 const unsigned int NUMSHIFTS = 1 << ((1 << NUMSHIFTGEN) - 1);
 const bool HAPLOTYPING = true;
 const int NONSELFNUMTYPES = NUMTYPES >> (SELFING * 2);
-const int VALIDSELFNUMTYPES = NUMTYPES - SELFING * (NUMTYPES >> 2);
+
+// Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
+// TODO: Reorder bits...
+const int VALIDSELFNUMTYPES = RELSKEWS ? NUMTYPES : (NUMTYPES - SELFING * (NUMTYPES >> 2));
 
 //#define DOEXTERNFORGCC
 
