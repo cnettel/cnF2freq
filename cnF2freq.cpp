@@ -742,6 +742,8 @@ struct individ
 	vector<map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
 	vector<float> haploweight;
+	// Relative skewness, i.e. shifts between adjacent markers.
+	vector<float> relhaplo;
 	// The cost-benefit value of inverting the haplotype assignment from an arbitrary marker point on.
 	vector<float> negshift;
 	vector<int> lastinved;
@@ -1800,7 +1802,7 @@ struct individ
 			// and the simple case of no fixated position.
 			for (int iter = 0; iter <= (int)tofind; iter++)
 			{
-				// If iter is 1, we have currently hanfwdled the transition all the way to the fixated position. Now filter to keep
+				// If iter is 1, we have currently handled the transition all the way to the fixated position. Now filter to keep
 				// only a single state value positive.
 				if (iter)
 				{
@@ -1876,10 +1878,6 @@ struct individ
 						selfprec[2][1] = selfprec[1][2];
 						selfprec[2][2] = selfprec[1][1] = 1 - selfprec[1][0] - selfprec[1][2];
 					}
-					else
-					{
-					}
-
 
 					// Compute probabilities for arbitrary xor values of current and future state
 					for (int t = 0; t < TYPEBITS; t++)
@@ -1894,6 +1892,12 @@ struct individ
 						}
 					}
 
+					float relscore[2] = { 1 };
+					if (RELSKEWS && !iter)
+					{
+						relscore[0] = relhaplo[j];
+						relscore[1] = 1 - relhaplo[j];
+					}
 
 					// Use those xor values
 					// For the 4-state model, this is an inefficient way to go about it, but it is quite a bit more efficient for
@@ -1904,7 +1908,8 @@ struct individ
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
-							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1);
+							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1) *
+								(RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
 						}
 					}
 
@@ -1918,7 +1923,7 @@ struct individ
 					//				if (iter == tofind)
 					{
 						/*for (int c = 0; c < VALIDSELFNUMTYPES; c++)
-						{p
+						{
 							if (probs[c] < 1e-200) probs[c] = 1e-200;
 						}*/
 					}
@@ -1999,6 +2004,12 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		ind->unknowninfprobs.resize(markerposes.size());
 		ind->parinfprobs.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
+
+		if (RELSKEWS)
+		{
+			ind->relhaplo.resize(markerposes.size());
+		}
+
 		for (int x = 0; x < markerposes.size(); x++)
 		{
 			ind->markerdata[x] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
@@ -2007,6 +2018,10 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 			ind->haploweight[x] = 0.5;
 			ind->negshift[x] = 0;
 			ind->markersure[x] = make_pair(0, 0);
+			if (RELSKEWS)
+			{
+				ind->relhaplo[x] = 0.5;
+			}
 		}
 
 		//		ind->semishift.resize(5000);
@@ -4896,7 +4911,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	for (auto snp : snpData)
 	{
 		int chrom = get<0>(snp);
-		double pos = snpData[make_pair(chrom, get<1>(snp))] * 1e-6;
+		double pos = geneMap[make_pair(chrom, get<1>(snp))] * 1e-6;
 		
 		if (chrom != lastchrom)
 		{
@@ -4929,6 +4944,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		{
 			dous[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
 			dous[j]->markersure[i] = { 0, 0 };
+			dous[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 		}
 	}
 }
