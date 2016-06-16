@@ -2672,6 +2672,7 @@ void postmarkerdata()
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
+#pragma omp parallel for schedule(dynamic,32)
 		for (int i = 1; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i);
