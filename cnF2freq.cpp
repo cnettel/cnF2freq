@@ -905,7 +905,7 @@ struct individ
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
-		const int selfval = (flag >> (TYPEBITS + 1)) & ((1 << SELFBITS) - 1);
+		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
 		if (rootgen)
 		{
@@ -1696,7 +1696,7 @@ struct individ
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = EVENGEN * (SELFING ?
-					selfingfactors[i >> TYPEBITS] : 1.0);
+					selfingfactors[(i >> TYPEBITS) & SELFMASK] : 1.0);
 			}
 
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
@@ -1916,8 +1916,8 @@ struct individ
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
-							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1) *
-							  (RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
+							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS) & SELFMASK][(to >> TYPEBITS) & SELFMASK] : 1) *
+								(RELSKEWS ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
 						}
 					}
 
@@ -2880,7 +2880,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && (!RELSKEWS && !SELFING || currfilter != 1 /*|| selfgen == 0*/))
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
 		{
 			return true;
 		}
@@ -3886,8 +3886,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 
-					//		fprintf(out, "%d:%d\n", world.rank(), i);
-					//		fflush(out);
+							fprintf(out, "FIRST PASS: %d:%d\n", world.rank(), i);
+							fflush(out);
 				}
 
 #ifdef F2MPI
@@ -3960,11 +3960,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
-
+#pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
+
 					individ* ind = getind(i, false);
 					if (!ind || !ind->haplocount.size()) continue;
+
+					fprintf(out, "SKEWNESS PASS: %d:%d\n", world.rank(), i);
+					fflush(out);
 
 					int cno = 0;
 					for (unsigned int j = 0; j < ind->haplocount.size(); j++)
