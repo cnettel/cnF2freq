@@ -4976,6 +4976,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		me->pars[0] = getind(get<1>(sample));
 		me->pars[1] = getind(get<2>(sample));
 
+		// Hack the generation to make non-founders full citizens
+		me->gen = 2 * (me->pars[0] || me->pars[1]);
+
 		dous.push_back(me);
 	}
 
