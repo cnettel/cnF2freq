@@ -2879,7 +2879,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && (!SELFING || currfilter != 1 /*|| selfgen == 0*/))
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && (!RELSKEWS && !SELFING || currfilter != 1 /*|| selfgen == 0*/))
 		{
 			return true;
 		}
