@@ -1696,7 +1696,7 @@ struct individ
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = EVENGEN * (SELFING ?
-					selfingfactors[i >> TYPEBITS] : 1.0);
+					selfingfactors[(i >> TYPEBITS) & SELFMASK] : 1.0);
 			}
 
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
@@ -1917,7 +1917,7 @@ struct individ
 						{
 							int xored = from ^ to;
 							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS) & SELFMASK][(to >> TYPEBITS) & SELFMASK] : 1) *
-								(RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
+								(RELSKEWS ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
 						}
 					}
 
@@ -3885,8 +3885,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 
-					//		fprintf(out, "%d:%d\n", world.rank(), i);
-					//		fflush(out);
+							fprintf(out, "FIRST PASS: %d:%d\n", world.rank(), i);
+							fflush(out);
 				}
 
 #ifdef F2MPI
@@ -3959,11 +3959,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
-
+#pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
+
 					individ* ind = getind(i, false);
 					if (!ind || !ind->haplocount.size()) continue;
+
+					fprintf(out, "SKEWNESS PASS: %d:%d\n", world.rank(), i);
+					fflush(out);
 
 					int cno = 0;
 					for (unsigned int j = 0; j < ind->haplocount.size(); j++)
