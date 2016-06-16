@@ -905,7 +905,7 @@ struct individ
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
-		const int selfval = (flag >> (TYPEBITS + 1)) & ((1 << SELFBITS) - 1);
+		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
 		if (rootgen)
 		{
@@ -1916,7 +1916,7 @@ struct individ
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
-							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1) *
+							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS) & SELFMASK][(to >> TYPEBITS) & SELFMASK] : 1) *
 								(RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
 						}
 					}
@@ -2879,7 +2879,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && (!RELSKEWS && !SELFING || currfilter != 1 /*|| selfgen == 0*/))
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
 		{
 			return true;
 		}
