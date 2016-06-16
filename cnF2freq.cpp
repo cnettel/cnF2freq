@@ -3886,7 +3886,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 
-							fprintf(out, "FIRST PASS: %d:%d\n", world.rank(), i);
+							fprintf(out, "FIRST PASS: %d\n", i);
 							fflush(out);
 				}
 
@@ -3967,7 +3967,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					individ* ind = getind(i, false);
 					if (!ind || !ind->haplocount.size()) continue;
 
-					fprintf(out, "SKEWNESS PASS: %d:%d\n", world.rank(), i);
+					fprintf(out, "SKEWNESS PASS: %d\n", i);
 					fflush(out);
 
 					int cno = 0;
