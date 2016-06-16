@@ -1003,7 +1003,7 @@ struct individ
 				baseval *= 0.5;
 			}
 			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-			else if (/*!empty &&*/ (allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
+			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
 			}
@@ -1011,6 +1011,7 @@ struct individ
 			{
 				if (HAPLOTYPING)
 				{
+				  // TODO interaction relskew/selfing
 					baseval *= fabs((f2n ? 1.0 : 0.0) - (selfingNOW ? 0 : haploweight[marker]));
 				}
 				else
