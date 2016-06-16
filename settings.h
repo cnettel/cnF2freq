@@ -7,7 +7,7 @@ const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = false;
 const bool SELFING = false;
-const bool RELSKEWS = false;
+const bool RELSKEWS = true;
 
 // F2 with haplotyping
 const int NUMGEN = 3;
@@ -88,3 +88,4 @@ const int HALFNUMTYPES = 1 << (TYPEBITS / 2);
 // ccoeff does not provide correction inference, so exact result reproduction
 // is achieved when this flag is disabled.
 bool CORRECTIONINFERENCE = true;
+
