@@ -329,9 +329,9 @@ EXTERNFORGCC vector<individ*> reltree;
 EXTERNFORGCC map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, infprobs)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap)
 #if !DOFB
-#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
+#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs, infprobs)
 #else
 #pragma omp threadprivate(fwbw,fwbwfactors,fwbwdone)
 #endif
@@ -342,10 +342,10 @@ std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
+std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #else
 vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
 vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
@@ -374,6 +374,7 @@ struct threadblock
 #endif
 	IAT* const impossible;
 	std::array<std::array<float, 2>, INDCOUNT>* const haplos;
+	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -385,15 +386,14 @@ struct threadblock
 	vector<std::array<double, 2> >* fwbwfactors;
 	int* fwbwdone;
 #endif	
-	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 
 	threadblock() : generation(&::generation), shiftflagmode(&::shiftflagmode), impossible(&::impossible),
-		haplos(&::haplos), infprobs(&::infprobs), lockpos(::lockpos),
+		haplos(&::haplos), lockpos(::lockpos), infprobs(&::infprobs),
 #if !DOFB
 		done(::done), factors(::factors), cacheprobs(::cacheprobs),
 		quickmark(::quickmark), quickgen(::quickgen), quickmem(::quickmem),
 		quickfactor(::quickfactor), quickendfactor(::quickendfactor), quickendprobs(::quickendprobs),
-		quickendmarker(::quickendmarker)
+			quickendmarker(::quickendmarker),
 #else
 		fwbw(::fwbw), fwbwfactors(::fwbwfactors), fwbwdone(::fwbwdone)
 #endif
@@ -1900,7 +1900,7 @@ struct individ
 						}
 					}
 
-					float relscore[2] = { 1 };
+					float relscore[2] = { 1, 1 };
 					if (RELSKEWS && !iter)
 					{
 						relscore[0] = relhaplo[j];
@@ -1917,7 +1917,7 @@ struct individ
 						{
 							int xored = from ^ to;
 							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[from >> TYPEBITS][to >> TYPEBITS] : 1) *
-								(RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
+							  (RELSKEWS ? relscore[xored >> BITS_W_SELF] : 1);
 						}
 					}
 
@@ -5215,7 +5215,7 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
-	  dous.resize(5);
+	  dous.resize(32);
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
