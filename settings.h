@@ -28,7 +28,7 @@ const unsigned int NUMSHIFTGEN = NUMGEN - 1;
 const unsigned int HALFNUMSHIFTS = 1 << ((1 << (NUMSHIFTGEN - 1)) - 1);
 const unsigned int NUMSHIFTS = 1 << ((1 << NUMSHIFTGEN) - 1);
 const bool HAPLOTYPING = true;
-const int NONSELFNUMTYPES = NUMTYPES >> (SELFING * 2);
+const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)*/;
 
 // Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
 // TODO: Reorder bits...
