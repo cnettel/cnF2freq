@@ -4969,6 +4969,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 	chromstarts.push_back(markerposes.size());
 
+	vector<individ*> sampleInds;
+
 	for (std::tuple<std::string, std::string, std::string> sample : samples)
 	{
 		individ* me = getind(get<0>(sample));
@@ -4979,20 +4981,21 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
+		if (me->gen > 0) dous.push_back(me);
 
-		dous.push_back(me);
+		sampleInds.push_back(me);
 	}
 
 	for (int i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<2>(snpData[i]);
-		for (int j = 0; j < dous.size(); j++)
+		for (int j = 0; j < sampleInds.size(); j++)
 		{
-			dous[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			dous[j]->markersure[i] = { 0, 0 };
+			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
+			sampleInds[j]->markersure[i] = { 0, 0 };
 			if (RELSKEWS)
 			  { 
-			    dous[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 			  }
 		}
 	}
