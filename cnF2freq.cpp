@@ -2806,7 +2806,7 @@ void postmarkerdata()
 			// Doing so would be much more opaque, though...
 			for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 			{
-				if (!ind->pars[0] && !ind->pars[1])
+				//if (!ind->pars[0] && !ind->pars[1])
 					lockhaplos(ind, i);
 			}
 		}
@@ -3187,7 +3187,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				//if (!anygood) shiftend = 2;
 				if (!anygood)
 				{
-					shiftignore = 7;
+					shiftignore = 6;
 					flag2ignore = 0;
 				}
 
