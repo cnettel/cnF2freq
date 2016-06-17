@@ -1,4 +1,4 @@
-tt// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
+// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
 // 2008-2016
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
