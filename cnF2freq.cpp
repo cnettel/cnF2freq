@@ -1,4 +1,4 @@
-// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
+tt// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
 // 2008-2016
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
@@ -1582,8 +1582,8 @@ struct individ
 			newstart += stepsize;
 		}
 
-		double factor = fwbwfactors[*tb.shiftflagmode][newstart][0];
-		probs = fwbw[*tb.shiftflagmode][newstart][0];
+		double factor = tb.fwbwfactors[*tb.shiftflagmode][newstart][0];
+		probs = tb.fwbw[*tb.shiftflagmode][newstart][0];
 		startmark = newstart;
 
 		while (startmark < endmark)
@@ -1601,11 +1601,11 @@ struct individ
 
 				for (int k = 0; k < NUMTYPES; k++)
 				{
-					probs[k] *= fwbw[*tb.shiftflagmode][startmark][1][k];
+					probs[k] *= tb.fwbw[*tb.shiftflagmode][startmark][1][k];
 					sum += probs[k];
 				}
 
-				factor += fwbwfactors[*tb.shiftflagmode][startmark][1];
+				factor += tb.fwbwfactors[*tb.shiftflagmode][startmark][1];
 
 				if (sum <= 0)
 				{
@@ -2915,7 +2915,7 @@ template<int N> struct valuereporter
 		{
 			char string[255];
 			int val;
-			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == N - 1 ? '\n' : '\t', &val);
+			sprintf(string, "%.5lf%c%n", probs[i] /** probsum*/, i == N - 1 ? '\n' : '\t', &val);
 			for (int k = 0; k < val; k++)
 			{
 				outqueue.push_back(string[k]);
@@ -3305,6 +3305,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 										if (impossible[shiftflagmode & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3] == impossibleval)
 										{
+											std::cerr << "IMPOSSIBLE FACILITY USED"; << std::endl;
 											goto continueloop;
 										}
 									}
