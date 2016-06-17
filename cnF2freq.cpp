@@ -772,7 +772,7 @@ struct individ
 	bool arerelated(individ* b, vector<individ*> stack = vector<individ*>(), int gens = 0)
 	{
 		if (gens > 2) return false;
-		if (!this) return false;
+		if (!this) abort();
 
 		if (b == this) return true;
 		if (find(stack.begin(), stack.end(), this) != stack.end())
@@ -783,11 +783,11 @@ struct individ
 		stack.push_back(this);
 		if (stack.size() == 1)
 		{
-			if (b->arerelated(this, stack, gens + 1)) return true;
+			if (b && b->arerelated(this, stack, gens + 1)) return true;
 		}
 
-		if (pars[0]->arerelated(b, stack, gens + 1)) return true;
-		if (pars[1]->arerelated(b, stack, gens + 1)) return true;
+		if (pars[0] && pars[0]->arerelated(b, stack, gens + 1)) return true;
+		if (pars[1] && pars[1]->arerelated(b, stack, gens + 1)) return true;
 
 		for (int i = 0; i < kids.size(); i++)
 		{
@@ -5223,7 +5223,7 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
-	  dous.resize(32);
+	  dous.resize(5);
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
