@@ -3305,7 +3305,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 										if (impossible[shiftflagmode & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3] == impossibleval)
 										{
-											std::cerr << "IMPOSSIBLE FACILITY USED"; << std::endl;
+											std::cerr << "IMPOSSIBLE FACILITY USED" << std::endl;
 											goto continueloop;
 										}
 									}
