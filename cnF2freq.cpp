@@ -4903,6 +4903,16 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 	}
 }
 
+std::string filterExisting(const set<std::string>& names, std::string name)
+{
+	if (names.find(name) == names.end())
+	{
+		return "0";
+	}
+
+	return name;
+}
+
 void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 {
 	using namespace x3;
@@ -4976,14 +4986,21 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	chromstarts.push_back(markerposes.size());
 
 	vector<individ*> sampleInds;
+	set<std::string> sampleNames;
+
+	// Collect all names for which we really have samples
+	for (std::tuple<std::string, std::string, std::string> sample : samples)
+	{
+		sampleNames.insert(get<0>(sample));
+	}
 
 	for (std::tuple<std::string, std::string, std::string> sample : samples)
 	{
 		individ* me = getind(get<0>(sample));
 		// We don't care about sex? Is this OK?
 		me->sex = 0;
-		me->pars[0] = getind(get<1>(sample));
-		me->pars[1] = getind(get<2>(sample));
+		me->pars[0] = getind(filterExisting(sampleNames, get<1>(sample)));
+		me->pars[1] = getind(filterExisting(sampleNames, get<2>(sample)));
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
