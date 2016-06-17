@@ -1033,7 +1033,7 @@ struct individ
 				// The empty one could, in turn, have parents with genotypes.
 				if (zeropropagate && extparams.gstr)
 				{
-					*(extparams.gstr) += (themarker[f2n] == (2 * MarkerValue));
+					*(extparams.gstr) += (themarker[realf2n] == (2 * MarkerValue));
 				}
 			}
 
@@ -2801,7 +2801,7 @@ void postmarkerdata()
 			// These days we do the locking in all generations
 		{
 			ind->markervals.clear();
-			// Lock the haplotype (in an arbitrary manner) for the first marker in each linkage group
+			// Lock the haplotype (in an arbitrary manner) for the first marker in each linkage groupfl
 			// Propagation would be more efficient if we locked the mid-position (which should really be determined in cM)
 			// Doing so would be much more opaque, though...
 			for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
