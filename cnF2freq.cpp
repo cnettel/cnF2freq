@@ -5018,8 +5018,11 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		const vector<int>& markers = get<2>(snpData[i]);
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
+		  float sureVal = 0;
+		  if (sampleInds[j]->gen == 2) sureVal = 0.02;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			sampleInds[j]->markersure[i] = { 0, 0 };
+			
+			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  { 
 			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
@@ -5246,7 +5249,7 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
-	  dous.resize(5);
+	  dous.resize(32);
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
