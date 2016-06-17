@@ -329,9 +329,9 @@ EXTERNFORGCC vector<individ*> reltree;
 EXTERNFORGCC map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, infprobs)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap)
 #if !DOFB
-#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
+#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs, infprobs)
 #else
 #pragma omp threadprivate(fwbw,fwbwfactors,fwbwdone)
 #endif
@@ -342,10 +342,10 @@ std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
+std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #else
 vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
 vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
@@ -374,6 +374,7 @@ struct threadblock
 #endif
 	IAT* const impossible;
 	std::array<std::array<float, 2>, INDCOUNT>* const haplos;
+	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -385,15 +386,14 @@ struct threadblock
 	vector<std::array<double, 2> >* fwbwfactors;
 	int* fwbwdone;
 #endif	
-	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 
 	threadblock() : generation(&::generation), shiftflagmode(&::shiftflagmode), impossible(&::impossible),
-		haplos(&::haplos), infprobs(&::infprobs), lockpos(::lockpos),
+		haplos(&::haplos), lockpos(::lockpos), infprobs(&::infprobs),
 #if !DOFB
 		done(::done), factors(::factors), cacheprobs(::cacheprobs),
 		quickmark(::quickmark), quickgen(::quickgen), quickmem(::quickmem),
 		quickfactor(::quickfactor), quickendfactor(::quickendfactor), quickendprobs(::quickendprobs),
-		quickendmarker(::quickendmarker)
+			quickendmarker(::quickendmarker),
 #else
 		fwbw(::fwbw), fwbwfactors(::fwbwfactors), fwbwdone(::fwbwdone)
 #endif
@@ -772,7 +772,7 @@ struct individ
 	bool arerelated(individ* b, vector<individ*> stack = vector<individ*>(), int gens = 0)
 	{
 		if (gens > 2) return false;
-		if (!this) return false;
+		if (!this) abort();
 
 		if (b == this) return true;
 		if (find(stack.begin(), stack.end(), this) != stack.end())
@@ -783,11 +783,11 @@ struct individ
 		stack.push_back(this);
 		if (stack.size() == 1)
 		{
-			if (b->arerelated(this, stack, gens + 1)) return true;
+			if (b && b->arerelated(this, stack, gens + 1)) return true;
 		}
 
-		if (pars[0]->arerelated(b, stack, gens + 1)) return true;
-		if (pars[1]->arerelated(b, stack, gens + 1)) return true;
+		if (pars[0] && pars[0]->arerelated(b, stack, gens + 1)) return true;
+		if (pars[1] && pars[1]->arerelated(b, stack, gens + 1)) return true;
 
 		for (int i = 0; i < kids.size(); i++)
 		{
@@ -1902,7 +1902,7 @@ struct individ
 						}
 					}
 
-					float relscore[2] = { 1 };
+					float relscore[2] = { 1, 1 };
 					if (RELSKEWS && !iter)
 					{
 						relscore[0] = relhaplo[j];
@@ -2674,6 +2674,7 @@ void postmarkerdata()
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
+#pragma omp parallel for schedule(dynamic,32)
 		for (int i = 1; i < INDCOUNT; i++)
 		{
 			individ* ind = getind(i);
@@ -3887,7 +3888,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 
-							fprintf(out, "FIRST PASS: %d:%d\n", world.rank(), i);
+							fprintf(out, "FIRST PASS: %d\n", i);
 							fflush(out);
 				}
 
@@ -3968,7 +3969,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					individ* ind = getind(i, false);
 					if (!ind || !ind->haplocount.size()) continue;
 
-					fprintf(out, "SKEWNESS PASS: %d:%d\n", world.rank(), i);
+					fprintf(out, "SKEWNESS PASS: %d\n", i);
 					fflush(out);
 
 					int cno = 0;
@@ -4974,6 +4975,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 	chromstarts.push_back(markerposes.size());
 
+	vector<individ*> sampleInds;
+
 	for (std::tuple<std::string, std::string, std::string> sample : samples)
 	{
 		individ* me = getind(get<0>(sample));
@@ -4984,20 +4987,21 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
+		if (me->gen > 0) dous.push_back(me);
 
-		dous.push_back(me);
+		sampleInds.push_back(me);
 	}
 
 	for (int i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<2>(snpData[i]);
-		for (int j = 0; j < dous.size(); j++)
+		for (int j = 0; j < sampleInds.size(); j++)
 		{
-			dous[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			dous[j]->markersure[i] = { 0, 0 };
+			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
+			sampleInds[j]->markersure[i] = { 0, 0 };
 			if (RELSKEWS)
 			  { 
-			    dous[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 			  }
 		}
 	}
