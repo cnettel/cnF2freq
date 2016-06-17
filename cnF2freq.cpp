@@ -1029,6 +1029,8 @@ struct individ
 			// If we are at maximum depth, by depth limit or by lack of ancestor
 			if (genwidth == HAPLOTYPING || !pars[firstpar])
 			{
+				// TODO: If pars[firstpar] exists and is empty, things are messy
+				// The empty one could, in turn, have parents with genotypes.
 				if (zeropropagate && extparams.gstr)
 				{
 					*(extparams.gstr) += (themarker[f2n] == (2 * MarkerValue));
