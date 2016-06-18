@@ -1707,7 +1707,7 @@ struct individ
 			{
 				probs[i] = 1.0;
 			}
-			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 2 | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
 
 			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
 		}
@@ -1939,7 +1939,7 @@ struct individ
 					}
 				}
 
-				// startpos and enpos are always defined in the forward sense, i.e. startpos being upstream of endpos
+				// startpos and endpos are always defined in the forward sense, i.e. startpos being upstream of endpos
 				if (updateend & ANALYZE_FLAG_BACKWARD)
 				{
 					endpos = startpos;
