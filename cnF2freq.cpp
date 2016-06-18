@@ -1626,6 +1626,7 @@ struct individ
 			}
 			else
 			{
+				std::cerr << "Incomplete at " << startmark << std::endl;
 				factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 			}
 
@@ -2875,18 +2876,18 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 	if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
-	for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
-	{
-		int currfilter = (i->second & flag2filter);
-		int filtered = ((flag2 ^ (g * 2)) & currfilter);
-		// Require ALL bits in the flag to be set, if at least one is set
-		if (filtered && filtered != currfilter) return true;
-		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
-		{
-			return true;
-		}
-	}
+	//for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
+	//{
+	//	int currfilter = (i->second & flag2filter);
+	//	int filtered = ((flag2 ^ (g * 2)) & currfilter);
+	//	// Require ALL bits in the flag to be set, if at least one is set
+	//	if (filtered && filtered != currfilter) return true;
+	//	//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
+	//	if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
+	//	{
+	//		return true;
+	//	}
+	//}
 	return false;
 }
 
@@ -4908,6 +4909,7 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 	}
 }
 
+#ifdef READHAPSSAMPLE
 std::string filterExisting(const set<std::string>& names, std::string name)
 {
 	if (names.find(name) == names.end())
@@ -5031,6 +5033,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		}
 	}
 }
+#endif
 
 void readhaplodata(FILE* in, int swap)
 {
@@ -5237,20 +5240,24 @@ int main(int argc, char* argv[])
 		printf("Three args expected: map, ped and geno file, followed by output filename.\n");
 		return -1;
 	}
-
-	/*FILE* mapfile = fopen(argv[1], "rt");
+	 
+#ifdef READALPHADATA
+	FILE* mapfile = fopen(argv[1], "rt");
 	readalphamap(mapfile);
 	FILE* pedfile = fopen(argv[2], "rt");
 	readalphaped(pedfile);
 	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);*/
+	readalphadata(datafile);
+#endif
+#ifdef READHAPSSAMPLE
 	std::ifstream sampleFile(argv[1]);
 	std::ifstream bimFile(argv[2]);
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
-	  dous.resize(5);
+	dous.resize(5);
+#endif
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
