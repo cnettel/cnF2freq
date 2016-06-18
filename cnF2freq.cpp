@@ -1,4 +1,4 @@
-tt// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
+// cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
 // 2008-2016
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
@@ -1568,7 +1568,7 @@ struct individ
 		int newstart = startmark;
 		bool allowfull = inclusive;
 
-		while (stopdata.okstep(startmark, newstart))
+		while (stopdata.okstep(startmark, newstart + 1))
 		{
 			int stepsize;
 			for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
@@ -1799,7 +1799,7 @@ struct individ
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for
 				// the previous marker. Used to maximize the caching.
-				if (!((updateend & 2) && (j == startmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
+				if (!((updateend & 2) && (j == firstmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
 			}
 			else
 			{
@@ -1903,7 +1903,7 @@ struct individ
 					}
 
 					float relscore[2] = { 1, 1 };
-					if (RELSKEWS && !iter)
+					if (RELSKEWS && iter == tofind)
 					{
 						relscore[0] = relhaplo[j];
 						relscore[1] = 1 - relhaplo[j];
@@ -3305,7 +3305,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 										if (impossible[shiftflagmode & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3] == impossibleval)
 										{
-											std::cerr << "IMPOSSIBLE FACILITY USED"; << std::endl;
+											std::cerr << "IMPOSSIBLE FACILITY USED" << std::endl;
 											goto continueloop;
 										}
 									}
@@ -5019,8 +5019,11 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		const vector<int>& markers = get<2>(snpData[i]);
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
+		  float sureVal = 0;
+		  if (sampleInds[j]->gen == 2) sureVal = 0.02;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			sampleInds[j]->markersure[i] = { 0, 0 };
+			
+			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  { 
 			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
