@@ -1568,7 +1568,7 @@ struct individ
 		int newstart = startmark;
 		bool allowfull = inclusive;
 
-		while (stopdata.okstep(startmark, newstart))
+		while (stopdata.okstep(startmark, newstart + 1))
 		{
 			int stepsize;
 			for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
@@ -1799,7 +1799,7 @@ struct individ
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for
 				// the previous marker. Used to maximize the caching.
-				if (!((updateend & 2) && (j == startmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
+				if (!((updateend & 2) && (j == firstmark + d))) adjustprobs(tb, probs, j - d, factor, ruleout, f2use);
 			}
 			else
 			{
@@ -1903,7 +1903,7 @@ struct individ
 					}
 
 					float relscore[2] = { 1, 1 };
-					if (RELSKEWS && !iter)
+					if (RELSKEWS && iter == tofind)
 					{
 						relscore[0] = relhaplo[j];
 						relscore[1] = 1 - relhaplo[j];
@@ -5250,7 +5250,7 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 
-	  dous.resize(32);
+	  dous.resize(5);
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
