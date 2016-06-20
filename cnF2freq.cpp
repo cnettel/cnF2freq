@@ -5035,6 +5035,41 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 }
 #endif
 
+void compareimputedoutput(istream& filteredOutput)
+{
+	while (!filteredOutput.eof())
+	{
+		for (individ* ind : dous)
+		{
+			std::string name;
+			filteredOutput >> name;
+
+			for (int i = 0; i < chromstarts[1]; i++)
+			{
+				double val[3];
+				int maxval = 0;
+				for (int i = 0; i < 3; i++)
+				{
+					filteredOutput >> val[i];
+					if (val[i] > val[maxval]) maxval = i;
+				}
+
+				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
+
+				if (maxval != data)
+				{
+					std::cout << ind->name << " " << i << "\t";
+					for (double oneVal : val)
+					{
+						std::cout << oneVal << "\t";
+					}
+					std::cout << std::endl;
+				}
+			}
+		}
+	}
+}
+
 void readhaplodata(FILE* in, int swap)
 {
 	char tlf[255];
@@ -5295,6 +5330,11 @@ int main(int argc, char* argv[])
 	FILE* out = fopen(argv[4], "w");
 	int COUNT = 3;
 	if (argc == 6) sscanf(argv[5], "%d", &COUNT);
+	if (argc == 7)
+	{
+		std::ifstream filteredOutput(argv[4]);
+		compareimputedoutput(filteredOutput);
+	}
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
