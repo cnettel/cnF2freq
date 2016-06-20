@@ -3397,7 +3397,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									if (!outmapval && val > 1e-3)
 									{
-										std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
+										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
 									}
 									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
@@ -4654,7 +4654,7 @@ void readalphadata(FILE* in)
 					break;
 				}
 				ime->markerdata[x] = marker;
-				ime->markersure[x] = make_pair(0, 0);
+				ime->markersure[x] = make_pair(0.02, 0.02);
 			}
 			else
 			{
