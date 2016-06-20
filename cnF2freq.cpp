@@ -1904,11 +1904,11 @@ struct individ
 					}
 
 					float relscore[2] = { 1, 1 };
-					if (RELSKEWS && iter == tofind)
+					/*if (RELSKEWS && iter == tofind)
 					{
 						relscore[0] = relhaplo[j];
 						relscore[1] = 1 - relhaplo[j];
-					}
+						}*/
 
 					// Use those xor values
 					// For the 4-state model, this is an inefficient way to go about it, but it is quite a bit more efficient for
@@ -2873,7 +2873,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 	  flag2filter |= 1;
 	  //	printf("Selfval is %d, flag2filter is %d, flag2ignore is %d\n", selfval, flag2filter, flag2ignore);
 	  }*/
-	if (flag2 & (flag2ignore & flag2filter)) return true;
+	//if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
 	//for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
@@ -3191,6 +3191,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					shiftignore = 6;
 					flag2ignore = 0;
 				}
+				flag2ignore = 0;
+				shiftignore = 0;
 
 				double factor = -1e15;
 				double factors[NUMSHIFTS];
@@ -5257,6 +5259,8 @@ int main(int argc, char* argv[])
 	readhapssample(sampleFile, bimFile, hapsFile);
 
 	dous.resize(5);
+	markerposes.resize(700);
+	chromstarts[1] = 700;
 #endif
 
 	//	return 0;
