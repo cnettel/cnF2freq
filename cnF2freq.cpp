@@ -1904,11 +1904,11 @@ struct individ
 					}
 
 					float relscore[2] = { 1, 1 };
-					/*if (RELSKEWS && iter == tofind)
+					if (RELSKEWS && iter == tofind)
 					{
-						relscore[0] = relhaplo[j];
-						relscore[1] = 1 - relhaplo[j];
-						}*/
+					  relscore[0] = relhaplo[max(j, j - d)];
+					  relscore[1] = 1 - relhaplo[max(j, j - d)];
+					}
 
 					// Use those xor values
 					// For the 4-state model, this is an inefficient way to go about it, but it is quite a bit more efficient for
