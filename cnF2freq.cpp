@@ -2873,21 +2873,21 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 	  flag2filter |= 1;
 	  //	printf("Selfval is %d, flag2filter is %d, flag2ignore is %d\n", selfval, flag2filter, flag2ignore);
 	  }*/
-	//if (flag2 & (flag2ignore & flag2filter)) return true;
+	if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
-	//for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
-	//{
-	//	int currfilter = (i->second & flag2filter);
-	//	int filtered = ((flag2 ^ (g * 2)) & currfilter);
-	//	// Require ALL bits in the flag to be set, if at least one is set
-	//	if (filtered && filtered != currfilter) return true;
-	//	//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-	//	if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
-	//	{
-	//		return true;
-	//	}
-	//}
+	for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
+	{
+		int currfilter = (i->second & flag2filter);
+		int filtered = ((flag2 ^ (g * 2)) & currfilter);
+		// Require ALL bits in the flag to be set, if at least one is set
+		if (filtered && filtered != currfilter) return true;
+		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
+		{
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -2896,9 +2896,9 @@ template<int N> struct valuereporter
 {
 	std::array<double, N> probs;
 
-	valuereporter()
-	{
-		for (int k = 0; k < N; k++)
+  valuereporter()
+  {
+  		for (int k = 0; k < N; k++)
 		{
 			probs[k] = 0;
 		}
@@ -2916,7 +2916,7 @@ template<int N> struct valuereporter
 		{
 			char string[255];
 			int val;
-			sprintf(string, "%.5lf%c%n", probs[i] /** probsum*/, i == N - 1 ? '\n' : '\t', &val);
+			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == N - 1 ? '\n' : '\t', &val);
 			for (int k = 0; k < val; k++)
 			{
 				outqueue.push_back(string[k]);
@@ -3191,8 +3191,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					shiftignore = 6;
 					flag2ignore = 0;
 				}
-				flag2ignore = 0;
-				shiftignore = 0;
 
 				double factor = -1e15;
 				double factors[NUMSHIFTS];
@@ -5257,10 +5255,6 @@ int main(int argc, char* argv[])
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
-
-	dous.resize(5);
-	markerposes.resize(700);
-	chromstarts[1] = 700;
 #endif
 
 	//	return 0;
