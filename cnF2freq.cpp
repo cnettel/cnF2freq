@@ -5255,6 +5255,8 @@ int main(int argc, char* argv[])
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
+	markerposes.resize(700);
+	chromstarts[1] = 700;
 #endif
 
 	//	return 0;
