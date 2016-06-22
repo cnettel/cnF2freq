@@ -973,14 +973,11 @@ struct individ
 				}
 			}
 
-
 			bool allthesame = themarker[0] == themarker[1];
 			MarkerVal markerval = inmarkerval;
 			double baseval;
 
-
 			int realf2n = f2n;
-
 			double mainsecondval = 0;
 			// If this marker value is not compatible, there is no point in trying.
 			if (markermiss<zeropropagate>(markerval, themarker[f2n]))
