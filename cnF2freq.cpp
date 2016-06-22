@@ -211,7 +211,7 @@ public:
 		for (int i = 0; i < l.size(); i++)
 		{
 			result[i] = l[i] + r[i];
-		}
+,		}
 
 		return result;
 	}
@@ -1563,6 +1563,7 @@ struct individ
 	{
 		// Probe the distance to test
 		int newstart = startmark;
+		int origstart = startmark;
 		bool allowfull = inclusive;
 
 		while (stopdata.okstep(startmark, newstart + 1))
@@ -1594,6 +1595,10 @@ struct individ
 			{
 				// If we are doing a quick end
 				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				
+				// We might have turned, this value might not exist
+				initfwbw(tb, origstart, endmark);
+
 				double sum = 0;
 
 				for (int k = 0; k < NUMTYPES; k++)
@@ -1673,14 +1678,12 @@ struct individ
 		return factor;
 	}
 #else
-	template<class T, class G> double doanalyze(const threadblock& tb, const T& turner, const int startmark, const int endmark, const G& stopdata,
-		const int flag2, bool ruleout = false, PerStateArray<double>::T* realprobs = 0, float minfactor = MINFACTOR)
+	void initfwbw(const threadblock& tb, const int startmark, const int endmark)
 	{
-		if (realprobs != 0) fprintf(stderr, "THIS WAS NOT EXPECTED. WHEN IS THIS USED?\n");
-		PerStateArray<double>::T probs;
-
 		if (tb.fwbwdone[*(tb.shiftflagmode)] != *(tb.generation))
 		{
+			PerStateArray<double>::T probs;
+
 			// Initialize forward-backward matrices in one big go.
 			//probs = fakeprobs;
 			double selfingfactors[4];
@@ -1698,16 +1701,25 @@ struct individ
 					selfingfactors[(i >> TYPEBITS) & SELFMASK] : 1.0);
 			}
 
-			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
 
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = 1.0;
 			}
-			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, flag2, ruleout, &probs);
+			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
 
 			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
 		}
+	}
+
+	template<class T, class G> double doanalyze(const threadblock& tb, const T& turner, const int startmark, const int endmark, const G& stopdata,
+		const int flag2, bool ruleout = false, PerStateArray<double>::T* realprobs = 0, float minfactor = MINFACTOR)
+	{
+		if (realprobs != 0) fprintf(stderr, "THIS WAS NOT EXPECTED. WHEN IS THIS USED?\n");
+		PerStateArray<double>::T probs;
+
+		initfwbw(tb, startmark, endmark);
 
 		return quickanalyze<true, T>(tb, turner, startmark, endmark, stopdata, flag2, ruleout, probs, minfactor);
 	}
