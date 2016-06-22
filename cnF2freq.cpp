@@ -70,8 +70,10 @@ float templgeno[8] = { -1, -0.5,
 /*#include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>*/
+#include <string>
 
-
+#include <boost/interprocess/file_mapping.hpp>
+#include <boost/interprocess/mapped_region.hpp>
 #include <boost/spirit/home/x3.hpp>
 #include <boost/spirit/home/x3/support/ast/variant.hpp>
 #include <boost/fusion/include/adapt_struct.hpp>
@@ -82,7 +84,7 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/fusion/include/at_c.hpp>
 #include <iostream>
 #include <fstream>
-#include <string>
+
 #include <vector>
 
 using namespace boost::spirit;
@@ -4943,6 +4945,8 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 	return name;
 }
 
+vector<int> mapIndices;
+
 void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 {
 	using namespace x3;
@@ -4953,7 +4957,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	
 	std::vector<std::tuple<int, std::string, std::vector<int>>> snpData;
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
-	map<std::pair<int, std::string>, int > geneMap;
+	map<std::pair<int, std::string>, pair<int, int> > geneMap;
 
 	auto word_ = lexeme[+(char_ - space)];
 	
@@ -4976,7 +4980,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			using namespace boost::fusion;
 			auto attr = _attr(context);
 
-			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = at_c<2>(attr);
+			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), geneMap.size());
 		})])
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
@@ -5000,7 +5004,12 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	for (auto snp : snpData)
 	{
 		int chrom = get<0>(snp);
-		double pos = geneMap[make_pair(chrom, get<1>(snp))] * 1e-6;
+		int pos;
+		int index;
+
+		std::tie(pos, index) = geneMap[make_pair(chrom, get<1>(snp))];
+
+		double pos = pos * 1e-6;
 		
 		if (chrom != lastchrom)
 		{
@@ -5009,6 +5018,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		}
 
 		markerposes.push_back(pos - basepos);
+		mapIndices.push_back(index);
 		lastpos = pos;
 		lastchrom = chrom;
 	}
@@ -5053,6 +5063,70 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			  { 
 			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 			  }
+		}
+	}
+}
+
+
+void readbedbim(std::string bimFileName, std::string bedFileName)
+{
+	using namespace boost::interprocess;
+	using namespace x3;
+
+	auto word = lexeme[+(char_ - space)];
+	std::ifstream file(bimFileName);
+	file >> std::noskipws;
+	auto parseriter = boost::spirit::istream_iterator(file);
+	boost::spirit::istream_iterator end;
+	map<std::string, int> indNums;
+
+	phrase_parse(parseriter, end, (omit[int_] > word > omit[word] > omit[word] > omit[int_] > omit[int_])
+		[([&](auto& ctx)
+	{
+		indNums[_attr(ctx)] = indNums.size();
+	})] % eol, space - eol);
+	cout << indNums.size() << " individuals found." << std::endl;
+
+	int blocksize = (indNums.size() + 3) / 4;
+	cout << blocksize << " bytes per SNP block." << std::endl;
+
+	file_mapping bedFile(bedFileName.c_str(), read_only);
+
+	mapped_region snpRegion(bedFile, read_write, 3); // Skip header
+	unsigned char* snpdata = (unsigned char*)snpRegion.get_address();
+	size_t size = snpRegion.get_size();
+
+	vector<int> indArray;
+	for (individ* ind : dous)
+	{
+		indArray.push_back(indNums[ind->name]);
+	}
+
+	for (int i = 0; i < markerposes.size(); i++)
+	{
+		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
+		for (int j = 0; j < dous.size(); j++)
+		{
+			int index = indArray[j];
+			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
+			pair<MarkerVal, MarkerVal> marker;
+			switch (thisval)
+			{
+			case 0:
+				marker = make_pair(1 * MarkerValue, 1 * MarkerValue);
+				break;
+			case 1:
+				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
+				break;
+			case 2:
+				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
+				break;
+			case 3:
+				marker = make_pair(2 * MarkerValue, 2 * MarkerValue);
+				break;
+			}
+
+			dous[j]->markerdata[i] = marker;
 		}
 	}
 }
@@ -5325,6 +5399,11 @@ int main(int argc, char* argv[])
 	markerposes.resize(700);
 	chromstarts[1] = 700;
 #endif
+
+	if (argc >= 9)
+	{
+		readbedbim(argv[7], argv[8]);
+	}
 
 	if (argc >= 7)
 	{
