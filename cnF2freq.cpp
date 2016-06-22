@@ -1628,6 +1628,7 @@ struct individ
 			}
 			else
 			{
+				std::cerr << "Incomplete at " << startmark << std::endl;
 				factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 			}
 
@@ -1914,8 +1915,8 @@ struct individ
 					float relscore[2] = { 1, 1 };
 					if (RELSKEWS && iter == tofind)
 					{
-						relscore[0] = relhaplo[j];
-						relscore[1] = 1 - relhaplo[j];
+					  relscore[0] = relhaplo[max(j, j - d)];
+					  relscore[1] = 1 - relhaplo[max(j, j - d)];
 					}
 
 					// Use those xor values
@@ -2904,9 +2905,9 @@ template<int N> struct valuereporter
 {
 	std::array<double, N> probs;
 
-	valuereporter()
-	{
-		for (int k = 0; k < N; k++)
+  valuereporter()
+  {
+  		for (int k = 0; k < N; k++)
 		{
 			probs[k] = 0;
 		}
@@ -2924,7 +2925,7 @@ template<int N> struct valuereporter
 		{
 			char string[255];
 			int val;
-			sprintf(string, "%.5lf%c%n", probs[i] /** probsum*/, i == N - 1 ? '\n' : '\t', &val);
+			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == N - 1 ? '\n' : '\t', &val);
 			for (int k = 0; k < val; k++)
 			{
 				outqueue.push_back(string[k]);
@@ -3405,7 +3406,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									if (!outmapval && val > 1e-3)
 									{
-										std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
+										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
 									}
 									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
@@ -4662,7 +4663,7 @@ void readalphadata(FILE* in)
 					break;
 				}
 				ime->markerdata[x] = marker;
-				ime->markersure[x] = make_pair(0, 0);
+				ime->markersure[x] = make_pair(0.02, 0.02);
 			}
 			else
 			{
@@ -4917,6 +4918,7 @@ template<class RuleType> void parseToEndWithError(istream& file, const RuleType&
 	}
 }
 
+#ifdef READHAPSSAMPLE
 std::string filterExisting(const set<std::string>& names, std::string name)
 {
 	if (names.find(name) == names.end())
@@ -5037,6 +5039,42 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			  { 
 			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 			  }
+		}
+	}
+}
+#endif
+
+void compareimputedoutput(istream& filteredOutput)
+{
+	while (!filteredOutput.eof())
+	{
+		for (individ* ind : dous)
+		{
+			std::string name;
+			filteredOutput >> name;
+
+			for (int i = 0; i < chromstarts[1]; i++)
+			{
+				double val[3];
+				int maxval = 0;
+				for (int i = 0; i < 3; i++)
+				{
+					filteredOutput >> val[i];
+					if (val[i] > val[maxval]) maxval = i;
+				}
+
+				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
+
+				if (maxval != data)
+				{
+					std::cout << ind->name << " " << i << "\t";
+					for (double oneVal : val)
+					{
+						std::cout << oneVal << "\t";
+					}
+					std::cout << std::endl;
+				}
+			}
 		}
 	}
 }
@@ -5246,20 +5284,24 @@ int main(int argc, char* argv[])
 		printf("Three args expected: map, ped and geno file, followed by output filename.\n");
 		return -1;
 	}
-
-	/*FILE* mapfile = fopen(argv[1], "rt");
+	 
+#ifdef READALPHADATA
+	FILE* mapfile = fopen(argv[1], "rt");
 	readalphamap(mapfile);
 	FILE* pedfile = fopen(argv[2], "rt");
 	readalphaped(pedfile);
 	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);*/
+	readalphadata(datafile);
+#endif
+#ifdef READHAPSSAMPLE
 	std::ifstream sampleFile(argv[1]);
 	std::ifstream bimFile(argv[2]);
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
-
-	  dous.resize(5);
+	markerposes.resize(700);
+	chromstarts[1] = 700;
+#endif
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
@@ -5297,6 +5339,11 @@ int main(int argc, char* argv[])
 	FILE* out = fopen(argv[4], "w");
 	int COUNT = 3;
 	if (argc == 6) sscanf(argv[5], "%d", &COUNT);
+	if (argc == 7)
+	{
+		std::ifstream filteredOutput(argv[4]);
+		compareimputedoutput(filteredOutput);
+	}
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
