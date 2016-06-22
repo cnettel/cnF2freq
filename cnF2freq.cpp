@@ -437,6 +437,7 @@ public:
 			this->turn = turn & 54;
 			flagmodeshift = (turn >> TYPEBITS) | ((turn & 1) ? 2 : 0) |
 				((turn & 8) ? 4 : 0);
+			this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
 		}
 		else
 		{
@@ -3257,7 +3258,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 						{
 							if (shiftflagmode & shiftignore) continue;
-							if (factor - factors[shiftflagmode] > 10) continue;
+							if (factor - factors[shiftflagmode] > 400) continue;
 							if (q <= -1000 && DOREMAPDISTANCES)
 							{
 								double val;
@@ -4979,8 +4980,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		{
 			using namespace boost::fusion;
 			auto attr = _attr(context);
-
-			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), geneMap.size());
+			int index = geneMap.size();
+			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), index);
 		})])
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
@@ -5004,12 +5005,12 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	for (auto snp : snpData)
 	{
 		int chrom = get<0>(snp);
-		int pos;
+		int bppos;
 		int index;
 
-		std::tie(pos, index) = geneMap[make_pair(chrom, get<1>(snp))];
+		std::tie(bppos, index) = geneMap[make_pair(chrom, get<1>(snp))];
 
-		double pos = pos * 1e-6;
+		double pos = bppos * 1e-6;
 		
 		if (chrom != lastchrom)
 		{
@@ -5055,9 +5056,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
 		  float sureVal = 0;
-		  if (sampleInds[j]->gen == 2) sureVal = 0.02;
+		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 1e-7;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			
+			sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  { 
@@ -5068,13 +5069,13 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 }
 
 
-void readbedbim(std::string bimFileName, std::string bedFileName)
+void readfambed(std::string famFileName, std::string bedFileName)
 {
 	using namespace boost::interprocess;
 	using namespace x3;
 
 	auto word = lexeme[+(char_ - space)];
-	std::ifstream file(bimFileName);
+	std::ifstream file(famFileName);
 	file >> std::noskipws;
 	auto parseriter = boost::spirit::istream_iterator(file);
 	boost::spirit::istream_iterator end;
@@ -5083,7 +5084,8 @@ void readbedbim(std::string bimFileName, std::string bedFileName)
 	phrase_parse(parseriter, end, (omit[int_] > word > omit[word] > omit[word] > omit[int_] > omit[int_])
 		[([&](auto& ctx)
 	{
-		indNums[_attr(ctx)] = indNums.size();
+	  int index = indNums.size();
+		indNums[_attr(ctx)] = index;
 	})] % eol, space - eol);
 	cout << indNums.size() << " individuals found." << std::endl;
 
@@ -5092,7 +5094,7 @@ void readbedbim(std::string bimFileName, std::string bedFileName)
 
 	file_mapping bedFile(bedFileName.c_str(), read_only);
 
-	mapped_region snpRegion(bedFile, read_write, 3); // Skip header
+	mapped_region snpRegion(bedFile, read_only, 3); // Skip header
 	unsigned char* snpdata = (unsigned char*)snpRegion.get_address();
 	size_t size = snpRegion.get_size();
 
@@ -5100,6 +5102,7 @@ void readbedbim(std::string bimFileName, std::string bedFileName)
 	for (individ* ind : dous)
 	{
 		indArray.push_back(indNums[ind->name]);
+		cout << ind->name << " " << indArray[indArray.size()-1] << std::endl;
 	}
 
 	for (int i = 0; i < markerposes.size(); i++)
@@ -5119,6 +5122,10 @@ void readbedbim(std::string bimFileName, std::string bedFileName)
 				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 				break;
 			case 2:
+			  if (dous[j]->markerdata[i].first == dous[j]->markerdata[i].second)
+			    {
+			      cout << "!!! " << dous[j]->name << " " << i << std::endl;
+			    }
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
 				break;
 			case 3:
@@ -5162,7 +5169,7 @@ void compareimputedoutput(istream& filteredOutput)
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
 
-				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0)
+				if (abs(1-maxval) != abs(1-data) && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
 				{
 				  std::cout << ind->name << " " << j << ":" << i << " " << data << "\t";
 					for (double oneVal : val)
@@ -5402,7 +5409,7 @@ int main(int argc, char* argv[])
 
 	if (argc >= 9)
 	{
-		readbedbim(argv[7], argv[8]);
+		readfambed(argv[7], argv[8]);
 	}
 
 	if (argc >= 7)
