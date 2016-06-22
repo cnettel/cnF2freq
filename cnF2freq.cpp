@@ -994,6 +994,7 @@ struct individ
 			}
 
 			if (!baseval) continue;
+			bool doupdatehaplo = true;
 
 			// Normalize, in some sense.
 			f2n ^= ((firstpar ^ localshift) & 1);
@@ -1001,18 +1002,20 @@ struct individ
 			if (zeropropagate || !genwidth)
 			{
 				baseval *= 0.5;
+				doupdatehaplo = false;
 			}
 			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) && !selfingNOW)
+			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) || selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
+				doupdatehaplo = false;
 			}
 			else
 			{
 				if (HAPLOTYPING)
 				{
 				  // TODO interaction relskew/selfing
-					baseval *= fabs((f2n ? 1.0 : 0.0) - (selfingNOW ? 0 : haploweight[marker]));
+					baseval *= fabs((f2n ? 1.0 : 0.0) - haploweight[marker]);
 				}
 				else
 				{
@@ -1088,7 +1091,7 @@ struct individ
 
 			ok += baseval;
 
-			if (update /*&& !allthesame*/ && !selfingNOW)
+			if (update /*&& !allthesame*/ && doupdatehaplo)
 			{
 				(*tb.haplos)[n][f2n] += extparams.updateval;
 				(*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
@@ -1586,6 +1589,8 @@ struct individ
 		probs = tb.fwbw[*tb.shiftflagmode][newstart][0];
 		startmark = newstart;
 
+		if (factor < minfactor) return factor;
+
 		while (startmark < endmark)
 		{
 			int stepsize = 1;
@@ -1598,6 +1603,8 @@ struct individ
 				// If we are doing a quick end
 				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 				double sum = 0;
+
+				if (factor < minfactor) return factor;
 
 				for (int k = 0; k < NUMTYPES; k++)
 				{
@@ -3315,9 +3322,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								// This is the big main call
 								val = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, classicstop(q, g),
-									flag2, true, 0, -15.0 + factor) - factor;
+									flag2, true, 0, -400.0 + factor) - factor;
 
-								if (_finite(val) && val > -40.0)
+								if (_finite(val) && val > -400.0)
 								{
 									// shift mode not included, this is the "real" f2n, indicating what value
 									// in the marker pair is used, not the strand phase (strand phase is flag2 xored
@@ -3399,6 +3406,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
 									}
+									if (mapval < 0 || mapval > 2)
+									  {
+									  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
+									  }
 									reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
@@ -3675,7 +3686,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									int marker = -q - 1000;
 									double val = rawvals[g][s];
 									// Consider switching to all-log
-									if (!_finite(val) || val < 1e-10) val = 1e-10;
+									// TODO: Capping val here, but not in sumnegval, leads to some
+									// strange results, indeed. Maybe?
+									if (!_finite(val) || val < 1e-174) val = 1e-174;
 									
 									{
 										int g2 = g;
@@ -3787,8 +3800,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
 									{
-										double b1 = (haplos[i][0] + maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;
-										double b2 = (haplos[i][1] + maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;
+									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;
+									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;
 
 										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
 										//intended -= reltree[k]->haploweight[marker];
@@ -3955,7 +3968,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 
 						}
-						if (!pred.anymatch)
+						if (!pred.anymatch && rand() / (RAND_MAX / 5))
 						{
 							negshiftcands[c].insert(ourtuple);
 						}
@@ -4459,11 +4472,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 
-					/*for (int c = 0; c < (int) chromstarts.size() - 1; c++)
-					{
-						for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
-					}*/
 				}
+				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
+				  {
+				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
+
+				  }
 			}
 		}
 	}
@@ -5037,28 +5051,37 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 void compareimputedoutput(istream& filteredOutput)
 {
+  int j = 0;
 	while (!filteredOutput.eof())
 	{
+	  std::cout << j++ << std::endl;
 		for (individ* ind : dous)
 		{
 			std::string name;
+			do			  
 			filteredOutput >> name;
-
+			while (name == "--");
+			  
 			for (int i = 0; i < chromstarts[1]; i++)
 			{
 				double val[3];
 				int maxval = 0;
 				for (int i = 0; i < 3; i++)
 				{
-					filteredOutput >> val[i];
+				  std::string temp;
+				  filteredOutput >> temp;
+				  if (sscanf(temp.c_str(), "%lf", &val[i]) != 1)
+				    {
+				      val[i] = -1;
+				    }
 					if (val[i] > val[maxval]) maxval = i;
 				}
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
 
-				if (maxval != data)
+				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0)
 				{
-					std::cout << ind->name << " " << i << "\t";
+				  std::cout << ind->name << " " << j << ":" << i << " " << data << "\t";
 					for (double oneVal : val)
 					{
 						std::cout << oneVal << "\t";
@@ -5294,6 +5317,14 @@ int main(int argc, char* argv[])
 	chromstarts[1] = 700;
 #endif
 
+	if (argc >= 7)
+	{
+		std::ifstream filteredOutput(argv[6]);
+		compareimputedoutput(filteredOutput);
+
+		return 0;
+	}
+
 	//	return 0;
 	CORRECTIONINFERENCE = true;
 	postmarkerdata();
@@ -5329,12 +5360,8 @@ int main(int argc, char* argv[])
 
 	FILE* out = fopen(argv[4], "w");
 	int COUNT = 3;
-	if (argc == 6) sscanf(argv[5], "%d", &COUNT);
-	if (argc == 7)
-	{
-		std::ifstream filteredOutput(argv[4]);
-		compareimputedoutput(filteredOutput);
-	}
+	if (argc >= 6) sscanf(argv[5], "%d", &COUNT);
+
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
