@@ -211,7 +211,7 @@ public:
 		for (int i = 0; i < l.size(); i++)
 		{
 			result[i] = l[i] + r[i];
-,		}
+		}
 
 		return result;
 	}
