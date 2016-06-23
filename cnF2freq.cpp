@@ -1201,7 +1201,11 @@ struct individ
 
 		if (ok)
 		{
-			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
+		  if (n == 216 && marker >= 28 && marker <= 33)
+		    {
+		      std::cout << "UPDATE HAPLO " << marker << "\t" << i << "\t" << flag2 << "\t" << *tb.shiftflagmode << "\t" << updateval << std::endl;
+		    }
+ 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 		}
 		else
 		{
@@ -2902,7 +2906,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && (!(flag2 & currfilter)) && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
+		if (false && marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !filtered && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
 		{
 			return true;
 		}
