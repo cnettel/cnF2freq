@@ -437,7 +437,11 @@ public:
 			this->turn = turn & 54;
 			flagmodeshift = (turn >> TYPEBITS) | ((turn & 1) ? 2 : 0) |
 				((turn & 8) ? 4 : 0);
-			this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
+			// Mis-guided (?) attempt to correct for relskews
+			if (false && RELSKEWS)
+			  {
+			    this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
+			  }
 		}
 		else
 		{
@@ -5178,15 +5182,16 @@ void compareimputedoutput(istream& filteredOutput)
 				}
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
+				int origmaxval = maxval;
+				int oridata = data;
+
 				// If reference allele is not aligned in shapit output:
-				/*
 				  maxval = abs(1-maxval);
 				  data = abs(1-data);
-				*/
-				// That will only look at hetero vs. homo, not what hetero
-				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
+				  // That will only look at hetero vs. homo, not what hetero
+				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[origmaxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
 				{
-				  std::cout << ind->name << " " << j << ":" << i << " " << data << "\t";
+				  std::cout << ind->name << " " << j << ":" << i << " " << oridata << "\t";
 					for (double oneVal : val)
 					{
 						std::cout << oneVal << "\t";
