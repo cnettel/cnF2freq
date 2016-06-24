@@ -4293,33 +4293,32 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								ind->infprobs[j][a].clear();
 								ind->unknowninfprobs[j][a] = 0;
 							}
-						}
+						}						
+					}
 
+					{
+						vector<bool> allhalf;
+						vector<bool> anyinfo;
+						vector<bool> cleared;
+						vector<int> nudgeme;
+
+
+						anyinfo.resize(chromstarts.size());
+						allhalf.resize(chromstarts.size());
+						cleared.resize(chromstarts.size());
+						nudgeme.resize(chromstarts.size());
+						for (int k = 0; k < chromstarts.size(); k++)
 						{
-							vector<bool> allhalf;
-							vector<bool> anyinfo;
-							vector<bool> cleared;
-							vector<int> nudgeme;
-
-
-							anyinfo.resize(chromstarts.size());
-							allhalf.resize(chromstarts.size());
-							cleared.resize(chromstarts.size());
-							nudgeme.resize(chromstarts.size());
-							for (int k = 0; k < chromstarts.size(); k++)
-							{
-								anyinfo[k] = false;
-								allhalf[k] = true;
-								cleared[k] = false;
-								nudgeme[k] = -1;
-							}
-
-							cno = 0;							
+							anyinfo[k] = false;
+							allhalf[k] = true;
+							cleared[k] = false;
+							nudgeme[k] = -1;
 						}
 
+						cno = 0;
 						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 						{
-
+							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 							anyinfo[cno] = true;
 
 							if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
@@ -4412,7 +4411,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}*/
 							}
 						}
-					}
+						}
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 					map<individ*, double> bestshift;
 					for (map<pair<individ*, individ*>, map<int, std::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
