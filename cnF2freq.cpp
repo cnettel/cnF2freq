@@ -5178,8 +5178,13 @@ void compareimputedoutput(istream& filteredOutput)
 				}
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
-
-				if (abs(1-maxval) != abs(1-data) && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
+				// If reference allele is not aligned in shapit output:
+				/*
+				  maxval = abs(1-maxval);
+				  data = abs(1-data);
+				*/
+				// That will only look at hetero vs. homo, not what hetero
+				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[maxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
 				{
 				  std::cout << ind->name << " " << j << ":" << i << " " << data << "\t";
 					for (double oneVal : val)
