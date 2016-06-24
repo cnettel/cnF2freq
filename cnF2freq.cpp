@@ -438,7 +438,7 @@ public:
 			flagmodeshift = (turn >> TYPEBITS) | ((turn & 1) ? 2 : 0) |
 				((turn & 8) ? 4 : 0);
 			// Mis-guided (?) attempt to correct for relskews
-			if (false && RELSKEWS)
+			if (RELSKEWS && false)
 			  {
 			    this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
 			  }
@@ -3816,8 +3816,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
 									{
-									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;
-									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;
+									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j])) ? reltree[k]->relhaplo[marker] : 0.5;
+									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/ * (1 + 1e-10 - rhfactor);
+									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/ * (rhfactor + 1e-10);
 
 										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
 										//intended -= reltree[k]->haploweight[marker];
@@ -4388,7 +4389,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										intended = min((float)intended, 1.0f - maxdiff);
 										if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 										{
-											ind->haploweight[j] = max((float)intended, maxdiff);
+										  if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
+										    {
+										      cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
+										    }
+										  ind->haploweight[j] = max((float)intended, maxdiff);
+
 
 											// Nudging flag currently not respected
 											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
@@ -5144,7 +5150,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			    dous[j]->markerdata[i] = marker;
 			    if (marker.first == UnknownMarkerVal)
 			      {
-				dous[j]->relhaplo[i] = 1;
+				if (RELSKEWS)
+				  {
+				    dous[j]->relhaplo[i] = 1;
+				  }
 				dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			      }
 			  }
