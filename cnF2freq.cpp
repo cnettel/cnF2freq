@@ -1201,10 +1201,6 @@ struct individ
 
 		if (ok)
 		{
-		  if (n == 216 && marker >= 28 && marker <= 33)
-		    {
-		      std::cout << "UPDATE HAPLO " << marker << "\t" << i << "\t" << flag2 << "\t" << *tb.shiftflagmode << "\t" << updateval << std::endl;
-		    }
  			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 		}
 		else
@@ -3338,9 +3334,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								// This is the big main call
 								val = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, classicstop(q, g),
-									flag2, true, 0, -400.0 + factor) - factor;
+									flag2, true, 0, -40.0 + factor) - factor;
 
-								if (_finite(val) && val > -400.0)
+								if (_finite(val) && val > -40.0)
 								{
 									// shift mode not included, this is the "real" f2n, indicating what value
 									// in the marker pair is used, not the strand phase (strand phase is flag2 xored
@@ -5073,7 +5069,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 }
 
 
-void readfambed(std::string famFileName, std::string bedFileName)
+void readfambed(std::string famFileName, std::string bedFileName, bool readall = true)
 {
 	using namespace boost::interprocess;
 	using namespace x3;
@@ -5101,6 +5097,7 @@ void readfambed(std::string famFileName, std::string bedFileName)
 	mapped_region snpRegion(bedFile, read_only, 3); // Skip header
 	unsigned char* snpdata = (unsigned char*)snpRegion.get_address();
 	size_t size = snpRegion.get_size();
+	cout << size << " bytes, " << size/blocksize << " SNPs." << std::endl;
 
 	vector<int> indArray;
 	for (individ* ind : dous)
@@ -5137,7 +5134,16 @@ void readfambed(std::string famFileName, std::string bedFileName)
 				break;
 			}
 
-			dous[j]->markerdata[i] = marker;
+			if (readall || marker.first == UnknownMarkerVal)
+			  {
+			    //cout << "/// " << dous[j]->name << " " << i << std::endl;
+			    dous[j]->markerdata[i] = marker;
+			    if (marker.first == UnknownMarkerVal)
+			      {
+				dous[j]->relhaplo[i] = 1;
+				dous[j]->markersure[i] = make_pair(0.f, 0.f);
+			      }
+			  }
 		}
 	}
 }
@@ -5408,15 +5414,16 @@ int main(int argc, char* argv[])
 
 	readhapssample(sampleFile, bimFile, hapsFile);
 	markerposes.resize(700);
-	chromstarts[1] = 700;
+	  chromstarts[1] = 700;
 #endif
-
+	bool docompare = true;
 	if (argc >= 9)
 	{
-		readfambed(argv[7], argv[8]);
+	  docompare = argv[6] != (std::string) "-";
+	  readfambed(argv[7], argv[8], docompare);
 	}
 
-	if (argc >= 7)
+	if (argc >= 7 && docompare)
 	{
 		std::ifstream filteredOutput(argv[6]);
 		compareimputedoutput(filteredOutput);
