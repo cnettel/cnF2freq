@@ -4314,101 +4314,102 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								nudgeme[k] = -1;
 							}
 
-							cno = 0;
-							for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+							cno = 0;							
+						}
+
+						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+						{
+
+							anyinfo[cno] = true;
+
+							if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
+							{
+								double b1 = ind->haplobase[j];
+								double b2 = ind->haplocount[j] - ind->haplobase[j];
+								/*if (!allhalf[cno])
+								{
+								ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
+								}*/
+
+								if (!early && fabs(ind->negshift[j]) < 1e-5)
+								{
+									fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
+									//lockhaplos(ind, cno);
+									cleared[cno] = true;
+									ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
+									ind->haplocount[j] = 0;
+								}
+								else
+									allhalf[cno] = false;
+							}
+
+
+							if (ind->haplocount[j] && ind->haploweight[j] && ind->haploweight[j] != 1)
 							{
 
-								anyinfo[cno] = true;
+								double val = exp(ind->haplobase[j] / ind->haplocount[j]);
+								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
-								if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
+
+								double intended = exp(log(val) * 0.1 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+								intended = intended / (intended + 1.0);
+
+								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
+									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
+									cleared[cno])
 								{
-									double b1 = ind->haplobase[j];
-									double b2 = ind->haplocount[j] - ind->haplobase[j];
-									/*if (!allhalf[cno])
-									{
-									ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
-									}*/
-
-									if (!early && fabs(ind->negshift[j]) < 1e-5)
-									{
-										fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
-										//lockhaplos(ind, cno);
-										cleared[cno] = true;
-										ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
-										ind->haplocount[j] = 0;
-									}
-									else
-										allhalf[cno] = false;
-								}
-
-
-								if (ind->haplocount[j] && ind->haploweight[j] && ind->haploweight[j] != 1)
-								{
-									
-									double val = exp(ind->haplobase[j] / ind->haplocount[j]);
-									val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
-
-
-									double intended = exp(log(val) * 0.1 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
-									intended = intended / (intended + 1.0);
-
-									if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
-										ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
-										cleared[cno])
-									{
-										allhalf[cno] = false;
-										fprintf(out, "Locking: %d %d %lf\n", ind->n, j, ind->negshift[j]);
-										ind->haploweight[j] = (intended < 0.5) ? 0 : 1;
-									}
-									else								
-									{
-										// Cap the change if the net difference is small/miniscule
-										double nnn = 1.6;										
-										if (nnn < 1.0) nnn = 1.0;
-
-										double limn = (nnn - 1.0) * ind->haploweight[j] * (-1 + ind->haploweight[j]);
-
-										double limd1 = -1 - (nnn - 1.0) * ind->haploweight[j];
-										double limd2 = (nnn - 1.0) * ind->haploweight[j] - nnn;
-
-										double lim = min(limn / limd1, limn / limd2);
-
-										double diff = intended - ind->haploweight[j];
-
-										if (diff > limn / limd1)
-										{
-											intended = ind->haploweight[j] + limn / limd1;
-										}
-
-										if (diff < -limn / limd2)
-										{
-											intended = ind->haploweight[j] - limn / limd2;
-										}
-
-										//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-										intended = min((float)intended, 1.0f - maxdiff);
-										if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
-										{
-										  if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
-										    {
-										      cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
-										    }
-										  ind->haploweight[j] = max((float)intended, maxdiff);
-
-
-											// Nudging flag currently not respected
-											if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
-											{
-												nudgeme[cno] = j;
-											}
-										}
-									}
-
-									/*							if (ind->haploweight[j] != 0.5)
-									{
 									allhalf[cno] = false;
-									}*/
+									fprintf(out, "Locking: %d %d %lf\n", ind->n, j, ind->negshift[j]);
+									ind->haploweight[j] = (intended < 0.5) ? 0 : 1;
 								}
+								else
+								{
+									// Cap the change if the net difference is small/miniscule
+									double nnn = 1.6;
+									if (nnn < 1.0) nnn = 1.0;
+
+									double limn = (nnn - 1.0) * ind->haploweight[j] * (-1 + ind->haploweight[j]);
+
+									double limd1 = -1 - (nnn - 1.0) * ind->haploweight[j];
+									double limd2 = (nnn - 1.0) * ind->haploweight[j] - nnn;
+
+									double lim = min(limn / limd1, limn / limd2);
+
+									double diff = intended - ind->haploweight[j];
+
+									if (diff > limn / limd1)
+									{
+										intended = ind->haploweight[j] + limn / limd1;
+									}
+
+									if (diff < -limn / limd2)
+									{
+										intended = ind->haploweight[j] - limn / limd2;
+									}
+
+									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
+									intended = min((float)intended, 1.0f - maxdiff);
+									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+									{
+										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
+										{
+											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
+										}
+										ind->haploweight[j] = max((float)intended, maxdiff);
+
+
+										// Nudging flag currently not respected
+										if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
+										{
+											nudgeme[cno] = j;
+										}
+									}
+								}
+
+								/*							if (ind->haploweight[j] != 0.5)
+								{
+								allhalf[cno] = false;
+								}*/
 							}
 						}
 					}
