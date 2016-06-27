@@ -1933,8 +1933,8 @@ struct individ
 					float relscore[2] = { 1, 1 };
 					if (RELSKEWS && iter == tofind)
 					{
-					  relscore[0] = relhaplo[max(j, j - d)];
-					  relscore[1] = 1 - relhaplo[max(j, j - d)];
+					  relscore[0] = relhaplo[min(j, j - d)];
+					  relscore[1] = 1 - relhaplo[min(j, j - d)];
 					}
 
 					// Use those xor values
