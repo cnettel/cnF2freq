@@ -1865,12 +1865,11 @@ struct individ
 				{
 					PerStateArray<double>::T probs2 = { {0} };
 					double recprob[2 + SELFING][2];
-
-#pragma ivdep
 					// Compute recombination probabilities for this specific distance, for the two sexes.
 					// (as the sex-dependent marker distance might not be a simple transformation, the actrec
 					// data comes into play).
 					const int selfgen = gen - 2;
+#pragma ivdep
 					for (int gen = 0; gen < 2 + SELFING; gen++)
 					{
 						for (int k = 0; k < 2; k++)
@@ -1943,6 +1942,7 @@ struct individ
 					for (int from = 0; from < VALIDSELFNUMTYPES; from++) // SELFING condition removes the double-bit set case, which is not allowed
 					{
 						if (probs[from] < MINFACTOR || !probs[from]) continue;
+#pragma ivdep
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
