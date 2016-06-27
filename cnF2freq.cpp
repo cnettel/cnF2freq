@@ -331,9 +331,10 @@ EXTERNFORGCC vector<individ*> reltree;
 EXTERNFORGCC map<individ*, int> relmap;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
+// TODO infprobs SHOULD REALLY GO HERE, JUST SAVING MEMORY NOW AT TERRIBLE RISK
 #pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap)
 #if !DOFB
-#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs, infprobs)
+#pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
 #else
 #pragma omp threadprivate(fwbw,fwbwfactors,fwbwdone)
 #endif
@@ -752,7 +753,7 @@ struct individ
 	// Relative skewness, i.e. shifts between adjacent markers.
 	vector<float> relhaplo;
 	// The cost-benefit value of inverting the haplotype assignment from an arbitrary marker point on.
-	vector<float> negshift;
+	vector<double> negshift;
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
 	//vector<std::array<std::array<double, 40>, 4 > > semishift;
@@ -1064,7 +1065,7 @@ struct individ
 						0,
 						extparams);
 
-				if (subtrack1.prelok && (!zeropropagate || (genwidth == 1 << (NUMGEN - 1))))
+				if (subtrack1.prelok && (!zeropropagate || rootgen))
 				{
 					double secsecondval = 0;
 					if (themarkersure[!realf2n])
@@ -1098,7 +1099,10 @@ struct individ
 			if (update /*&& !allthesame*/ && doupdatehaplo)
 			{
 				(*tb.haplos)[n][f2n] += extparams.updateval;
-				(*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
+				if (DOINFPROBS)
+				  {
+				    (*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
+				  }
 			}
 		}
 		if (selfingNOW && extparams.gstr) *extparams.gstr *= 2;
@@ -2939,7 +2943,7 @@ template<int N> struct valuereporter
 		{
 			char string[255];
 			int val;
-			sprintf(string, "%.5lf%c%n", probs[i] * probsum, i == N - 1 ? '\n' : '\t', &val);
+			sprintf(string, "%.5lf%c%n", probs[i] /** probsum*/, i == N - 1 ? '\n' : '\t', &val);
 			for (int k = 0; k < val; k++)
 			{
 				outqueue.push_back(string[k]);
@@ -3209,11 +3213,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				anygood |= dous[j]->pars[1] && !dous[j]->pars[1]->empty;
 
 				//if (!anygood) shiftend = 2;
-				if (!anygood)
+				/*if (!anygood)
 				{
 					shiftignore = 6;
 					flag2ignore = 0;
-				}
+					}*/
 
 				double factor = -1e15;
 				double factors[NUMSHIFTS];
@@ -3625,7 +3629,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
-					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 1)
+					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						const int NUMTURNS = 1 << (TYPEBITS + 1);
 						double rawvals[NUMTURNS][NUMSHIFTS];
@@ -3816,7 +3820,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
 									{
-									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j])) ? reltree[k]->relhaplo[marker] : 0.5;
+									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j]) && false) ? reltree[k]->relhaplo[marker] : 0.5;
 									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/ * (1 + 1e-10 - rhfactor);
 									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/ * (rhfactor + 1e-10);
 
@@ -3939,7 +3943,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int c = 0; c < (int)chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
-					double minval = -1e-5;
+					double minval = -1e-10;
 					bool prevlow = false;
 
 					for (int p = chromstarts[c]; p < (int)chromstarts[c + 1]; p++)
@@ -3949,7 +3953,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							minstart = p;
 							minval = ind->negshift[p];
 						}
-						if (ind->negshift[p] < -1e-5)
+						if (ind->negshift[p] < -1e-10)
 						{
 							if (!prevlow)
 							{
@@ -4350,7 +4354,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
 
-								double intended = exp(log(val) * 0.1 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+								double intended = exp(log(val) * 0.3 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
@@ -4390,10 +4394,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									intended = min((float)intended, 1.0f - maxdiff);
 									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 									{
-										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
+									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
 										{
 											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
-										}
+											}*/
 										ind->haploweight[j] = max((float)intended, maxdiff);
 
 
@@ -4411,7 +4415,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}*/
 							}
 						}
-						}
+					}
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 					map<individ*, double> bestshift;
 					for (map<pair<individ*, individ*>, map<int, std::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
@@ -5055,7 +5059,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		if (me->gen > 0) dous.push_back(me);
+		/*if (me->gen > 0)*/ dous.push_back(me);
 
 		sampleInds.push_back(me);
 	}
@@ -5068,7 +5072,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		  float sureVal = 0;
 		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 1e-7;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			sampleInds[j]->haploweight[i] = 1e-3;
+			if (sampleInds[j]->gen < 2) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  { 
@@ -5121,6 +5125,11 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
 		for (int j = 0; j < dous.size(); j++)
 		{
+		  
+		  if (!(
+			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
+			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;
+		  
 			int index = indArray[j];
 			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
 			pair<MarkerVal, MarkerVal> marker;
@@ -5198,7 +5207,10 @@ void compareimputedoutput(istream& filteredOutput)
 				  maxval = abs(1-maxval);
 				  data = abs(1-data);
 				  // That will only look at hetero vs. homo, not what hetero
-				if (maxval != data && ind->pars[0] && ind->pars[1] && i != chromstarts[1] - 1 && val[origmaxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
+				if (maxval != data &&
+			      ind->pars[0] && !ind->pars[0]->empty &&
+			      ind->pars[1] && !ind->pars[1]->empty &&
+				    i != chromstarts[1] - 1 && val[origmaxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
 				{
 				  std::cout << ind->name << " " << j << ":" << i << " " << oridata << "\t";
 					for (double oneVal : val)
