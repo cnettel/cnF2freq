@@ -4961,6 +4961,7 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 }
 
 vector<int> mapIndices;
+vector<bool> bimmonomorphs;
 
 void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 {
@@ -4977,9 +4978,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	auto word_ = lexeme[+(char_ - space)];
 	
 	auto marker_ = (int_ > word_);
-	auto alleles_ = omit[(word_ > word_)];
+	auto alleles_ = (word_ > word_);
 	auto bimLine = (marker_ > omit[float_] > int_ > alleles_);
-	auto hapsLine = (marker_ > omit[float_] > alleles_ > (+int_));
+	auto hapsLine = (marker_ > omit[float_] > omit[alleles_] > (+int_));
 	auto sampleHeader = omit[
 				 repeat(7)[word_] > eol >
 				    int_ > int_ > int_ > repeat(4)[word_] > eol];
@@ -4996,6 +4997,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			auto attr = _attr(context);
 			int index = geneMap.size();
 			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), index);
+			bimmonomorphs.push_back(((std::string) at_c<3>(attr) == at_c<4>(attr)));
 		})])
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
@@ -5133,24 +5135,31 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			int index = indArray[j];
 			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
 			pair<MarkerVal, MarkerVal> marker;
+
+			bool isachange = false;
 			switch (thisval)
 			{
 			case 0:
-				marker = make_pair(1 * MarkerValue, 1 * MarkerValue);
+				// ShapeIT will turn A A to 0 A, making all genotypes homozygotes for the second allele, rather than the first
+				int val = 1 + bimmonomorphs[index];
+				marker = make_pair(val * MarkerValue, val * MarkerValue);
+				isachange = marker != dous[j]->markerdata[i];
 				break;
 			case 1:
 				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 				break;
-			case 2:
-			  if (dous[j]->markerdata[i].first == dous[j]->markerdata[i].second)
-			    {
-			      cout << "!!! " << dous[j]->name << " " << i << std::endl;
-			    }
+			case 2:			  
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
+				isachange = dous[j]->markerdata[i].first != dous[j]->markerdata[i].second;
 				break;
 			case 3:
 				marker = make_pair(2 * MarkerValue, 2 * MarkerValue);
+				isachange = marker != dous[j]->markerdata[i];
 				break;
+			}
+			if (isachange)
+			{
+				cout << "!!! " << dous[j]->name << " " << i << std::endl;
 			}
 
 			if (readall || marker.first == UnknownMarkerVal)
