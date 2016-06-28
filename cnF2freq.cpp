@@ -5059,7 +5059,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		/*if (me->gen > 0)*/ dous.push_back(me);
+		/*if (me->gen > 0)*/ if (me->name != (std::string)"KA06-0532") dous.push_back(me);
 
 		sampleInds.push_back(me);
 	}
@@ -5444,8 +5444,8 @@ int main(int argc, char* argv[])
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
-	markerposes.resize(700);
-	  chromstarts[1] = 700;
+	/*	markerposes.resize(700);
+		chromstarts[1] = 700;*/
 #endif
 	bool docompare = true;
 	if (argc >= 9)
