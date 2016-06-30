@@ -4354,7 +4354,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
 
-								double intended = exp(log(val) * 0.3 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+								double intended = exp(log(val) * 1.0 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
@@ -4391,14 +4391,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-									intended = min((float)intended, 1.0f - maxdiff);
+									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
 									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 									{
 									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
 										{
 											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 											}*/
-										ind->haploweight[j] = max((float)intended, maxdiff);
+									  ind->haploweight[j] = max((float)intended, maxdiff / (ind->children + 1));
 
 
 										// Nudging flag currently not respected
@@ -4961,7 +4961,7 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 }
 
 vector<int> mapIndices;
-vector<bool> bimmonomorphs;
+vector<bool> hapmonomorphs;
 
 void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 {
@@ -4971,16 +4971,16 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 	bimFile >> std::noskipws;
 	hapsFile >> std::noskipws;
 	
-	std::vector<std::tuple<int, std::string, std::vector<int>>> snpData;
+	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
 
 	auto word_ = lexeme[+(char_ - space)];
 	
 	auto marker_ = (int_ > word_);
-	auto alleles_ = (word_ > word_);
-	auto bimLine = (marker_ > omit[float_] > int_ > alleles_);
-	auto hapsLine = (marker_ > omit[float_] > omit[alleles_] > (+int_));
+	auto alleles_ = word_ > word_;
+	auto bimLine = (marker_ > omit[float_] > int_ > omit[alleles_]);
+	auto hapsLine = (marker_ > omit[float_] > word_ > word_ > (+int_));
 	auto sampleHeader = omit[
 				 repeat(7)[word_] > eol >
 				    int_ > int_ > int_ > repeat(4)[word_] > eol];
@@ -4997,7 +4997,6 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			auto attr = _attr(context);
 			int index = geneMap.size();
 			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), index);
-			bimmonomorphs.push_back(((std::string) at_c<3>(attr) == at_c<4>(attr)));
 		})])
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
@@ -5038,6 +5037,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		mapIndices.push_back(index);
 		lastpos = pos;
 		lastchrom = chrom;
+		hapmonomorphs.push_back(get<2>(snp) == get<3>(snp));
 	}
 
 	chromstarts.push_back(markerposes.size());
@@ -5061,14 +5061,14 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		/*if (me->gen > 0)*/ if (me->name != (std::string)"KA06-0532") dous.push_back(me);
+		/*if (me->gen > 0)*/ if ((std::string)"KA06-0532" != me->name) dous.push_back(me);
 
 		sampleInds.push_back(me);
 	}
 
 	for (int i = 0; i < snpData.size(); i++)
 	{
-		const vector<int>& markers = get<2>(snpData[i]);
+		const vector<int>& markers = get<4>(snpData[i]);
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
 		  float sureVal = 0;
@@ -5078,7 +5078,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  { 
-			    sampleInds[j]->relhaplo[i] = (markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+			    sampleInds[j]->relhaplo[i] = 0.51;//(markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
 			  }
 		}
 	}
@@ -5140,9 +5140,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			switch (thisval)
 			{
 			case 0:
-				// ShapeIT will turn A A to 0 A, making all genotypes homozygotes for the second allele, rather than the first
-				int val = 1 + bimmonomorphs[index];
-				marker = make_pair(val * MarkerValue, val * MarkerValue);
+				marker = make_pair(1 * MarkerValue, 1 * MarkerValue);
 				isachange = marker != dous[j]->markerdata[i];
 				break;
 			case 1:
@@ -5153,7 +5151,9 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				isachange = dous[j]->markerdata[i].first != dous[j]->markerdata[i].second;
 				break;
 			case 3:
-				marker = make_pair(2 * MarkerValue, 2 * MarkerValue);
+				// ShapeIT will turn A A to 0 A, making all genotypes homozygotes for the second allele, rather than the first
+				int val = 2 - hapmonomorphs[i];
+				marker = make_pair(val * MarkerValue, val * MarkerValue);
 				isachange = marker != dous[j]->markerdata[i];
 				break;
 			}
@@ -5168,10 +5168,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			    dous[j]->markerdata[i] = marker;
 			    if (marker.first == UnknownMarkerVal)
 			      {
-				if (RELSKEWS)
+				/*if (RELSKEWS)
 				  {
 				    dous[j]->relhaplo[i] = 1;
-				  }
+				    }*/
 				dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			      }
 			  }
@@ -5213,8 +5213,8 @@ void compareimputedoutput(istream& filteredOutput)
 				int oridata = data;
 
 				// If reference allele is not aligned in shapit output:
-				  maxval = abs(1-maxval);
-				  data = abs(1-data);
+				/*				  maxval = abs(1-maxval);
+								  data = abs(1-data);*/
 				  // That will only look at hetero vs. homo, not what hetero
 				if (maxval != data &&
 			      ind->pars[0] && !ind->pars[0]->empty &&
@@ -5453,8 +5453,8 @@ int main(int argc, char* argv[])
 	std::ifstream hapsFile(argv[3]);
 
 	readhapssample(sampleFile, bimFile, hapsFile);
-	/*	markerposes.resize(700);
-		chromstarts[1] = 700;*/
+		markerposes.resize(700);
+		chromstarts[1] = 700;
 #endif
 	bool docompare = true;
 	if (argc >= 9)
