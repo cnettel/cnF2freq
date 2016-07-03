@@ -3625,7 +3625,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 						}
 					}
-
+					}
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
@@ -3660,7 +3660,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 							{
 								if (shiftflagmode & shiftignore) continue;
-								// If we are above this limit, we are shifting shift moden
+								// If we are above this limit, we are shifting shift mode
 								// within the range and cannot use this heuristic of the
 								// aggregated probability to know anything... anything at all!
 								// (In other cases, our simulated crossover event amounts to 
@@ -3846,6 +3846,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 
 			}
+			fprintf(stderr, "LAST: %d %s\n", dous[j]->n, dous[j]->name.c_str());
+			fflush(stderr);
 		}
 
 
