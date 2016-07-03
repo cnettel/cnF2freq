@@ -3624,8 +3624,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 						}
 						}
-					}
-					}
+					}					
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
