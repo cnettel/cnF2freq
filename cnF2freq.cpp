@@ -5148,7 +5148,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				break;
 			case 2:			  
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
-				isachange = dous[j]->markerdata[i].first != dous[j]->markerdata[i].second;
+				isachange = dous[j]->markerdata[i].first == dous[j]->markerdata[i].second;
 				break;
 			case 3:
 				// ShapeIT will turn A A to 0 A, making all genotypes homozygotes for the second allele, rather than the first
@@ -5159,10 +5159,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			}
 			if (isachange)
 			{
-				cout << "!!! " << dous[j]->name << " " << i << std::endl;
+			  cout << "!!! " << dous[j]->name << " " << i << " " << marker.first.value() << marker.second.value() << " " << std::endl;
 			}
 
-			if (readall || marker.first == UnknownMarkerVal)
+			if (readall || marker.first == UnknownMarkerVal || isachange)
 			  {
 			    //cout << "/// " << dous[j]->name << " " << i << std::endl;
 			    dous[j]->markerdata[i] = marker;
