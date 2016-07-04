@@ -4393,7 +4393,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
-									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+									if (ind->children && (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 									{
 									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
 										{
@@ -5085,7 +5085,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
 					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
 					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
-					sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp((markerposes[i + 1] - markerposes[i]) * 1e6 * -0.0004);
+				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp((markerposes[i + 1] - markerposes[i]) * 1e6 * -0.0004);
 				}
 			  }
 		}
