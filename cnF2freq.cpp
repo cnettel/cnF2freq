@@ -3699,68 +3699,70 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							for (int g = 0; g < NUMTURNS; g++)
 							{
+								double val = 0;
+
 								for (int s = shifts; s < shiftend; s++)
 								{
-									if (s & shiftignore) continue;
+									if (s & shiftignore) continue;								
+									val += rawvals[g][s];
+								}
+
+								// TODO: Capping val here, but not in sumnegval, leads to some
+								// strange results, indeed. Maybe?
+								if (!_finite(val) || val < 1e-174) val = 1e-174;									
+								{
 									int marker = -q - 1000;
-									double val = rawvals[g][s];
-									// Consider switching to all-log
-									// TODO: Capping val here, but not in sumnegval, leads to some
-									// strange results, indeed. Maybe?
-									if (!_finite(val) || val < 1e-174) val = 1e-174;
-									
+									int g2 = g;
+									if (!g) g2 = (1 << 15) - 1;
+
+									// This is hardcoded for the generation count of 3.
+									if (NUMGEN == 3)
 									{
-										int g2 = g;
-										if (!g) g2 = (1 << 15) - 1;
+										dous[j]->negshift[marker] += -log(val) * (1.0 - ((g >> 6) & 1) * 2) * ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
 
-										// This is hardcoded for the generation count of 3.
-										if (NUMGEN == 3)
+										if (dous[j]->pars[0])
+											dous[j]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /* / sumnegval[0] */;
+
+										if (dous[j]->pars[1])
+											dous[j]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 3) & 1) * 2) * ((g2 >> 3) & 1) /* / sumnegval[3] */;
+
+										if (dous[j]->gen >= 2)
 										{
-											dous[j]->negshift[marker] += log(val) * (1.0 - ((g >> 6) & 1) * 2) * ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
+											if (dous[j]->pars[0] && dous[j]->pars[0]->pars[0])
+												dous[j]->pars[0]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
 
-											if (dous[j]->pars[0])
-												dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /* / sumnegval[0] */;
+											if (dous[j]->pars[0] && dous[j]->pars[0]->pars[1])
+												dous[j]->pars[0]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 2) & 1) * 2) * ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
 
-											if (dous[j]->pars[1])
-												dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 3) & 1) * 2) * ((g2 >> 3) & 1) /* / sumnegval[3] */;
-											if (dous[j]->gen >= 2)
-											{
-												if (dous[j]->pars[0] && dous[j]->pars[0]->pars[0])
-													dous[j]->pars[0]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
+											if (dous[j]->pars[1] && dous[j]->pars[1]->pars[0])
+												dous[j]->pars[1]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 4) & 1) * 2) * ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
 
-												if (dous[j]->pars[0] && dous[j]->pars[0]->pars[1])
-													dous[j]->pars[0]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 2) & 1) * 2) * ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
-
-												if (dous[j]->pars[1] && dous[j]->pars[1]->pars[0])
-													dous[j]->pars[1]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 4) & 1) * 2) * ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
-
-												if (dous[j]->pars[1] && dous[j]->pars[1]->pars[1])
-													dous[j]->pars[1]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
-											}
+											if (dous[j]->pars[1] && dous[j]->pars[1]->pars[1])
+												dous[j]->pars[1]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
 										}
-										else
+									}
+									else
+									{
+										dous[j]->negshift[marker] += val * (1.0 - ((g >> 2) & 1) * 2) /* * ((g2 >> 2) & 1) */ / (sumnegval[2]);
+
+										if (dous[j]->pars[0])
+											dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /*/ (sumnegval[0])*/;
+
+										if (dous[j]->pars[1])
+											dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /*/ (sumnegval[1])*/;
+										if (dous[j]->pars[0] && dous[j]->pars[1])
 										{
-											dous[j]->negshift[marker] += val * (1.0 - ((g >> 2) & 1) * 2) /* * ((g2 >> 2) & 1) */ / (sumnegval[2]);
-
-											if (dous[j]->pars[0])
-												dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /*/ (sumnegval[0])*/;
-
-											if (dous[j]->pars[1])
-												dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /*/ (sumnegval[1])*/;
-											if (dous[j]->pars[0] && dous[j]->pars[1])
-											{
-												nsm[make_pair(dous[j]->pars[0], dous[j]->pars[1])][marker][g] +=
-													log(val) - log(rawvals[0][s]);
-											}
-
-											if (g == 1)
-												nsm[make_pair(dous[j]->pars[0], dous[j]->pars[0])][marker][2] +=
-												log(val) - log(rawvals[0][s]);
-
-											if (g == 4)
-												nsm[make_pair(dous[j]->pars[0], dous[j])][marker][2] +=
+											nsm[make_pair(dous[j]->pars[0], dous[j]->pars[1])][marker][g] +=
 												log(val) - log(rawvals[0][s]);
 										}
+
+										if (g == 1)
+											nsm[make_pair(dous[j]->pars[0], dous[j]->pars[0])][marker][2] +=
+											log(val) - log(rawvals[0][s]);
+
+										if (g == 4)
+											nsm[make_pair(dous[j]->pars[0], dous[j])][marker][2] +=
+											log(val) - log(rawvals[0][s]);
 									}
 								}
 							}
