@@ -3741,6 +3741,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												dous[j]->pars[1]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
 										}
 									}
+#if false
 									else
 									{
 										dous[j]->negshift[marker] += val * (1.0 - ((g >> 2) & 1) * 2) /* * ((g2 >> 2) & 1) */ / (sumnegval[2]);
@@ -3764,6 +3765,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											nsm[make_pair(dous[j]->pars[0], dous[j])][marker][2] +=
 											log(val) - log(rawvals[0][s]);
 									}
+#endif
 								}
 							}
 						}
