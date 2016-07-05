@@ -3729,27 +3729,27 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									// This is hardcoded for the generation count of 3.
 									if (NUMGEN == 3)
 									{
-										dous[j]->negshift[marker] += -log(val) * (1.0 - ((g >> 6) & 1) * 2) * ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
+										dous[j]->negshift[marker] += log(val) * (1.0 - ((g >> 6) & 1) * 2) * ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
 
 										if (dous[j]->pars[0])
-											dous[j]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /* / sumnegval[0] */;
+											dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /* / sumnegval[0] */;
 
 										if (dous[j]->pars[1])
-											dous[j]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 3) & 1) * 2) * ((g2 >> 3) & 1) /* / sumnegval[3] */;
+											dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 3) & 1) * 2) * ((g2 >> 3) & 1) /* / sumnegval[3] */;
 
 										if (dous[j]->gen >= 2)
 										{
 											if (dous[j]->pars[0] && dous[j]->pars[0]->pars[0])
-												dous[j]->pars[0]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
+												dous[j]->pars[0]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
 
 											if (dous[j]->pars[0] && dous[j]->pars[0]->pars[1])
-												dous[j]->pars[0]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 2) & 1) * 2) * ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
+												dous[j]->pars[0]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 2) & 1) * 2) * ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
 
 											if (dous[j]->pars[1] && dous[j]->pars[1]->pars[0])
-												dous[j]->pars[1]->pars[0]->negshift[marker] += -log(val) * (1.0 - ((g >> 4) & 1) * 2) * ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
+												dous[j]->pars[1]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 4) & 1) * 2) * ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
 
 											if (dous[j]->pars[1] && dous[j]->pars[1]->pars[1])
-												dous[j]->pars[1]->pars[1]->negshift[marker] += -log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
+												dous[j]->pars[1]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
 										}
 									}
 #if false
@@ -5197,6 +5197,11 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				    }*/
 				dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			      }
+			  }
+			if (i == 558)
+			  {
+			    dous[j]->markerdata[i] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
+			    dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			  }
 		}
 	}
