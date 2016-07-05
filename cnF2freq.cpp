@@ -3634,12 +3634,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
 						double sumnegval[TYPEBITS + 1] = { 0 };
+						bool validg[NUMTURNS] = { 0 };
+
 						for (int g = 0; g < NUMTURNS; g++)
 						{
 							for (int s = 0; s < NUMSHIFTS; s++)
 							{
-								rawvals[g][s] = 0;
-								rawervals[g][s] = 0;
+								rawvals[g][s] = -1;
+								rawervals[g][s] = -1;
 							}
 						}
 
@@ -3673,7 +3675,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
-								if (rawervals[g][oldshift] < 0) continue;
+								validg[g] = true;
+
+								if (rawervals[g][oldshift] < 0)
+								{
+									rawvals[g][oldshift] = 0;
+									continue;
+								}
 
 								rawvals[g][oldshift] = rawervals[g][oldshift];
 
@@ -3699,11 +3707,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							for (int g = 0; g < NUMTURNS; g++)
 							{
+								if (!validg[g]) continue;
+
 								double val = 0;
 
 								for (int s = shifts; s < shiftend; s++)
 								{
-									if (s & shiftignore) continue;								
+									if (s & shiftignore) continue;
+									if (rawvals[g][s] < 0) continue;
 									val += rawvals[g][s];
 								}
 
