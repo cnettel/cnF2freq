@@ -5156,7 +5156,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				phases[j] = matchNum;
 				if (RELSKEWS)
 				{
-				  sampleInds[j]->relhaplo[i] += unit * (phases[j] == oldPhase);
+				  sampleInds[j]->relhaplo[i] += unit * (oldPhase == 0 || phases[j] == oldPhase);
 				}
 				if (!numMatches)
 				{
