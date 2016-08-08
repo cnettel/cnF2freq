@@ -5106,21 +5106,21 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 		}
 	}
 
+	double unit = 1.0 / (hapsFile.size() + 0.5);
+	for (int j = 0; j < sampleInds.size(); j++)
+	  {
+	    for (int i = 0; i < snpData.size(); i++)
+	      {
+		if (RELSKEWS)
+		  {
+		    sampleInds[j]->relhaplo[i] = unit;
+		  }
+		sampleInds[j]->markersure[i] = make_pair(0.5 * unit, 0.5 * unit);
+	      }
+	  }
+
 	for (int k = 1; k < hapsFile.size(); k++)
 	{
-		double unit = 1.0 / (hapsFile.size() + 0.5);
-		for (int j = 0; j < sampleInds.size(); j++)
-		{
-			for (int i = 0; i < snpData.size(); i++)
-			{
-				if (RELSKEWS)
-				{
-					sampleInds[j]->relhaplo[i] = unit;
-				}
-				sampleInds[j]->markersure[i] = make_pair(unit, unit);
-			}
-		}
-
 		vector<int> phases;
 		phases.resize(sampleInds.size());
 		snpData.clear();
@@ -5137,7 +5137,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				int matchNum;
 				int numMatches = 0;
 
-				for (int p = 1; p < 2; p++)
+				for (int p = 1; p <= 2; p++)
 				{
 					auto marker = (p == 1) ? make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue) : make_pair((markers[j * 2 + 1] + 1) * MarkerValue, (markers[j * 2] + 1) * MarkerValue);
 					if (marker == sampleInds[j]->markerdata[i])
@@ -5156,9 +5156,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				phases[j] = matchNum;
 				if (RELSKEWS)
 				{
-					sampleInds[j]->relhaplo[i] += unit;
+				  sampleInds[j]->relhaplo[i] += unit * (phases[j] == oldPhase);
 				}
-				if (numMatches)
+				if (!numMatches)
 				{
 					// TODO: Look at whether one of the two alleles matches
 					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit, sampleInds[j]->markersure[i].second + unit);
@@ -5543,6 +5543,10 @@ int main(int argc, char* argv[])
 
 	vector<istream*> hapFiles;
 	hapFiles.push_back(&hapsFile);
+	for (int k = 9; k < argc; k++)
+	  {
+	    hapFiles.push_back(new ifstream(argv[k]));
+	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
 		markerposes.resize(700);
