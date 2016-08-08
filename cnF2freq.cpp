@@ -5541,7 +5541,10 @@ int main(int argc, char* argv[])
 	std::ifstream bimFile(argv[2]);
 	std::ifstream hapsFile(argv[3]);
 
-	readhapssample(sampleFile, bimFile, hapsFile);
+	vector<istream> hapFiles;
+	hapFiles.push_back(hapsFile);
+
+	readhapssample(sampleFile, bimFile, hapFiles);
 		markerposes.resize(700);
 		chromstarts[1] = 700;
 #endif
