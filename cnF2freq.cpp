@@ -4979,13 +4979,13 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 vector<int> mapIndices;
 vector<bool> hapmonomorphs;
 
-void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
+void readhapssample(istream& sampleFile, istream& bimFile, vector<istream>& hapsFile)
 {
 	using namespace x3;
 
 	sampleFile >> std::noskipws;
 	bimFile >> std::noskipws;
-	hapsFile >> std::noskipws;
+	hapsFile[0] >> std::noskipws;
 	
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
@@ -5017,7 +5017,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
 
-		parseToEndWithError(hapsFile, hapsLine % eol, snpData);
+		parseToEndWithError(hapsFile[0], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 	}
 	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
@@ -5103,6 +5103,67 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
 				}
 			  }
+		}
+	}
+
+	for (int j = 1; j < hapsFile.size(); j++)
+	{
+		double unit = 1.0 / (hapsFile.size() + 0.5);
+		for (int j = 0; j < sampleInds.size(); j++)
+		{
+			for (int i = 0; i < snpData.size(); i++)
+			{
+				if (RELSKEWS)
+				{
+					sampleInds[j]->relhaplo[i] = unit;
+				}
+				sampleInds[j]->markersure[i] = make_pair(unit, unit);
+			}
+		}
+
+		vector<int> phases;
+		phases.resize(sampleInds.size());
+		snpData.clear();
+
+		hapsFile[j] >> std::noskipws;
+		parseToEndWithError(hapsFile[j], hapsLine % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+		for (int i = 0; i < snpData.size(); i++)
+		{
+			const vector<int>& markers = get<4>(snpData[i]);
+			for (int j = 0; j < sampleInds.size(); j++)
+			{
+				int oldPhase = phases[j];
+				int matchNum;
+				int numMatches = 0;
+
+				for (int p = 1; p < 2; p++)
+				{
+					auto marker = (p == 1) ? make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue) : make_pair((markers[j * 2 + 1] + 1) * MarkerValue, (markers[j * 2] + 1) * MarkerValue);
+					if (marker == sampleInds[j]->markerdata[i])
+					{
+						matchNum = p;
+						numMatches++;
+					}
+				}
+
+				// Not conclusive, assume same phase
+				if (numMatches == 2 || numMatches == 0)
+				{
+					matchNum = oldPhase;
+				}
+
+				phases[j] = matchNum;
+				if (RELSKEWS)
+				{
+					sampleInds[j]->relhaplo[i] += unit;
+				}
+				if (numMatches)
+				{
+					// TODO: Look at whether one of the two alleles matches
+					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit, sampleInds[j]->markersure[i].second + unit);
+				}
+			}
 		}
 	}
 }
