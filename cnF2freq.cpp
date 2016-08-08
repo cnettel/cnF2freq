@@ -4985,7 +4985,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream&>& hap
 
 	sampleFile >> std::noskipws;
 	bimFile >> std::noskipws;
-	hapsFile[0] >> std::noskipws;
+	*hapsFile[0] >> std::noskipws;
 	
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
@@ -5017,7 +5017,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream&>& hap
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
 
-		parseToEndWithError(hapsFile[0], hapsLine % eol, snpData);
+		parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 	}
 	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
@@ -5125,8 +5125,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream&>& hap
 		phases.resize(sampleInds.size());
 		snpData.clear();
 
-		hapsFile[k] >> std::noskipws;
-		parseToEndWithError(hapsFile[k], hapsLine % eol, snpData);
+		*hapsFile[k] >> std::noskipws;
+		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 		for (int i = 0; i < snpData.size(); i++)
 		{
@@ -5541,8 +5541,8 @@ int main(int argc, char* argv[])
 	std::ifstream bimFile(argv[2]);
 	std::ifstream hapsFile(argv[3]);
 
-	vector<istream&> hapFiles;
-	hapFiles.push_back(hapsFile);
+	vector<istream*> hapFiles;
+	hapFiles.push_back(&hapsFile);
 
 	readhapssample(sampleFile, bimFile, hapFiles);
 		markerposes.resize(700);
