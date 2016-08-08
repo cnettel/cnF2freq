@@ -5106,7 +5106,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream>& haps
 		}
 	}
 
-	for (int j = 1; j < hapsFile.size(); j++)
+	for (int k = 1; k < hapsFile.size(); k++)
 	{
 		double unit = 1.0 / (hapsFile.size() + 0.5);
 		for (int j = 0; j < sampleInds.size(); j++)
@@ -5125,8 +5125,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream>& haps
 		phases.resize(sampleInds.size());
 		snpData.clear();
 
-		hapsFile[j] >> std::noskipws;
-		parseToEndWithError(hapsFile[j], hapsLine % eol, snpData);
+		hapsFile[k] >> std::noskipws;
+		parseToEndWithError(hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 		for (int i = 0; i < snpData.size(); i++)
 		{
