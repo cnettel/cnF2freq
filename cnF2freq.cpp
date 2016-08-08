@@ -5088,7 +5088,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
 		  float sureVal = 0;
-		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 1e-7;
+		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
 			if (sampleInds[j]->gen < 2) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
@@ -5100,7 +5100,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, istream& hapsFile)
 					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
 					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
 					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
-				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp((markerposes[i + 1] - markerposes[i]) * 1e6 * -0.0004);
+				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
 				}
 			  }
 		}
