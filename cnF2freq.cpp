@@ -5286,15 +5286,15 @@ void compareimputedoutput(istream& filteredOutput)
 			{
 				double val[3];
 				int maxval = 0;
-				for (int i = 0; i < 3; i++)
+				for (int k = 0; k < 3; k++)
 				{
 				  std::string temp;
 				  filteredOutput >> temp;
-				  if (sscanf(temp.c_str(), "%lf", &val[i]) != 1)
+				  if (sscanf(temp.c_str(), "%lf", &val[k]) != 1)
 				    {
-				      val[i] = -1;
+				      val[k] = -1;
 				    }
-					if (val[i] > val[maxval]) maxval = i;
+					if (val[k] > val[maxval]) maxval = i;
 				}
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
