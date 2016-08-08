@@ -4979,7 +4979,7 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 vector<int> mapIndices;
 vector<bool> hapmonomorphs;
 
-void readhapssample(istream& sampleFile, istream& bimFile, vector<istream>& hapsFile)
+void readhapssample(istream& sampleFile, istream& bimFile, vector<istream&>& hapsFile)
 {
 	using namespace x3;
 
@@ -5541,7 +5541,7 @@ int main(int argc, char* argv[])
 	std::ifstream bimFile(argv[2]);
 	std::ifstream hapsFile(argv[3]);
 
-	vector<istream> hapFiles;
+	vector<istream&> hapFiles;
 	hapFiles.push_back(hapsFile);
 
 	readhapssample(sampleFile, bimFile, hapFiles);
