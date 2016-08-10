@@ -4406,7 +4406,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
-									if (ind->children && (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 									{
 									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
 										{
@@ -5086,7 +5086,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 		for (int j = 0; j < sampleInds.size(); j++)
 		{
 		  float sureVal = 0;
-		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 1e-7;
+		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
 			if (sampleInds[j]->gen < 2) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
@@ -5098,27 +5098,28 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
 					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
 					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
-				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp((markerposes[i + 1] - markerposes[i]) * 1e6 * -0.0004);
+				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
 				}
 			  }
 		}
 	}
 
+	const double padding = 0.01;
+	double unit = 1.0 / (hapsFile.size() + padding);
+	for (int j = 0; j < sampleInds.size(); j++)
+	  {
+	    for (int i = 0; i < snpData.size(); i++)
+	      {
+		if (RELSKEWS)
+		  {
+		    sampleInds[j]->relhaplo[i] = unit;
+		  }
+		sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
+	      }
+	  }
+
 	for (int k = 1; k < hapsFile.size(); k++)
 	{
-		double unit = 1.0 / (hapsFile.size() + 0.5);
-		for (int j = 0; j < sampleInds.size(); j++)
-		{
-			for (int i = 0; i < snpData.size(); i++)
-			{
-				if (RELSKEWS)
-				{
-					sampleInds[j]->relhaplo[i] = unit;
-				}
-				sampleInds[j]->markersure[i] = make_pair(unit, unit);
-			}
-		}
-
 		vector<int> phases;
 		phases.resize(sampleInds.size());
 		snpData.clear();
@@ -5135,7 +5136,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				int matchNum;
 				int numMatches = 0;
 
-				for (int p = 1; p < 2; p++)
+				for (int p = 1; p <= 2; p++)
 				{
 					auto marker = (p == 1) ? make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue) : make_pair((markers[j * 2 + 1] + 1) * MarkerValue, (markers[j * 2] + 1) * MarkerValue);
 					if (marker == sampleInds[j]->markerdata[i])
@@ -5154,9 +5155,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				phases[j] = matchNum;
 				if (RELSKEWS)
 				{
-					sampleInds[j]->relhaplo[i] += unit;
+				  sampleInds[j]->relhaplo[i] += unit * (oldPhase == 0 || phases[j] == oldPhase);
 				}
-				if (numMatches)
+				if (!numMatches)
 				{
 					// TODO: Look at whether one of the two alleles matches
 					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit, sampleInds[j]->markersure[i].second + unit);
@@ -5227,6 +5228,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				break;
 			case 1:
 				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
+				cout << "MISSING BED " << dous[j]->name << " " << i << std::endl;
 				break;
 			case 2:			  
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
@@ -5292,7 +5294,7 @@ void compareimputedoutput(istream& filteredOutput)
 				    {
 				      val[k] = -1;
 				    }
-					if (val[k] > val[maxval]) maxval = i;
+					if (val[k] > val[maxval]) maxval = k;
 				}
 
 				int data = (ind->markerdata[i].first == 2 * MarkerValue) + (ind->markerdata[i].second == 2 * MarkerValue);
@@ -5541,6 +5543,10 @@ int main(int argc, char* argv[])
 
 	vector<istream*> hapFiles;
 	hapFiles.push_back(&hapsFile);
+	for (int k = 9; k < argc; k++)
+	  {
+	    hapFiles.push_back(new ifstream(argv[k]));
+	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
 		markerposes.resize(700);
@@ -5650,8 +5656,8 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 							if (!world.rank())
 #endif
-								/*if (i == COUNT - 1)*/ fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
-									ind->markersure[j].first, ind->markersure[j].second);
+								/*if (i == COUNT - 1)*/ fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);
 							ind->negshift[j] = 0;
 						}
 						//if (!world.rank()) fprintf(out, "\n");
