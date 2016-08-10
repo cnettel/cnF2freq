@@ -5090,7 +5090,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 		  float sureVal = 0;
 		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			if (sampleInds[j]->gen < 2) sampleInds[j]->haploweight[i] = 1e-3;
+			/*if (sampleInds[j]->gen < 2)*/ sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  {
@@ -5123,7 +5123,9 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 	for (int k = 1; k < hapsFile.size(); k++)
 	{
 		vector<int> phases;
+		vector<int> origPhases;
 		phases.resize(sampleInds.size());
+		origPhases.resize(sampleInds.size());
 		snpData.clear();
 
 		*hapsFile[k] >> std::noskipws;
@@ -5155,6 +5157,14 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				}
 
 				phases[j] = matchNum;
+				if (phases[j] && !origPhases[j])
+				  {
+				    origPhases[j] = phases[j];
+				  }
+				if (origPhases[j] && origPhases[j] != phases[j])
+				  {
+				    sampleInds[j]->haploweight[i] += unit;
+				  }
 				if (RELSKEWS)
 				{
 				  sampleInds[j]->relhaplo[i] += unit * (oldPhase == 0 || phases[j] == oldPhase);
