@@ -5165,9 +5165,11 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				  {
 				    sampleInds[j]->haploweight[i] += unit;
 				  }
-				if (RELSKEWS)
+				if (RELSKEWS && i)
 				{
-				  sampleInds[j]->relhaplo[i] += unit * (oldPhase == 0 || phases[j] == oldPhase);
+				// The definition of relhaplo is that marker i
+				// defines the skewness shift to the NEXT marker.
+				  sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
 				}
 				if (!numMatches)
 				{
