@@ -165,7 +165,7 @@ typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
 
-const float maxdiff = 0.00005;
+const float maxdiff = 0.000005;
 
 #include "settings.h"
 
@@ -2987,6 +2987,9 @@ void resizecaches()
 	}
 }
 
+// Global scale factor, 1.0 meaning "use EM estimate".
+double scalefactor = 0.1;
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -3832,11 +3835,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									//									}
 
 
-									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
+									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
 									{
 									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j]) && false) ? reltree[k]->relhaplo[marker] : 0.5;
-									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/ * (1 + 1e-10 - rhfactor);
-									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/ * (rhfactor + 1e-10);
+									  double b1 = (haplos[i][0] + maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
+									  double b2 = (haplos[i][1] + maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 
 										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
 										//intended -= reltree[k]->haploweight[marker];
@@ -4018,6 +4021,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
+			  bool hitnnn = false;
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
@@ -4370,7 +4374,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
 
-								double intended = exp(log(val) * 1.0 + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+								double intended = exp(log(val) * scalefactor + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
@@ -4383,6 +4387,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								else
 								{
+								  if (ind->children && (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+								    {
 									// Cap the change if the net difference is small/miniscule
 									double nnn = 1.6;
 									if (nnn < 1.0) nnn = 1.0;
@@ -4394,27 +4400,31 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									double lim = min(limn / limd1, limn / limd2);
 
+									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
+									intended = max((float)intended, maxdiff / (ind->children + 1));
 									double diff = intended - ind->haploweight[j];
+
 
 									if (diff > limn / limd1)
 									{
-										intended = ind->haploweight[j] + limn / limd1;
+									  intended = ind->haploweight[j] + limn / limd1;
+									  hitnnn = true;
 									}
 
 									if (diff < -limn / limd2)
 									{
 										intended = ind->haploweight[j] - limn / limd2;
+										hitnnn = true;
 									}
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
-									if ((ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
-									{
+									
+									
 									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
 										{
 											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 											}*/
-									  ind->haploweight[j] = max((float)intended, maxdiff / (ind->children + 1));
+									  ind->haploweight[j] = intended;
 
 
 										// Nudging flag currently not respected
@@ -4515,6 +4525,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 				}
+				if (hitnnn)
+				  {
+				    scalefactor /= 1.1;
+				  }
+				else
+				  {
+				    scalefactor *= 1.1;
+				  }
+				fprintf(stdout, "Scale factor now %lf\n", scalefactor);
 				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {
 				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
@@ -5082,6 +5101,8 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 		sampleInds.push_back(me);
 	}
 
+	auto dohaploweight = [] (individ* ind) { return (ind->gen < 2); };
+
 	for (int i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<4>(snpData[i]);
@@ -5090,7 +5111,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 		  float sureVal = 0;
 		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
 			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			/*if (sampleInds[j]->gen < 2)*/ sampleInds[j]->haploweight[i] = 1e-3;
+			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
 			  {
@@ -5161,7 +5182,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 				  {
 				    origPhases[j] = phases[j];
 				  }
-				if (origPhases[j] && origPhases[j] != phases[j])
+				if (dohaploweight(sampleInds[j]) && origPhases[j] && origPhases[j] != phases[j])
 				  {
 				    sampleInds[j]->haploweight[i] += unit;
 				  }
@@ -5624,7 +5645,7 @@ int main(int argc, char* argv[])
 		{
 			//		  	  	{
 			early = (i < 1);
-			doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
+			if (!early) doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
 #ifdef F2MPI
 				, world
 #endif
