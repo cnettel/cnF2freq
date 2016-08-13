@@ -38,10 +38,10 @@ float templgeno[8] = {-1, -0.5,
 
 // _MSC_VER is here to be interpreted as any compiler providing TR1 C++ headers
 //#ifdef _MSC_VER
-//#include <array>
+#include <array>
 //#else
 // Boost also provides an array implementation, that is largely compatible
-#include <boost/array.hpp>
+//#include <boost/array.hpp>
 //#endif
 
 #include <boost/math/distributions/binomial.hpp>
@@ -153,7 +153,7 @@ double genrec[3];
 vector<unsigned int> chromstarts;
 
 vector<int> markertranslation;
-typedef vector<boost::array<double, 5 > > MWTYPE;
+typedef vector<std::array<double, 5 > > MWTYPE;
 
 template<class T> class vectorplus;
 
@@ -253,7 +253,7 @@ int quickgen[NUMSHIFTS];
 template<class T2> class PerStateArray
 {
 public:
-	typedef boost::array<T2, NUMTYPES> T;
+  typedef std::array<T2, NUMTYPES> T;
 };
 
 template<class T2> class StateToStateMatrix
@@ -275,15 +275,15 @@ PerStateArray<double>::T quickmem[NUMSHIFTS];
 // A hashed store of inheritance pathway branches that are known to be impossible.
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
-typedef boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<boost::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
+typedef std::array<std::array<std::array<std::array<std::array<std::array<std::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
 
 EXTERNFORGCC IAT impossible;
 
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-EXTERNFORGCC boost::array<boost::array<float, 2>, 1000000> haplos;
-EXTERNFORGCC boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+EXTERNFORGCC std::array<std::array<float, 2>, 1000000> haplos;
+EXTERNFORGCC std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 
 // done, factors and cacheprobs all keep track of the same data
 // done indicates that a specific index (in the binary tree of blocks of multi-step transitions) is done
@@ -301,13 +301,13 @@ EXTERNFORGCC map<individ*, int> relmap;
 
 #ifdef DOEXTERNFORGCC
 IAT impossible;
-boost::array<boost::array<float, 2>, 1000000> haplos;
+std::array<std::array<float, 2>, 1000000> haplos;
 vector<int> done[NUMSHIFTS];
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
+std::array<std::array<map<MarkerVal, float>, 2>, 1000000> infprobs;
 #endif
 
 
@@ -327,13 +327,13 @@ struct threadblock
 	PerStateArray<double>::T* const quickmem;
 	PerStateArray<int>::T* const quickendmarker;
 	IAT* const impossible;
-	boost::array<boost::array<float, 2>, 1000000>* const haplos;
+	std::array<std::array<float, 2>, 1000000>* const haplos;
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
 	vector<StateToStateMatrix<double>::T >* const cacheprobs;	
 	PerStateArray<double>::T* const quickendfactor;
 	StateToStateMatrix<double>::T* const quickendprobs;
-	boost::array<boost::array<map<MarkerVal, float>, 2>, 1000000>* infprobs;
+	std::array<std::array<map<MarkerVal, float>, 2>, 1000000>* infprobs;
 
 	threadblock() : generation(&::generation), shiftflagmode(&::shiftflagmode), impossible(&::impossible),
 		done(::done), factors(::factors), cacheprobs(::cacheprobs), haplos(&::haplos),
@@ -587,7 +587,7 @@ struct twicestop : tssmcommon
 
 struct stopmodpair : tssmcommon, smnonecommon
 {
-	typedef boost::array<boost::array<float, 2>, 2> miniactrecT;
+	typedef std::array<std::array<float, 2>, 2> miniactrecT;
 	miniactrecT actrec;
 
 	stopmodpair(int lockpos, miniactrecT actrec) : tssmcommon(lockpos), actrec(actrec)
@@ -690,11 +690,11 @@ struct individ
 	vector<float> negshift;
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
-	//vector<boost::array<boost::array<double, 40>, 4 > > semishift;
-	vector<boost::array<boost::array<boost::array<boost::array<double, 2>, 2>, 2>, 2> > parinfprobs;
-	vector<boost::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
-	vector<boost::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
-	vector<boost::array<double, 2> > unknowninfprobs;
+	//vector<std::array<std::array<double, 40>, 4 > > semishift;
+	vector<std::array<std::array<std::array<std::array<double, 2>, 2>, 2>, 2> > parinfprobs;
+	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
+	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
+	vector<std::array<double, 2> > unknowninfprobs;
 
 	vector<int> genotypegrid;
 
@@ -1288,7 +1288,7 @@ struct individ
 		{
 		  if (probs[i] == 0.0) continue;
 
-			factor = max(factor, (tb.factors[*tb.shiftflagmode])[index][i]);
+		  factor = max(factor, (tb.factors[*tb.shiftflagmode])[index][i]);
 		}
 
 		PerStateArray<double>::T probs2 = {{0}};
@@ -1654,7 +1654,7 @@ return MINFACTOR;
 						}
 					}
 
-					boost::array<double, NONSELFNUMTYPES> recombprec;
+					std::array<double, NONSELFNUMTYPES> recombprec;
 					
 #pragma ivdep
 					for (int index = 0; index < NONSELFNUMTYPES; index++)
@@ -2653,7 +2653,7 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 
 template<int N> struct valuereporter
 {
-	array<double, N> probs;
+  std::array<double, N> probs;
 
 	valuereporter()
 	{
@@ -2716,7 +2716,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 	int count = 0;
-	vector<vector<boost::array<float, 2> > > realgeno;	
+	vector<vector<std::array<float, 2> > > realgeno;	
 
 	realgeno.resize(dous.size());
 
@@ -2755,7 +2755,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	iter++;
 
 
-	map<pair<individ*, individ*>, map<int, boost::array<double, 8> > > nsm;
+	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
 	if (doprint)
 	{
 		//fprintf(out, "%d %d\n", count, chromstarts.size() - 1);
@@ -4458,9 +4458,9 @@ continueloop:;
 					}
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 					map<individ*, double> bestshift;
-					for (map<pair<individ*, individ*>, map<int, boost::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
+					for (map<pair<individ*, individ*>, map<int, std::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
 					{
-						for (map<int, boost::array<double, 8> >::iterator j = i->second.begin(); j != i->second.end(); j++)
+						for (map<int, std::array<double, 8> >::iterator j = i->second.begin(); j != i->second.end(); j++)
 						{
 							// 1-3 allows shifts, but not genotype switches
 							// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
