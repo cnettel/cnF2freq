@@ -1260,16 +1260,17 @@ struct individ
 					realok += calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2);
 				}
 
-				// TODO UGLY CAPPING
+				double& val = probs[i];
+ 				// TODO UGLY CAPPING
 				if (HAPLOTYPING)
 				{
-					probs[i] *= (double)realok;
+					val *= (double)realok;
 				}
 				else
 				{
-					probs[i] *= (bool)realok;
+					val *= (bool)realok;
 				}
-				sum += probs[i];
+				sum += val;
 			}
 
 			if (sum == 0 && !ruleout)
@@ -2988,7 +2989,7 @@ void resizecaches()
 }
 
 // Global scale factor, 1.0 meaning "use EM estimate".
-double scalefactor = 0.1;
+double scalefactor = 0.02;
 
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
@@ -3137,8 +3138,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shiftignore = 0;
 				if (HAPLOTYPING)
 				{
-					flag2ignore = 1;
-					shiftignore = 1;
+					flag2ignore = 0;
+					shiftignore = 0;
+					bool anylev1 = false;
 					for (int lev1 = 0; lev1 < 2; lev1++)
 					{
 						individ* lev1i = dous[j]->pars[lev1];
@@ -3172,8 +3174,17 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							shiftignore |= 2 << lev1;
 						}
+						// Any information of relevance in parents
+						if (anypars || !lev1i->empty)
+						  {
+						    anylev1 = true;
+						  }
 					}
-
+					if (anylev1)
+					  {
+					    flag2ignore |= 1;
+					    shiftignore |= 1;
+					  }
 					flag2ignore ^= (NUMPATHS - 1);
 					shiftignore ^= (NUMSHIFTS - 1);
 				}
@@ -3269,7 +3280,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 						{
 							if (shiftflagmode & shiftignore) continue;
-							if (factor - factors[shiftflagmode] > 400) continue;
+							if (factor - factors[shiftflagmode] > 40) continue;
 							if (q <= -1000 && DOREMAPDISTANCES)
 							{
 								double val;
@@ -4374,7 +4385,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
 
-								double intended = exp(log(val) * scalefactor + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+								double intended = exp(log(val) * ind->haplocount[j] * scalefactor + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
@@ -5584,8 +5595,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-		markerposes.resize(700);
-		chromstarts[1] = 700;
+	markerposes.resize(700);
+	chromstarts[1] = 700;
 #endif
 	bool docompare = true;
 	if (argc >= 9)
@@ -5634,6 +5645,10 @@ int main(int argc, char* argv[])
 
 
 	//	sscanf(argv[5], "%d", &chromstarts[1]);
+
+	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
+	// getting stuck towards the end.
+	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 
 	FILE* out = fopen(argv[4], "w");
 	int COUNT = 3;
