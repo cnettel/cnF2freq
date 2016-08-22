@@ -732,6 +732,8 @@ struct individ
 	int children;
 	// Am I explicitly created to not contain genotypes?
 	bool empty;
+	// Do I lack (relevant) parents?
+	bool founder;
 	// Parents.
 	individ* pars[2];
 	//
@@ -773,6 +775,8 @@ struct individ
 		strain = 0;
 		sex = false;
 		empty = false;
+		// False is the safe option, other code will be take shortcuts if founder is true.
+		founder = false;
 	}
 
 	bool arerelated(individ* b, vector<individ*> stack = vector<individ*>(), int gens = 0)
@@ -842,7 +846,7 @@ struct individ
 			prelok = true;
 			if (!zeropropagate && genwidth == (1 << (NUMGEN - 1)))
 			{
-				if (false)
+				if (DOIMPOSSIBLE)
 				{
 					impossibleref = &(*tb.impossible)[*(tb.shiftflagmode) & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3];
 				}
@@ -852,7 +856,7 @@ struct individ
 				}
 				impossibleval = (*tb.generation) * markerposes.size() + marker;
 
-				if (impossibleref && *impossibleref == impossibleval)
+				if (DOIMPOSSIBLE && impossibleref && *impossibleref == impossibleval)
 				{
 					prelok = false;
 				}
@@ -877,7 +881,7 @@ struct individ
 					upflag2r,
 					upshiftr, extparams, genwidth >> 1);
 
-			if (impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
+			if (DOIMPOSSIBLE && impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
 			{
 				*impossibleref = impossibleval;
 			}
@@ -911,6 +915,9 @@ struct individ
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
+
+		bool attopnow = (genwidth == HAPLOTYPING) || !founder;
+
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
 		if (rootgen)
@@ -992,7 +999,7 @@ struct individ
 			}
 			else
 			{
-				if (themarkersure[f2n]) mainsecondval = (themarkersure[f2n]) / (1.0 - themarkersure[f2n]);
+				if (!attopnow && themarkersure[f2n]) mainsecondval = (themarkersure[f2n]) / (1.0 - themarkersure[f2n]);
 				baseval = 1.0 - themarkersure[f2n] + themarkersure[f2n] * secondval;
 			}
 
@@ -1033,7 +1040,7 @@ struct individ
 			}
 
 			// If we are at maximum depth, by depth limit or by lack of ancestor
-			if (genwidth == HAPLOTYPING || !pars[firstpar])
+			if (attopnow || !pars[firstpar])
 			{
 				// TODO: If pars[firstpar] exists and is empty, things are messy
 				// The empty one could, in turn, have parents with genotypes.
@@ -1044,7 +1051,7 @@ struct individ
 			}
 
 			// There should be some other flag for the actual search depth
-			if (genwidth == HAPLOTYPING)
+			if (attopnow)
 			{
 			}
 			else
@@ -3172,6 +3179,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							shiftignore |= 2 << lev1;
 						}
+						else
+						{
+							lev1i->founder = true;
+						}
 						// Any information of relevance in parents
 						if (anypars || !lev1i->empty)
 						  {
@@ -3183,6 +3194,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					    flag2ignore |= 1;
 					    shiftignore |= 1;
 					  }
+					else
+					{
+						dous[j]->founder = true;
+					}
 					flag2ignore ^= (NUMPATHS - 1);
 					shiftignore ^= (NUMSHIFTS - 1);
 				}

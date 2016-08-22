@@ -6,6 +6,7 @@ const int SELFBITS = 2;
 const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = false;
+const bool DOIMPOSSIBLE = false;
 const bool SELFING = false;
 const bool RELSKEWS = true;
 
