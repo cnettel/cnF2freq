@@ -5620,9 +5620,10 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-	markerposes.resize(700);
-	chromstarts[1] = 700;
+	/*	markerposes.resize(700);
+		chromstarts[1] = 700;*/
 #endif
+	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 	bool docompare = true;
 	if (argc >= 9)
 	{
@@ -5673,7 +5674,6 @@ int main(int argc, char* argv[])
 
 	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
 	// getting stuck towards the end.
-	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 
 	FILE* out = fopen(argv[4], "w");
 	int COUNT = 3;
