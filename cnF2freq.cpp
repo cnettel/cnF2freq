@@ -744,7 +744,7 @@ struct individ
 	int strain;
 	// Marker data as a list of pairs. No specific ordering assumed.
 	vector<MarkerValPair > markerdata;
-	vector<pair<float, float> > markersure;
+	vector<pair<double, double> > markersure;
 
 	// Temporary storage of all possible marker values, used in fixparents.
 	vector<map<MarkerVal, pair<int, double> > > markervals;
@@ -922,14 +922,14 @@ struct individ
 		}
 
 		MarkerVal selfmarker[2];
-		float selfsure[2];
+		double selfsure[2];
 
 		int upflag2 = -1;
 		const int upflag = flag >> 1;
 		const int upshift = localshift >> 1;
 		int f2s = 0;
-		const MarkerVal* themarker = selfingNOW ? selfmarker : &markerdata[marker].first;
-		const float* themarkersure = selfingNOW ? selfsure : &markersure[marker].first;
+		const MarkerVal* const themarker = selfingNOW ? selfmarker : &markerdata[marker].first;
+		const double* const themarkersure = selfingNOW ? selfsure : &markersure[marker].first;
 		int f2end = 2;
 
 		if (flag99 != -1 && genwidth >> (NUMGEN - NUMFLAG2GEN) > 0)
@@ -1111,7 +1111,7 @@ struct individ
 
 
 	// calltrackpossible is a slight wrapper that hides at least some of the interanl parameters needed for the recursion from outside callers
-	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* markervals, const unsigned int marker,
+	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
