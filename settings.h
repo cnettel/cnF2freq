@@ -36,8 +36,8 @@ const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)
 const int VALIDSELFNUMTYPES = RELSKEWS ? NUMTYPES : (NUMTYPES - SELFING * (NUMTYPES >> 2));
 
 // This should really be a proper build system
-//#define READHAPSSAMPLE
-#define READALPHADATA
+#define READHAPSSAMPLE
+//#define READALPHADATA
 
 #define DOEXTERNFORGCC
 
