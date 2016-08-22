@@ -329,10 +329,11 @@ int fwbwdone[NUMSHIFTS];
 
 EXTERNFORGCC vector<individ*> reltree;
 EXTERNFORGCC map<individ*, int> relmap;
+EXTERNFORGCC map<individ*, int> relmapshift;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
 // TODO infprobs SHOULD REALLY GO HERE, JUST SAVING MEMORY NOW AT TERRIBLE RISK
-#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, relmapshift)
 #if !DOFB
 #pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
 #else
@@ -345,6 +346,7 @@ std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 map<individ*, int> relmap; //containing flag2 indices
+map<individ*, int> relmapshift; //containing flag2 indices
 std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
@@ -2892,7 +2894,7 @@ struct negshifter
 	}
 };
 
-bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, int>& relmap)
+bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, const map<individ*, int>& relmap, const map<individ*, int>& relmapshift)
 {
 	int flag2filter = (1 << 30) - 1;
 	// Below lines relied on incorrect assumption of remapping of inheritance
@@ -2911,14 +2913,14 @@ bool ignoreflag2(int flag2, int g, int q, int flag2ignore, const map<individ*, i
 	if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
-	for (map<individ*, int>::const_iterator i = relmap.begin(); i != relmap.end(); i++)
+	for (map<individ*, int>::const_iterator i = relmap.begin(), j = relmapshift.begin(); i != relmap.end(); i++, j++)
 	{
 		int currfilter = (i->second & flag2filter);
 		int filtered = ((flag2 ^ (g * 2)) & currfilter);
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (false && marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !filtered && ((!RELSKEWS && !SELFING) || currfilter != 1 /*|| selfgen == 0*/))
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(filtered ^ (shiftflagmode & j->second)) && ((!RELSKEWS || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/))
 		{
 			return true;
 		}
@@ -3136,8 +3138,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				reltree.clear();
 				relmap.clear();
+				relmapshift.clear();
 				reltree.push_back(dous[j]);
 				relmap[dous[j]] = 1;
+				relmapshift[dous[j]] = 1;
 				int flag2ignore = 0;
 
 				// Special optimization hardcoded for this population structure, eagerly skipping flags that do not
@@ -3172,14 +3176,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								{
 									flag2ignore |= (flag2base << (lev2 + 1));
 									relmap[lev2i] |= (flag2base << (lev2 + 1));
+									relmapshift[lev2i] |= 0;
 								}
 								anypars = true;
 								reltree.push_back(lev2i);
 							}
 						}
+
+						int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
+						relmapshift[lev1i] |= shiftval;
+
 						if (anypars)
 						{
-							shiftignore |= 2 << lev1;
+							shiftignore |= shiftval;
 						}
 						else
 						{
@@ -3335,7 +3344,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							for (int flag2 = f2s; flag2 < f2end; flag2++)
 							{
-								if (ignoreflag2(flag2, g, q, flag2ignore, relmap)) continue;
+								if (ignoreflag2(flag2, g, shiftflagmode, q, flag2ignore, relmap, relmapshift)) continue;
 								//if (flag2 & (flag2ignore)) continue;
 
 								int firstpar = 0;
