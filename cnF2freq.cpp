@@ -916,7 +916,7 @@ struct individ
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
 
-		bool attopnow = (genwidth == HAPLOTYPING) || !founder;
+		bool attopnow = (genwidth == HAPLOTYPING) || founder;
 
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
@@ -1228,7 +1228,7 @@ struct individ
 		const bool oldruleout, int flag99)
 	{
 		double sum = 0;
-		PerStateArray<double>::T probs2;
+		//PerStateArray<double>::T probs2;
 
 		const MarkerValPair& themarker = markerdata[marker];
 		const bool ruleout = true; // TODO
@@ -1249,10 +1249,10 @@ struct individ
 
 			for (unsigned int i = 0; i < NUMTYPES; i++) // genotype
 			{
-				probs2[i] = probs[i];
+			  double val = probs[i];
 
 				// We will multiply this already small number with an even smaller number... let's assume it's zero and be done with it.
-				if (probs[i] < 1e-200)
+				if (val < 1e-200)
 				{
 					probs[i] = 0;
 					continue;
@@ -1265,7 +1265,7 @@ struct individ
 					realok += calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2);
 				}
 
-				double& val = probs[i];
+				
  				// TODO UGLY CAPPING
 				if (HAPLOTYPING)
 				{
@@ -1276,13 +1276,15 @@ struct individ
 					val *= (bool)realok;
 				}
 				sum += val;
+				probs[i] = val;
 			}
 
-			if (sum == 0 && !ruleout)
+			if (!ruleout && sum == 0)
 			{
+			  assert(false && "Bring back probs2");
 				for (int i = 0; i < NUMTYPES; i++)
 				{
-					probs[i] = probs2[i];
+				  //					probs[i] = probs2[i];
 				}
 
 				// The code sees: This doesn't make sense, ignore this marker!
