@@ -719,8 +719,6 @@ template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double sta
 	return actrec[k][j];
 }
 
-const int semicount = 3226;
-
 
 // A structure containing most of the information on an individual
 struct individ
