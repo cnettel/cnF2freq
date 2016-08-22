@@ -851,12 +851,12 @@ struct individ
 				if (DOIMPOSSIBLE)
 				{
 					impossibleref = &(*tb.impossible)[*(tb.shiftflagmode) & 1][firstpar][f2n][upflagr][upflag2r + 1][upshiftr][marker & 3];
+					impossibleval = (*tb.generation) * markerposes.size() + marker;
 				}
 				else
 				{
 					impossibleref = 0;
 				}
-				impossibleval = (*tb.generation) * markerposes.size() + marker;
 
 				if (DOIMPOSSIBLE && impossibleref && *impossibleref == impossibleval)
 				{
@@ -918,7 +918,7 @@ struct individ
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
 
-		bool attopnow = (genwidth == HAPLOTYPING) || founder;
+		const bool attopnow = (genwidth == HAPLOTYPING)/* || founder*/;
 
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
@@ -2920,7 +2920,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 		// Require ALL bits in the flag to be set, if at least one is set
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
-		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(filtered ^ (shiftflagmode & j->second)) &&
+		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(((bool)filtered) ^ ((bool)(shiftflagmode & j->second))) &&
 			((!RELSKEWS || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
 		{
 			return true;
@@ -3158,10 +3158,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						individ* lev1i = dous[j]->pars[lev1];
 						if (!lev1i) continue;
 						int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
+						int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
+
 						if (!lev1i->empty)
 						{
 							flag2ignore |= flag2base;
 							relmap[lev1i] |= flag2base;
+							relmapshift[lev1i] |= shiftval;
 						}
 
 						bool anypars = false;
@@ -3184,16 +3187,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 						}
 
-						int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
-						relmapshift[lev1i] |= shiftval;
-
 						if (anypars)
 						{
 							shiftignore |= shiftval;
 						}
 						else
 						{
-							lev1i->founder = true;
+						  //lev1i->founder = true;
 						}
 						// Any information of relevance in parents
 						if (anypars || !lev1i->empty)
@@ -3351,7 +3351,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								int firstpar = 0;
 								double val;
 
-								if (q <= -1000 && flag2 != -1)
+								if (DOIMPOSSIBLE && q <= -1000 && flag2 != -1)
 								{
 									// Do a lookup in the impossible structure. If we are at a marker position, those branches that are impossible will have an exact
 									// score of 0.
@@ -5271,8 +5271,8 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 
 	vector<int> indArray;
 	for (individ* ind : dous)
-	{
-		indArray.push_back(indNums[ind->name]);
+	{		
+	        indArray.push_back(indNums[ind->name]);
 		cout << ind->name << " " << indArray[indArray.size()-1] << std::endl;
 	}
 
@@ -5623,7 +5623,6 @@ int main(int argc, char* argv[])
 	/*	markerposes.resize(700);
 		chromstarts[1] = 700;*/
 #endif
-	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 	bool docompare = true;
 	if (argc >= 9)
 	{
@@ -5631,6 +5630,8 @@ int main(int argc, char* argv[])
 	  readfambed(argv[7], argv[8], docompare);
 	}
 
+
+	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 	if (argc >= 7 && docompare)
 	{
 		std::ifstream filteredOutput(argv[6]);
