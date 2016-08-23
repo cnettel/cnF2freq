@@ -918,7 +918,7 @@ struct individ
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
 
-		const bool attopnow = (genwidth == HAPLOTYPING)/* || founder*/;
+		const bool attopnow = (genwidth == HAPLOTYPING) || founder;
 
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
@@ -3150,7 +3150,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shiftignore = 0;
 				if (HAPLOTYPING)
 				{
-					flag2ignore = 0;
+					flag2ignore = 1;
 					shiftignore = 0;
 					bool anylev1 = false;
 					for (int lev1 = 0; lev1 < 2; lev1++)
@@ -3181,8 +3181,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									flag2ignore |= (flag2base << (lev2 + 1));
 									relmap[lev2i] |= (flag2base << (lev2 + 1));
 									relmapshift[lev2i] |= 0;
+									anypars = true;
 								}
-								anypars = true;
 								reltree.push_back(lev2i);
 							}
 						}
@@ -3203,7 +3203,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 					if (anylev1)
 					  {
-					    flag2ignore |= 1;
 					    shiftignore |= 1;
 					  }
 					else
@@ -3398,7 +3397,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									for (int i = 0; i < 2; i++)
 									{
 										int index = i * (TYPEBITS / 2);
-										int r = dous[j]->n;
+										//int r = dous[j]->n;
 										int parindex = ((flag2 >> (index + 1))/* ^ (g >> index)*/) & 1;
 										// FOR g shift
 										// parindex = !parindex;
@@ -3427,7 +3426,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (DOINFPROBS) for (int i = 0; i < 2; i++)
 									{
 										int index = i * (TYPEBITS / 2);
-										int r = dous[j]->n;
+										//int r = dous[j]->n;
 										int parindex = ((flag2 >> (index + 1))/* ^ (g >> index)*/) & 1;
 										// FOR g shift
 										// parindex = !parindex;
@@ -5620,8 +5619,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-	/*	markerposes.resize(700);
-		chromstarts[1] = 700;*/
+		markerposes.resize(700);
+		chromstarts[1] = 700;
 #endif
 	bool docompare = true;
 	if (argc >= 9)
