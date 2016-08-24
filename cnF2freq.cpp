@@ -4418,14 +4418,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double lo = term;
 									sum += term;
 
-									term = (1 - ind->haploweight[j]) * (1 - prevval * reval + prevval * (1 - relval));
+									term = (1 - ind->haploweight[j]) * ((1 - prevval) * relval + prevval * (1 - relval));
 									sum += term;
 									
 									if (sum)
 									{
 										lo /= sum;
-										relskewterm = log(lo / (1 - lo));
+										baseterm = log(lo / (1 - lo));
 									}
+									else
+baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 								}
 								else
 								{
@@ -5642,8 +5644,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-	/*		markerposes.resize(700);
-			chromstarts[1] = 700;*/
+		markerposes.resize(700);
+			chromstarts[1] = 700;
 #endif
 	bool docompare = true;
 	if (argc >= 9)
