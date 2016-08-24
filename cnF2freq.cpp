@@ -3873,8 +3873,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
 									{
 									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j]) && false) ? reltree[k]->relhaplo[marker] : 0.5;
-									  double b1 = (haplos[i][0] + maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
-									  double b2 = (haplos[i][1] + maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
+									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
+									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 
 										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
 										//intended -= reltree[k]->haploweight[marker];
@@ -5619,8 +5619,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-		markerposes.resize(700);
-		chromstarts[1] = 700;
+	/*		markerposes.resize(700);
+			chromstarts[1] = 700;*/
 #endif
 	bool docompare = true;
 	if (argc >= 9)
@@ -5631,7 +5631,7 @@ int main(int argc, char* argv[])
 
 
 	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
-	if (argc >= 7 && docompare)
+      	if (argc >= 7 && docompare)
 	{
 		std::ifstream filteredOutput(argv[6]);
 		compareimputedoutput(filteredOutput);
