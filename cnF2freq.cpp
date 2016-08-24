@@ -441,7 +441,7 @@ public:
 			flagmodeshift = (turn >> TYPEBITS) | ((turn & 1) ? 2 : 0) |
 				((turn & 8) ? 4 : 0);
 			// Mis-guided (?) attempt to correct for relskews
-			if (RELSKEWS && false)
+			if (RELSKEWSTATES && false)
 			  {
 			    this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
 			  }
@@ -925,7 +925,7 @@ struct individ
 		if (rootgen)
 		{
 			selfingNOW = SELFING && selfval;
-			relskewingNOW = RELSKEWS;
+			relskewingNOW = RELSKEWSTATES;
 		}
 
 		MarkerVal selfmarker[2];
@@ -1940,7 +1940,7 @@ struct individ
 					}
 
 					float relscore[2] = { 1, 1 };
-					if (RELSKEWS && iter == tofind)
+					if (RELSKEWSTATES && iter == tofind)
 					{
 					  relscore[0] = relhaplo[min(j, j - d)];
 					  relscore[1] = 1 - relhaplo[min(j, j - d)];
@@ -1957,7 +1957,7 @@ struct individ
 						{
 							int xored = from ^ to;
 							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS) & SELFMASK][(to >> TYPEBITS) & SELFMASK] : 1) *
-								(RELSKEWS ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
+								(RELSKEWSTATES ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
 						}
 					}
 
@@ -2921,7 +2921,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
 		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(((bool)filtered) ^ ((bool)(shiftflagmode & j->second))) &&
-			((!RELSKEWS || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
+			((!RELSKEWSTATES || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
 		{
 			return true;
 		}
@@ -3872,7 +3872,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
 									{
-									  double rhfactor = (RELSKEWS && (reltree[k] == dous[j]) && false) ? reltree[k]->relhaplo[marker] : 0.5;
 									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
 									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 
@@ -4408,8 +4407,32 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								double val = exp(ind->haplobase[j] / ind->haplocount[j]);
 								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 
+								double baseterm = 0;
+								if (RELSKEWS && j)
+								{
+									// Modify haplotype based on relhaplo relationship with j - 1
+									double prevval = ind->haploweight[j - 1];
+									double relval = ind->relhaplo[j - 1];
+									double sum = 0;
+									double term = ind->haploweight[j] * (prevval * relval + (1 - prevval) * (1 - relval));
+									double lo = term;
+									sum += term;
 
-								double intended = exp(log(val) * ind->haplocount[j] * scalefactor + log(ind->haploweight[j] / (1 - ind->haploweight[j])));
+									term = (1 - ind->haploweight[j]) * (1 - prevval * reval + prevval * (1 - relval));
+									sum += term;
+									
+									if (sum)
+									{
+										lo /= sum;
+										relskewterm = log(lo / (1 - lo));
+									}
+								}
+								else
+								{
+									baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
+								}
+
+								double intended = exp(log(val) * ind->haplocount[j] * scalefactor + baseterm);
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&

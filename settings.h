@@ -9,16 +9,17 @@ const bool DOINFPROBS = false;
 const bool DOIMPOSSIBLE = false;
 const bool SELFING = false;
 const bool RELSKEWS = true;
+const bool RELSKEWSTATES = true;
 
 // F2 with haplotyping
 const int NUMGEN = 3;
 const int TYPEBITS = (1 << NUMGEN) - 2;
-const int TYPESEXES[TYPEBITS + SELFING * SELFBITS + RELSKEWS] = { 0, 0, 1, 1, 0, 1/*, 0, 0*//*, 0*/ };
+const int TYPESEXES[TYPEBITS + SELFING * SELFBITS + RELSKEWSTATES] = { 0, 0, 1, 1, 0, 1/*, 0, 0*//*, 0*/ };
 //const int TYPEGENS[TYPEBITS] = {1, 0, 0, 1, 0, 0};
 const int TYPEGENS[TYPEBITS + SELFING * 2] = { 1, 0, 0, 1, 0, 0/*, 2, 2*//*, 3*/ };
 
 const int BITS_W_SELF = TYPEBITS + (SELFING ? SELFBITS : 0);
-const int TOTBITS = BITS_W_SELF + (RELSKEWS ? 1 : 0);
+const int TOTBITS = BITS_W_SELF + (RELSKEWSTATES ? 1 : 0);
 const int NUMTYPES = 1 << TOTBITS;
 const double EVENGEN = 1.0 / NUMTYPES;
 const float MINFACTOR = -1e15;
@@ -34,7 +35,7 @@ const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)
 
 // Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
 // TODO: Reorder bits...
-const int VALIDSELFNUMTYPES = RELSKEWS ? NUMTYPES : (NUMTYPES - SELFING * (NUMTYPES >> 2));
+const int VALIDSELFNUMTYPES = RELSKEWSTATES ? NUMTYPES : (NUMTYPES - SELFING * (NUMTYPES >> 2));
 
 // This should really be a proper build system
 #define READHAPSSAMPLE
