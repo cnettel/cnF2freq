@@ -3668,6 +3668,26 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					// Consider doing haplotype reversal from a specific position and all the way down.
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
+						int marker = -q - 1000;
+						if (RELSKEWS && !RELSKEWSTATES)
+#pragma omp critical(negshifts)
+						{
+							double prevval = ind->haploweight[marker];
+
+							for (int k = 0; k < 2; k++)
+							{
+								double relval = fabs(k - ind->relhaplo[marker]);
+								double sum = 0;
+								double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+								double lo = term;
+								sum += term;
+
+								term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+								sum += term;
+								dous[j]->negshift[marker] += (0 == k ? 1 : -1) * log(sum);
+							}
+						}
+
 						const int NUMTURNS = 1 << (TYPEBITS + 1);
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
@@ -3759,8 +3779,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								// TODO: Capping val here, but not in sumnegval, leads to some
 								// strange results, indeed. Maybe?
 								if (!_finite(val) || val < 1e-174) val = 1e-174;									
-								{
-									int marker = -q - 1000;
+								{									
 									int g2 = g;
 									if (!g) g2 = (1 << 15) - 1;
 
