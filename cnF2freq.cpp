@@ -4457,7 +4457,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 								}
 
-								double intended = exp((log(val) + relskewterm) * ind->haplocount[j] * scalefactor + baseterm);
+								double intended = exp((log(val) * ind->haplocount[j] + relskewterm) * scalefactor + baseterm);
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
