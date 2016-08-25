@@ -4394,6 +4394,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 
 						cno = 0;
+						double prevval = 0.5;
 						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 						{
 							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
@@ -4439,8 +4440,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								double relskewterm = 0;
 								if (RELSKEWS && j)
 								{
-									// Modify haplotype based on relhaplo relationship with j - 1
-									double prevval = ind->haploweight[j - 1];
+									// Modify haplotype based on relhaplo relationship with raw intended haploweight for j - 1
 									double relval = ind->relhaplo[j - 1];
 									double sum = 0;
 									double term = ind->haploweight[j] * (prevval * relval + (1 - prevval) * (1 - relval));
@@ -4455,8 +4455,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										lo /= sum;
 										relskewterm = log(lo / (1 - lo)) - baseterm;
 									}
+
+									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm)
 								}
 
+								
 								double intended = exp((log(val) * ind->haplocount[j] + relskewterm) * scalefactor + baseterm);
 								intended = intended / (intended + 1.0);
 
