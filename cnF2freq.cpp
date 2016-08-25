@@ -4435,7 +4435,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							      val = 1;
 							    }
 
-								double baseterm = 0;
+								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
+								double relskewterm = 0;
 								if (RELSKEWS && j)
 								{
 									// Modify haplotype based on relhaplo relationship with j - 1
@@ -4452,17 +4453,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (sum)
 									{
 										lo /= sum;
-										baseterm = log(lo / (1 - lo));
+										relskewterm = log(lo / (1 - lo)) - baseterm;
 									}
-									else
-baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
-								}
-								else
-								{
-									baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 								}
 
-								double intended = exp(log(val) * ind->haplocount[j] * scalefactor + baseterm);
+								double intended = exp((log(val) + relskewterm) * ind->haplocount[j] * scalefactor + baseterm);
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
