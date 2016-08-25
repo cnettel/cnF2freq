@@ -3672,17 +3672,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						if (RELSKEWS && !RELSKEWSTATES)
 #pragma omp critical(negshifts)
 						{
-							double prevval = ind->haploweight[marker];
+							double prevval = dous[j]->haploweight[marker];
 
+							// TODO: OVERRUN AT MARKER + 1 ?
 							for (int k = 0; k < 2; k++)
 							{
-								double relval = fabs(k - ind->relhaplo[marker]);
+								double relval = fabs(k - dous[j]->relhaplo[marker]);
 								double sum = 0;
-								double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+								double term = dous[j]->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
 								double lo = term;
 								sum += term;
 
-								term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+								term = (1 - dous[j]->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
 								sum += term;
 								dous[j]->negshift[marker] += (0 == k ? 1 : -1) * log(sum);
 							}
@@ -4420,11 +4421,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 
 
-							if (ind->haplocount[j] && ind->haploweight[j] && ind->haploweight[j] != 1)
+							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1)
 							{
-
-								double val = exp(ind->haplobase[j] / ind->haplocount[j]);
-								val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
+							  
+							  double val;
+							  if (ind->haplocount[j])
+							    {
+							      val = exp(ind->haplobase[j] / ind->haplocount[j]);
+							      val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
+							    }
+							  else
+							    {
+							      val = 1;
+							    }
 
 								double baseterm = 0;
 								if (RELSKEWS && j)
@@ -5663,8 +5672,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-		markerposes.resize(700);
-			chromstarts[1] = 700;
+	/*		markerposes.resize(700);
+			chromstarts[1] = 700;*/
 #endif
 	bool docompare = true;
 	if (argc >= 9)
