@@ -4026,7 +4026,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							minstart = p;
 							minval = ind->negshift[p];
 						}
-						if (ind->negshift[p] < -1e-10)
+						// TODO: Was a seed element ever needed here?
+						/*						if (ind->negshift[p] < -1e-10)
 						{
 							if (!prevlow)
 							{
@@ -4034,9 +4035,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								negshiftcands[c].insert(ourtuple);
 							}
 							prevlow = true;
-						}
-						else
-							prevlow = false;
+							}*/
 					}
 					if (ind->lastinved[c] == minstart)
 					{
@@ -4453,10 +4452,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (sum)
 									{
 										lo /= sum;
-										relskewterm = log(lo / (1 - lo)) - baseterm;
+										relskewterm = log((lo + 1e-300) / ((1 - lo) + 1e-300)) - baseterm;
 									}
 
-									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm)
+									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+									prevval = prevval / (prevval + 1.0);
 								}
 
 								
@@ -5677,7 +5677,10 @@ int main(int argc, char* argv[])
 	if (argc >= 9)
 	{
 	  docompare = argv[6] != (std::string) "-";
-	  readfambed(argv[7], argv[8], docompare);
+	  if ("-" != (std::string) argv[7])
+	    {
+	      readfambed(argv[7], argv[8], docompare);
+	    }
 	}
 
 
