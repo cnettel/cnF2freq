@@ -4421,7 +4421,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 
 
-							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1)
+							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
 							{
 							  
 							  double val;
@@ -4473,7 +4473,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								else
 								{
-								  if (ind->children && (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
 									double nnn = 1.6;
