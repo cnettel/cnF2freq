@@ -72,6 +72,7 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/mpi.hpp>*/
 #include <string>
 
+#include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/spirit/home/x3.hpp>
@@ -88,6 +89,7 @@ float templgeno[8] = { -1, -0.5,
 #include <vector>
 
 using namespace boost::spirit;
+namespace po = boost::program_options;
 
 #include <errno.h>
 #include <assert.h>
@@ -4709,16 +4711,17 @@ void readhaplodata(int innum)
 
 // Map individual names to inds
 map<string, individ*> indmap;
-individ* getind(string name)
+individ* getind(string name, bool create = true)
 {
-	while (indmap.find(name) == indmap.end())
+	decltype(indmap.begin()) i;
+	while ((i = indmap.find(name)) == indmap.end() && create)
 	{
 		int origindex = indmap.size();
 		individ* ind = indmap[name] = getind(origindex, true);
 		if (ind) ind->name = name;
 	}
 
-	return indmap[name];
+	return i == indmap.end() ? nullptr : i->second;
 }
 
 const individ* zeroguy = getind("0");
@@ -5081,6 +5084,8 @@ std::string filterExisting(const set<std::string>& names, std::string name)
 vector<int> mapIndices;
 vector<bool> hapmonomorphs;
 
+auto word_ = x3::lexeme[+(x3::char_ - x3::space)];
+
 void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hapsFile)
 {
 	using namespace x3;
@@ -5092,8 +5097,6 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
 	std::vector<std::tuple<std::string, std::string, std::string>> samples;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
-
-	auto word_ = lexeme[+(char_ - space)];
 	
 	auto marker_ = (int_ > word_);
 	auto alleles_ = word_ > word_;
@@ -5573,6 +5576,64 @@ void readhaplodata(FILE* in, int swap)
 	}
 }
 
+
+// For now, only reads haploweight values
+void deserialize(istream& stream)
+{
+	/*
+	This is what we're unserializing
+	fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);*/
+	auto haploline = x3::double_ > x3::omit[x3::int_ > x3::int_ > x3::double_ > x3::double_ > x3::double_];
+	
+	while (!stream.eof())
+	{
+		string line;
+		std::getline(stream, line);
+
+		pair<int, string> data;
+	
+		if (x3::parse(line.begin(), line.end(), x3::int_ > word_, data))
+		{
+			int n;
+			string name;
+			std::tie(n, name) = data;
+
+			individ* ind = getind(n, false);
+			individ* indcheck = getind(name, false);
+
+			if (ind && ind == indcheck)
+			{
+				int oldphase = 0;
+				int switches = 0;
+				for (int i = 0; i < markerposes.size(); i++)
+				{
+					std::getline(stream, line);
+					if (!x3::parse(line.begin(), line.end(), haploline, ind->haploweight[i]))
+					{
+						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::end;
+					}
+					else
+					{
+						if (ind->haploweight[i] == 0.5) continue;
+
+						int newphase = 1 + (ind->haploweight[i] > 0.5);
+						if (oldphase && oldphase != newphase) switches++;
+
+						oldphase = newphase;
+					}
+				}
+
+				std::cerr << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
+			}
+			else
+			{
+				std::cerr << "Supposed individual header not a header: " << line << std::endl;
+			}
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef _MSC_VER
@@ -5655,37 +5716,58 @@ int main(int argc, char* argv[])
 	readalphadata(datafile);
 #endif
 #ifdef READHAPSSAMPLE
-	std::ifstream sampleFile(argv[1]);
-	std::ifstream bimFile(argv[2]);
-	std::ifstream hapsFile(argv[3]);
+	po::options_description desc;
+	po::variables_map inOptions;
+	string impoutput, famfilename, bedfilename, deserializefilename;
+
+	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
+		("bimfile", po::value<string>(), "BIM file")
+		("hapfiles", po::value<vector<string> >()->multitoken(), "One or more HAP files, maximum realization followed by others.")
+		("deserialize", po::value<string>(&deserializefilename), "Load existing Chaplink output as starting point, with reporting on number of inversions.")
+		("impoutput", po::value<string>(&impoutput), "Imputed genotype output from previous run.")
+		("famfile", po::value<string>(&famfilename), "Original PLINK fam file. Use with bedfile.")
+		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.");
+
+	auto parser = po::command_line_parser(argc, argv);
+	parser.options(desc);
+	po::store(parser.run(), inOptions);
+
+
+	std::ifstream sampleFile(inOptions["samplefile"].as<string>());
+	std::ifstream bimFile(inOptions["bimfile"].as<string>());
+	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
 
 	vector<istream*> hapFiles;
-	hapFiles.push_back(&hapsFile);
-	for (int k = 9; k < argc; k++)
+	for (string filename : hapsfileOption)
 	  {
-	    hapFiles.push_back(new ifstream(argv[k]));
+	    hapFiles.push_back(new ifstream(filename));
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
 	/*		markerposes.resize(700);
 			chromstarts[1] = 700;*/
-#endif
-	bool docompare = true;
-	if (argc >= 9)
+
+	bool docompare = (impoutput != "");
+	if (inOptions.count("famfile") + inOptions.count("bedfile"))
 	{
-	  docompare = argv[6] != (std::string) "-";
-	  readfambed(argv[7], argv[8], docompare);
+	  readfambed(famfilename, bedfilename, docompare);
 	}
 
-
 	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
-      	if (argc >= 7 && docompare)
+	if (deserializefilename != "")
 	{
-		std::ifstream filteredOutput(argv[6]);
+		std::ifstream deserializationFile(deserializefilename);
+
+		deserialize(deserializationFile);
+	}
+    if (docompare)
+	{
+		std::ifstream filteredOutput(impoutput);
 		compareimputedoutput(filteredOutput);
 
 		return 0;
 	}
+#endif
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
