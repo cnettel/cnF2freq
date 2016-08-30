@@ -9,7 +9,7 @@ const bool DOINFPROBS = false;
 const bool DOIMPOSSIBLE = false;
 const bool SELFING = false;
 const bool RELSKEWS = true;
-const bool RELSKEWSTATES = true;
+const bool RELSKEWSTATES = false;
 
 // F2 with haplotyping
 const int NUMGEN = 3;

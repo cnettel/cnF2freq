@@ -4028,7 +4028,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							minstart = p;
 							minval = ind->negshift[p];
 						}
-						if (ind->negshift[p] < -1e-10)
+						// TODO: Was a seed element ever needed here?
+						/*						if (ind->negshift[p] < -1e-10)
 						{
 							if (!prevlow)
 							{
@@ -4036,9 +4037,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								negshiftcands[c].insert(ourtuple);
 							}
 							prevlow = true;
-						}
-						else
-							prevlow = false;
+							}*/
 					}
 					if (ind->lastinved[c] == minstart)
 					{
@@ -4396,6 +4395,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 
 						cno = 0;
+						double prevval = 0.5;
 						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 						{
 							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
@@ -4423,7 +4423,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 
 
-							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1)
+							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
 							{
 							  
 							  double val;
@@ -4441,8 +4441,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								double relskewterm = 0;
 								if (RELSKEWS && j)
 								{
-									// Modify haplotype based on relhaplo relationship with j - 1
-									double prevval = ind->haploweight[j - 1];
+									// Modify haplotype based on relhaplo relationship with raw intended haploweight for j - 1
 									double relval = ind->relhaplo[j - 1];
 									double sum = 0;
 									double term = ind->haploweight[j] * (prevval * relval + (1 - prevval) * (1 - relval));
@@ -4455,11 +4454,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (sum)
 									{
 										lo /= sum;
-										relskewterm = log(lo / (1 - lo)) - baseterm;
+										relskewterm = log((lo + 1e-300) / ((1 - lo) + 1e-300)) - baseterm;
 									}
+
+									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+									prevval = prevval / (prevval + 1.0);
 								}
 
-								double intended = exp((log(val) + relskewterm) * ind->haplocount[j] * scalefactor + baseterm);
+								
+								double intended = exp((log(val) * ind->haplocount[j] + relskewterm) * scalefactor + baseterm);
 								intended = intended / (intended + 1.0);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
@@ -4472,7 +4475,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								else
 								{
-								  if (ind->children && (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
 									double nnn = 1.6;
