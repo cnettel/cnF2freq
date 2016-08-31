@@ -5614,7 +5614,7 @@ void deserialize(istream& stream)
 					std::getline(stream, line);
 					if (!x3::parse(line.begin(), line.end(), haploline, ind->haploweight[i]))
 					{
-						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::end;
+						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::endl;
 					}
 					else
 					{
