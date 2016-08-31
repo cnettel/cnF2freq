@@ -5722,6 +5722,7 @@ int main(int argc, char* argv[])
 	po::options_description desc;
 	po::variables_map inOptions;
 	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename;
+	int capmarker = 0;
 	int COUNT;
 
 	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
@@ -5732,7 +5733,8 @@ int main(int argc, char* argv[])
 		("famfile", po::value<string>(&famfilename), "Original PLINK fam file. Use with bedfile.")
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
-		("output", po::value<string>(&outputfilename), "Output file name");
+		("output", po::value<string>(&outputfilename), "Output file name")
+		("capmarker", po::value<int>(&capmarker), "Limit to marker count.");
 
 	auto parser = po::command_line_parser(argc, argv);
 	parser.options(desc);
@@ -5750,8 +5752,11 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
-	/*		markerposes.resize(700);
-			chromstarts[1] = 700;*/
+	if (capmarker)
+	{
+		markerposes.resize(capmarker);
+		chromstarts[1] = min(capmarker, (int) chromstarts[1]);
+	}
 
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
@@ -5759,6 +5764,8 @@ int main(int argc, char* argv[])
 	  readfambed(famfilename, bedfilename, docompare);
 	}
 
+	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
+	// getting stuck towards the end.
 	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 	if (deserializefilename != "")
 	{
@@ -5780,36 +5787,6 @@ int main(int argc, char* argv[])
 	postmarkerdata();
 	CORRECTIONINFERENCE = false;
 	int chromnum;
-
-	/*	sscanf(argv[1], "%d", &chromnum);
-	chromstarts[0] = chromstarts[chromnum - 1];
-	chromstarts[1] = chromstarts[chromnum];
-
-	chromstarts.resize(2);
-	dous.resize(2400);*/
-	//sprintf(tlf, "/glob/nettel/qtlmas14_2gen.%d", world.rank());
-	//	sprintf(tlf, "qtlmas14aug03");
-	/*	long long seed;
-	scanf("%lld", &seed);
-	rng.seed((boost::mt19937::result_type) seed);
-
-	in = fopen("sexcorrhapend", "r");
-	readhaploweights(in);
-	fclose(in);
-
-	postmarkerdata();*/
-
-	/*	readhaplodata(0);
-	readhaplodata(1976);
-	readhaplodata(4034);
-	readhaplodata(6082);
-	readhaplodata(8073);*/
-
-
-	//	sscanf(argv[5], "%d", &chromstarts[1]);
-
-	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
-	// getting stuck towards the end.
 
 	FILE* out = stdout;
 	if (outputfilename != "")
