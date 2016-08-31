@@ -5721,7 +5721,8 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename;
+	int COUNT;
 
 	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
 		("bimfile", po::value<string>(), "BIM file")
@@ -5729,7 +5730,9 @@ int main(int argc, char* argv[])
 		("deserialize", po::value<string>(&deserializefilename), "Load existing Chaplink output as starting point, with reporting on number of inversions.")
 		("impoutput", po::value<string>(&impoutput), "Imputed genotype output from previous run.")
 		("famfile", po::value<string>(&famfilename), "Original PLINK fam file. Use with bedfile.")
-		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.");
+		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
+		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
+		("output", po::value<string>(&outputfilename), "Output file name");
 
 	auto parser = po::command_line_parser(argc, argv);
 	parser.options(desc);
@@ -5808,10 +5811,11 @@ int main(int argc, char* argv[])
 	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
 	// getting stuck towards the end.
 
-	FILE* out = fopen(argv[4], "w");
-	int COUNT = 3;
-	if (argc >= 6) sscanf(argv[5], "%d", &COUNT);
-
+	FILE* out = stdout;
+	if (outputfilename != "")
+	{
+		fopen(outputfilename.c_str(), "w");
+	}	
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
