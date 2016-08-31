@@ -5596,7 +5596,7 @@ void deserialize(istream& stream)
 
 		pair<int, string> data;
 	
-		if (x3::parse(line.begin(), line.end(), x3::int_ > word_, data))
+		if (x3::phrase_parse(line.begin(), line.end(), x3::int_ > word_, data))
 		{
 			int n;
 			string name;
@@ -5612,7 +5612,7 @@ void deserialize(istream& stream)
 				for (int i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
-					if (!x3::parse(line.begin(), line.end(), haploline, ind->haploweight[i]))
+					if (!x3::phrase_parse(line.begin(), line.end(), haploline, ind->haploweight[i]))
 					{
 						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::end;
 					}
