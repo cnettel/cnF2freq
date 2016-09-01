@@ -5627,7 +5627,7 @@ void deserialize(istream& stream)
 					}
 				}
 
-				std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
+				if (ind->children || !ind->founder) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
 			}
 			else
 			{
@@ -5770,14 +5770,6 @@ int main(int argc, char* argv[])
 	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
 	// getting stuck towards the end.
 	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
-	if (deserializefilename != "")
-	{
-		std::ifstream deserializationFile(deserializefilename);
-
-		std::cout << "deserialize started." << std::endl;
-		deserialize(deserializationFile);
-		std::cout << "deserialize finished." << std::endl;
-	}
     if (docompare)
 	{
 		std::ifstream filteredOutput(impoutput);
@@ -5785,13 +5777,22 @@ int main(int argc, char* argv[])
 
 		return 0;
 	}
-    return 0;
 #endif
 
 	//	return 0;
 	CORRECTIONINFERENCE = true;
 	postmarkerdata();
 	CORRECTIONINFERENCE = false;
+
+	if (deserializefilename != "")
+	{
+		std::ifstream deserializationFile(deserializefilename);
+
+		std::cout << "deserialize started." << std::endl;
+		deserialize(deserializationFile);
+		std::cout << "deserialize finished." << std::endl;
+		return 0;
+	}
 	int chromnum;
 
 	FILE* out = stdout;
