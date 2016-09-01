@@ -5587,7 +5587,7 @@ void deserialize(istream& stream)
 	This is what we're unserializing
 	fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);*/
-	auto haploline = x3::double_ > x3::omit[x3::int_ > x3::int_ > x3::double_ > x3::double_ > x3::double_];
+  auto haploline = x3::double_ >> x3::omit[x3::int_ >> x3::int_ >> x3::double_ >> x3::double_ >> x3::double_];
 	
 	while (!stream.eof())
 	{
@@ -5596,7 +5596,7 @@ void deserialize(istream& stream)
 
 		pair<int, string> data;
 	
-		if (x3::parse(line.begin(), line.end(), x3::int_ > word_, data))
+		if (x3::phrase_parse(line.begin(), line.end(), x3::int_ >> word_ >> x3::eoi, x3::space, data))
 		{
 			int n;
 			string name;
@@ -5612,7 +5612,7 @@ void deserialize(istream& stream)
 				for (int i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
-					if (!x3::parse(line.begin(), line.end(), haploline, ind->haploweight[i]))
+					if (!x3::phrase_parse(line.begin(), line.end(), haploline, x3::space, ind->haploweight[i]))
 					{
 						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::endl;
 					}
@@ -5627,7 +5627,7 @@ void deserialize(istream& stream)
 					}
 				}
 
-				std::cerr << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
+				std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
 			}
 			else
 			{
@@ -5739,7 +5739,7 @@ int main(int argc, char* argv[])
 	auto parser = po::command_line_parser(argc, argv);
 	parser.options(desc);
 	po::store(parser.run(), inOptions);
-
+	po::notify(inOptions);
 
 	std::ifstream sampleFile(inOptions["samplefile"].as<string>());
 	std::ifstream bimFile(inOptions["bimfile"].as<string>());
@@ -5752,6 +5752,8 @@ int main(int argc, char* argv[])
 	  }
 
 	readhapssample(sampleFile, bimFile, hapFiles);
+	std::cout << "readhapssampple finished." << std::endl;
+
 	if (capmarker)
 	{
 		markerposes.resize(capmarker);
@@ -5761,6 +5763,7 @@ int main(int argc, char* argv[])
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
 	{
+	  std::cout << "readfambed started." << std::endl;
 	  readfambed(famfilename, bedfilename, docompare);
 	}
 
@@ -5771,7 +5774,9 @@ int main(int argc, char* argv[])
 	{
 		std::ifstream deserializationFile(deserializefilename);
 
+		std::cout << "deserialize started." << std::endl;
 		deserialize(deserializationFile);
+		std::cout << "deserialize finished." << std::endl;
 	}
     if (docompare)
 	{
@@ -5780,6 +5785,7 @@ int main(int argc, char* argv[])
 
 		return 0;
 	}
+    return 0;
 #endif
 
 	//	return 0;
