@@ -164,8 +164,8 @@ typedef quantity<FactorUnit, float> Factor;
 
 typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 
-const MarkerVal UnknownMarkerVal = (MarkerVal)0;
-const MarkerVal sexmarkerval = 9 * MarkerValue;
+constexpr MarkerVal UnknownMarkerVal = (MarkerVal)0;
+constexpr MarkerVal sexmarkerval = 9 * MarkerValue;
 
 const float maxdiff = 0.000005;
 
@@ -5089,32 +5089,57 @@ vector<bool> hapmonomorphs;
 
 auto word_ = x3::lexeme[+(x3::char_ - x3::space)];
 
-void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hapsFile)
+typedef std::vector<std::tuple<std::string, std::string, std::string>> sampletype;
+
+const auto marker_ = (x3::int_ > word_);
+const auto hapsLineStart = marker_ > x3::omit[x3::float_] > word_ > word_;
+const auto hapsLine = (hapsLineStart > (+x3::int_));
+const auto hapsLineIgnoreGenotypes = (hapsLineStart > x3::omit[(+x3::int_)]);
+
+struct samplereader
+{
+	sampletype samples;
+
+	void read(istream& sampleFile)
+	{
+		sampleFile >> std::noskipws;
+		using namespace x3;
+
+		auto sampleHeader = omit[
+			repeat(7)[word_] > eol >
+				int_ > int_ > int_ > repeat(4)[word_] > eol];
+		auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]);
+
+		try
+		{
+			parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+			std::cout << samples.size() << " samples read." << std::endl;
+		}
+		catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+		{
+			std::cerr << "expected: " << x.which();
+			std::cerr << "got: \"" << x.where() << '"' << std::endl;
+
+			throw x;
+		}
+	}
+};
+
+void readhapssample(const sampletype& samples, istream& bimFile, vector<istream*>& hapsFile)
 {
 	using namespace x3;
 
-	sampleFile >> std::noskipws;
 	bimFile >> std::noskipws;
 	*hapsFile[0] >> std::noskipws;
 	
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
-	std::vector<std::tuple<std::string, std::string, std::string>> samples;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
-	
-	auto marker_ = (int_ > word_);
+		
 	auto alleles_ = word_ > word_;
 	auto bimLine = (marker_ > omit[float_] > int_ > omit[alleles_]);
-	auto hapsLine = (marker_ > omit[float_] > word_ > word_ > (+int_));
-	auto sampleHeader = omit[
-				 repeat(7)[word_] > eol >
-				    int_ > int_ > int_ > repeat(4)[word_] > eol];
-	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
 	try
 	{
-	  parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
-		std::cout << samples.size() << " samples read." << std::endl;
-
 		parseToEndWithError(bimFile, (bimLine[([&](auto& context)
 		{
 			using namespace boost::fusion;
@@ -5291,6 +5316,57 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 	}
 }
 
+void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newhapfile)
+{
+	vector<individ*> sampleInds;
+	for (auto sample : samples)
+	{
+		sampleInds.push_back(getind(get<0>(sample), false));
+	}
+
+	std::vector<std::tuple<int, std::string, std::string, std::string>> snpData;
+
+	using namespace x3;
+	
+	try
+	{
+		parseToEndWithError(oldhapfile, hapsLineIgnoreGenotypes % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+	}
+	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+	{
+		std::cerr << "expected: " << x.which();
+		std::cerr << "got: \"" << x.where() << '"' << std::endl;
+
+		throw x;
+	}
+
+	auto translateMarker = [](MarkerVal x) -> std::string
+	{
+		if (x == UnknownMarkerVal) return "?";
+		if (x == 1 * MarkerValue) return "0";
+		if (x == 2 * MarkerValue) return "1";
+		assert(false);
+	};
+
+	int i = 0;
+	for (auto marker : snpData)
+	{
+		newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker);
+		for (auto ind : sampleInds)
+		{
+			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
+			if (ind->haploweight[i] > 0.5)
+			{
+				swap(data.first, data.second);
+			}
+
+			newhapfile << " " << translateMarker(data.first) << " " << translateMarker(data.second) << " ";
+		}
+		newhapfile << "\n";
+		i++;
+	}
+}
 
 void readfambed(std::string famFileName, std::string bedFileName, bool readall = true)
 {
@@ -5674,8 +5750,7 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename;
-	int capmarker = 0;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename;
 	int COUNT;
 
 	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
@@ -5687,14 +5762,23 @@ int main(int argc, char* argv[])
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
 		("output", po::value<string>(&outputfilename), "Output file name")
-		("capmarker", po::value<int>(&capmarker), "Limit to marker count.");
+		("capmarker", po::value<int>()->notifier([&](int cap)
+	{
+		markerposes.resize(cap);
+		chromstarts[1] = min(cap, (int)chromstarts[1]);
+	}), "Limit to marker count.")
+		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
 	auto parser = po::command_line_parser(argc, argv);
 	parser.options(desc);
 	po::store(parser.run(), inOptions);
 	po::notify(inOptions);
 
-	std::ifstream sampleFile(inOptions["samplefile"].as<string>());
+	samplereader samples;
+	{
+		std::ifstream sampleFile(inOptions["samplefile"].as<string>());
+		samples.read(sampleFile);
+	}
 	std::ifstream bimFile(inOptions["bimfile"].as<string>());
 	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
 
@@ -5704,14 +5788,8 @@ int main(int argc, char* argv[])
 	    hapFiles.push_back(new ifstream(filename));
 	  }
 
-	readhapssample(sampleFile, bimFile, hapFiles);
+	readhaps(samples.samples, bimFile, hapFiles);
 	std::cout << "readhapssampple finished." << std::endl;
-
-	if (capmarker)
-	{
-		markerposes.resize(capmarker);
-		chromstarts[1] = min(capmarker, (int) chromstarts[1]);
-	}
 
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
@@ -5745,6 +5823,14 @@ int main(int argc, char* argv[])
 		deserialize(deserializationFile);
 		std::cout << "deserialize finished." << std::endl;
 		return 0;
+	}
+
+	if (outputhapfilename != "")
+	{
+		// Note that C++98 had strange EOF behavior (?)
+		hapFiles[0]->seekg(0);
+		std::ofstream outputhapfile(outputhapfilename);
+		createhapfile(samples.samples, *hapFiles[0], outputhapfile);
 	}
 	int chromnum;
 
