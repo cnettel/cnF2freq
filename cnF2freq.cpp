@@ -5361,7 +5361,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 				swap(data.first, data.second);
 			}
 
-			newhapfile << " " << translateMarker(data.first) << " " << translateMarker(data.second) << " ";
+			newhapfile << " " << translateMarker(data.first) << " " << translateMarker(data.second);
 		}
 		newhapfile << "\n";
 		i++;
