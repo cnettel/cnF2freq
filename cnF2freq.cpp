@@ -5185,7 +5185,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		/*if (me->gen > 0)*/ if ((std::string)"KA06-0532" != me->name) dous.push_back(me);
+		/*if (me->gen > 0) if ((std::string)"KA06-0532" != me->name) dous.push_back(me);*/
 
 		sampleInds.push_back(me);
 	}
@@ -5335,9 +5335,9 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		for (int j = 0; j < dous.size(); j++)
 		{
 		  
-		  if (!(
+		  /*if (!(
 			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
-			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;
+			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
 		  
 			int index = indArray[j];
 			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
@@ -5382,11 +5382,6 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				    }*/
 				dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			      }
-			  }
-			if (i == 558)
-			  {
-			    dous[j]->markerdata[i] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
-			    dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			  }
 		}
 	}
@@ -5627,7 +5622,7 @@ void deserialize(istream& stream)
 					}
 				}
 
-				if (ind->children || !ind->founder) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
+				if (ind->children || (ind->pars[0] && !ind->pars[0]->empty) || (ind->pars[1] && !ind->pars[1]->empty)) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
 			}
 			else
 			{
