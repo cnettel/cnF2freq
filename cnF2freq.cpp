@@ -5645,20 +5645,8 @@ int main(int argc, char* argv[])
 	mpi::environment env(argc, argv);
 	mpi::communicator world;
 #endif
-
-
-	//	scanf("%lf", &discstep);
-
-	printf("Number of sexes in map: ");
-	//	scanf("%d", &sexc);
 	discstep = 1;
 	sexc = 2;
-
-	// Not really related to the number of generations, but doing it like this makes the
-	// estimates similar for the two cases. Whether the old 4-state, 2-gen model was
-	// actually correct is another issue entirely.
-	//
-	// / 50 everywhere is probably more appropriate
 	if (NUMGEN == 3)
 	{
 		baserec[0] = -discstep / 50.0;
@@ -5674,36 +5662,6 @@ int main(int argc, char* argv[])
 	}
 	//selfgen = 1;
 	genrec[2] = baserec[0] /** selfgen*/;
-
-	char tlf[255];
-	//	fgets(tlf, 255, stdin);
-
-	/*	printf("Marker info file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	FILE* in = fopen(tlf, "r");
-	readmarkerinfo(in);
-	fclose(in);
-
-	printf("Pedigree file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	in = fopen(tlf, "r");
-	readped(in);
-	fclose(in);
-
-	printf("Marker data file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	in = fopen(tlf, "r");
-	readmarkerdata(in);
-	fclose(in);	*/
-
-	if (argc < 5)
-	{
-		printf("Three args expected: map, ped and geno file, followed by output filename.\n");
-		return -1;
-	}
 	 
 #ifdef READALPHADATA
 	FILE* mapfile = fopen(argv[1], "rt");
