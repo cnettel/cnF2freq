@@ -5822,7 +5822,6 @@ int main(int argc, char* argv[])
 		std::cout << "deserialize started." << std::endl;
 		deserialize(deserializationFile);
 		std::cout << "deserialize finished." << std::endl;
-		return 0;
 	}
 
 	if (outputhapfilename != "")
@@ -5831,6 +5830,8 @@ int main(int argc, char* argv[])
 		hapFiles[0]->seekg(0);
 		std::ofstream outputhapfile(outputhapfilename);
 		createhapfile(samples.samples, *hapFiles[0], outputhapfile);
+
+		return 0;
 	}
 	int chromnum;
 
