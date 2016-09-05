@@ -5093,7 +5093,7 @@ typedef std::vector<std::tuple<std::string, std::string, std::string>> sampletyp
 
 const auto marker_ = (x3::int_ > word_);
 const auto hapsLine = (marker_ > x3::omit[x3::float_] > word_ > word_ > (+x3::int_));
-const auto hapsLineIgnoreGenotypes = (marker_ > x3::omit[x3::long_long] > word_ > word_> x3::omit[(+x3::int_)]);
+const auto hapsLineIgnoreGenotypes = (marker_ > x3::long_long > word_ > word_> x3::omit[(+x3::int_)]);
 
 struct samplereader
 {
