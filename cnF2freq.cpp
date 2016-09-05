@@ -5092,9 +5092,8 @@ auto word_ = x3::lexeme[+(x3::char_ - x3::space)];
 typedef std::vector<std::tuple<std::string, std::string, std::string>> sampletype;
 
 const auto marker_ = (x3::int_ > word_);
-const auto hapsLineStart = marker_ > x3::omit[x3::float_] > word_ > word_;
-const auto hapsLine = (hapsLineStart > (+x3::int_));
-const auto hapsLineIgnoreGenotypes = (hapsLineStart > x3::omit[(+x3::int_)]);
+const auto hapsLine = (marker_ > x3::omit[x3::float_] > word_ > word_ > (+x3::int_));
+const auto hapsLineIgnoreGenotypes = (marker_ > x3::omit[x3::long_long] > word_ > word_> x3::omit[(+x3::int_)]);
 
 struct samplereader
 {
@@ -5324,7 +5323,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 		sampleInds.push_back(getind(get<0>(sample), false));
 	}
 
-	std::vector<std::tuple<int, std::string, std::string, std::string>> snpData;
+	std::vector<std::tuple<int, std::string, long long, std::string, std::string>> snpData;
 
 	using namespace x3;
 	
@@ -5352,7 +5351,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 	int i = 0;
 	for (auto marker : snpData)
 	{
-		newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker);
+		newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << get<4>(marker);
 		for (auto ind : sampleInds)
 		{
 			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
