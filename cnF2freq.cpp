@@ -5209,7 +5209,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		/*if (me->gen > 0) if ((std::string)"KA06-0532" != me->name) dous.push_back(me);*/
+		dous.push_back(me);
 
 		sampleInds.push_back(me);
 	}
@@ -5351,7 +5351,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 	int i = 0;
 	for (auto marker : snpData)
 	{
-		newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << get<4>(marker);
+	  newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << " " << get<4>(marker);
 		for (auto ind : sampleInds)
 		{
 			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
@@ -5788,7 +5788,7 @@ int main(int argc, char* argv[])
 	  }
 
 	readhaps(samples.samples, bimFile, hapFiles);
-	std::cout << "readhapssampple finished." << std::endl;
+	std::cout << "readhapssample finished." << std::endl;
 
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
