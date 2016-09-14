@@ -5355,7 +5355,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 		for (auto ind : sampleInds)
 		{
 			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
-			if (ind->haploweight[i] > 0.5)
+			if (ind->haploweight[i] > 0.5 && (((ind->pars[0] && !ind->pars[0]->empty) || (ind->pars[1] && !ind->pars[1]->empty)) || ind->children))
 			{
 				swap(data.first, data.second);
 			}
