@@ -25,6 +25,10 @@
 // workarounds are used.
 #define _CRT_SECURE_NO_WARNINGS
 
+#define isnan killgnubuiltins_isnan
+
+#include <cmath>
+
 #include <vector>
 #include <string.h>
 #include <stdio.h>
@@ -69,17 +73,10 @@ float templgeno[8] = {-1, -0.5,
 #include <stdlib.h>
 #include <set>
 #include <algorithm>
-#include <math.h>
 #include <map>
-#include <float.h> // use these libraries
 
 
 using namespace std; // use functions that are part of the standard library
-#ifdef _MSC_VER
-//using namespace tr1;
-#else
-using namespace boost;
-#endif
 
 using namespace boost;
 //using namespace boost::mpi;
@@ -96,7 +93,7 @@ using namespace boost::units;
 #endif
 
 
-mt19937 rng;
+boost::random::mt19937 rng;
 int myrand(int max)
 {	
 	uniform_int<> orig(0, max - 1);
