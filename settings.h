@@ -1,5 +1,5 @@
 // F2 with haplotyping
-const bool DOINFPROBS = false;
+constexpr bool DOINFPROBS = false;
 const bool SELFING = false;
 const int NUMGEN = 3;
 const int TYPEBITS = (1 << NUMGEN) - 2;
