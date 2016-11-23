@@ -170,23 +170,23 @@ public:
 		return val;
 	}
 
-	constexpr const bool operator != (const MarkerVal& rhs)
+	constexpr const bool operator != (const MarkerVal&& rhs)
 	{
 		return val != rhs.val;
 	}
 
-	constexpr const bool operator == (const MarkerVal& rhs)
+	constexpr const bool operator == (const MarkerVal&& rhs)
 	{
 		return val == rhs.val;
 	}
 
-	constexpr const bool operator < (const MarkerVal& rhs)
+	constexpr const bool operator < (const MarkerVal&& rhs)
 	{
 		return val < rhs.val;
 	}
 };
 
-constexpr const MarkerVal operator* (const int& val, const MarkerValueType& rhs)
+constexpr const MarkerVal operator* (const int&& val, const MarkerValueType&& rhs)
 {
 	return MarkerVal(val);
 }
