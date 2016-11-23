@@ -163,30 +163,30 @@ private:
 	int val;
 	
 public:
-	constexpr const explicit MarkerVal(int val) : val(val) {}
-	constexpr const explicit MarkerVal() : val(0) {}
-	constexpr const int value()
+        constexpr explicit MarkerVal(int val) : val(val) {}
+	constexpr MarkerVal() : val(0) {}
+	constexpr int value() const
 	{
 		return val;
 	}
 
-	constexpr const bool operator != (const MarkerVal&& rhs)
-	{
-		return val != rhs.val;
-	}
-
-	constexpr const bool operator == (const MarkerVal&& rhs)
+        constexpr bool operator == (const MarkerVal& rhs) const
 	{
 		return val == rhs.val;
 	}
 
-	constexpr const bool operator < (const MarkerVal&& rhs)
+        constexpr bool operator != (const MarkerVal& rhs) const
+	{
+		return val != rhs.val;
+	}
+
+	constexpr bool operator < (const MarkerVal& rhs) const
 	{
 		return val < rhs.val;
 	}
 };
 
-constexpr const MarkerVal operator* (const int&& val, const MarkerValueType&& rhs)
+constexpr const MarkerVal operator* (const int& val, const MarkerValueType& rhs)
 {
 	return MarkerVal(val);
 }
@@ -5816,9 +5816,9 @@ int main(int argc, char* argv[])
 		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
 		readalphaped(pedfile);
 	}), "ped file in original PlantImpute format, similar to AlphaImpute.")
-		("genofile", po::value<string>()->notifier([&](string genofilename)
+		("genfile", po::value<string>()->notifier([&](string genfilename)
 	{
-		FILE* genofile = fopen(genofilename.c_str(), "rt");
+		FILE* genofile = fopen(genfilename.c_str(), "rt");
 		readalphadata(genofile);
 	}), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
 		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
@@ -5892,7 +5892,7 @@ int main(int argc, char* argv[])
 	FILE* out = stdout;
 	if (outputfilename != "")
 	{
-		fopen(outputfilename.c_str(), "w");
+		out = fopen(outputfilename.c_str(), "w");
 	}	
 
 	if (HAPLOTYPING || true)
