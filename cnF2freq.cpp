@@ -3500,15 +3500,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										double leftval = dous[j]->trackpossible<false, false>(tb, left, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
 										for (auto right : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double rightval = dous[j]->trackpossible<false, false>(tb, right, 0, -q - 1000, g * 2, flag2 ^ 1, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
-											pairvals[left.value() + right.value()] += leftval * rightval;
+											double rightval = dous[j]->trackpossible<false, false>(tb, right, 0, -q - 1000, g * 2 + 1, flag2 ^ 1, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											pairvals[left.value() + right.value() - 2] += leftval * rightval;
 										}
 									}
 									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
 
 									for (int i = 0; &pairvals[i] != end(pairvals); i++)
 									{
-										reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
+									  reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
 									}
 									/*/*if (!outmapval && val > 1e-3)
 									{
@@ -5789,10 +5789,10 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename;
 	int COUNT;
 
-	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
+	desc.add_options()("samplefile", po::value<string>(&samplefilename), "ShapeIT-style .sample file")
 		("bimfile", po::value<string>(), "BIM file")
 		("hapfiles", po::value<vector<string> >()->multitoken(), "One or more HAP files, maximum realization followed by others.")
 		("deserialize", po::value<string>(&deserializefilename), "Load existing Chaplink output as starting point, with reporting on number of inversions.")
@@ -5806,21 +5806,9 @@ int main(int argc, char* argv[])
 		markerposes.resize(cap);
 		chromstarts[1] = min(cap, (int)chromstarts[1]);
 	}), "Limit to marker count.")
-		("mapfile", po::value<string>()->notifier([&](string mapfilename)
-	{
-		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
-		readalphamap(mapfile);
-	}), "map file in original PlantImpute format, similar to AlphaImpute.")
-		("pedfile", po::value<string>()->notifier([&](string pedfilename)
-	{
-		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
-		readalphaped(pedfile);
-	}), "ped file in original PlantImpute format, similar to AlphaImpute.")
-		("genfile", po::value<string>()->notifier([&](string genfilename)
-	{
-		FILE* genofile = fopen(genfilename.c_str(), "rt");
-		readalphadata(genofile);
-	}), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
+		("mapfile", po::value<string>(&mapfilename), "map file in original PlantImpute format, similar to AlphaImpute.")
+	        ("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
+		("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
 		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
 	auto parser = po::command_line_parser(argc, argv);
@@ -5828,22 +5816,46 @@ int main(int argc, char* argv[])
 	po::store(parser.run(), inOptions);
 	po::notify(inOptions);
 
-	samplereader samples;
-	{
-		std::ifstream sampleFile(inOptions["samplefile"].as<string>());
-		samples.read(sampleFile);
-	}
-	std::ifstream bimFile(inOptions["bimfile"].as<string>());
-	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
-
-	vector<istream*> hapFiles;
-	for (string filename : hapsfileOption)
+	if (mapfilename != "")
 	  {
-	    hapFiles.push_back(new ifstream(filename));
+		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
+		cerr << "Reading map file " << mapfilename << "\n";
+		readalphamap(mapfile);
 	  }
 
-	readhaps(samples.samples, bimFile, hapFiles);
-	std::cout << "readhapssample finished." << std::endl;
+	if (pedfilename != "")
+	  {
+		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
+		cerr << "Reading pedigree file " << pedfilename << "\n";
+		readalphaped(pedfile);
+	  }
+
+	if (genfilename != "")
+	  {
+		FILE* genofile = fopen(genfilename.c_str(), "rt");
+		cerr << "Reading genotype file " << genfilename << "\n";
+		readalphadata(genofile);
+	  }
+
+	// TODO: Make sets of required params.
+	samplereader samples;
+	vector<istream*> hapFiles;
+	if (samplefilename != "")
+	{
+	  std::ifstream sampleFile(samplefilename);
+	  samples.read(sampleFile);
+
+	  std::ifstream bimFile(inOptions["bimfile"].as<string>());
+	  vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+
+	  for (string filename : hapsfileOption)
+	    {
+	      hapFiles.push_back(new ifstream(filename));
+	    }
+	  
+	  readhaps(samples.samples, bimFile, hapFiles);
+	  std::cout << "readhapssample finished." << std::endl;
+	}
 
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
@@ -5877,23 +5889,23 @@ int main(int argc, char* argv[])
 		deserialize(deserializationFile);
 		std::cout << "deserialize finished." << std::endl;
 	}
-
-	if (outputhapfilename != "")
-	{
-		// Note that C++98 had strange EOF behavior (?)
-		hapFiles[0]->seekg(0);
-		std::ofstream outputhapfile(outputhapfilename);
-		createhapfile(samples.samples, *hapFiles[0], outputhapfile);
-
-		return 0;
-	}
 	int chromnum;
+
+	if (samplefilename != "" && outputhapfilename != "")
+	  {
+	    // Note that C++98 had strange EOF behavior (?)
+	    hapFiles[0]->seekg(0);
+	    std::ofstream outputhapfile(outputhapfilename);
+	    createhapfile(samples.samples, *hapFiles[0], outputhapfile);
+	    
+	    return 0;
+	  }
 
 	FILE* out = stdout;
 	if (outputfilename != "")
 	{
 		out = fopen(outputfilename.c_str(), "w");
-	}	
+	}
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
