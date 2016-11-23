@@ -98,7 +98,8 @@ namespace po = boost::program_options;
 #include <algorithm>
 #include <math.h>
 #include <map>
-#include <float.h> // use these libraries
+#include <float.h>
+#include <numeric> // use these libraries
 
 
 using namespace std; // use functions that are part of the standard library
@@ -3493,15 +3494,31 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 									int mapval = 0;
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
-									if (!outmapval && val > 1e-3)
+									double pairvals[3] = { 0 };
+									for (auto left : {1 * MarkerValue, 2 * MarkerValue})
+									{
+										double leftval = dous[j]->trackpossible<false, false>(tb, left, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+										for (auto right : { 1 * MarkerValue, 2 * MarkerValue })
+										{
+											double rightval = dous[j]->trackpossible<false, false>(tb, right, 0, -q - 1000, g * 2, flag2 ^ 1, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											pairvals[left.value() + right.value()] += leftval * rightval;
+										}
+									}
+									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
+
+									for (int i = 0; &pairvals[i] != end(pairvals); i++)
+									{
+										reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
+									}
+									/*/*if (!outmapval && val > 1e-3)
 									{
 										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
 									}
 									if (mapval < 0 || mapval > 2)
 									  {
 									  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
-									  }
-									reporter.addval(q, mapval, g, flag2, val);
+									  }*/
+									//reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
 							continueloop:;
@@ -5769,14 +5786,6 @@ int main(int argc, char* argv[])
 	//selfgen = 1;
 	genrec[2] = baserec[0] /** selfgen*/;
 	 
-#ifdef READALPHADATA
-	FILE* mapfile = fopen(argv[1], "rt");
-	readalphamap(mapfile);
-	FILE* pedfile = fopen(argv[2], "rt");
-	readalphaped(pedfile);
-	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);
-#endif
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
@@ -5797,6 +5806,21 @@ int main(int argc, char* argv[])
 		markerposes.resize(cap);
 		chromstarts[1] = min(cap, (int)chromstarts[1]);
 	}), "Limit to marker count.")
+		("mapfile", po::value<string>()->notifier([&](string mapfilename)
+	{
+		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
+		readalphamap(mapfile);
+	}), "map file in original PlantImpute format, similar to AlphaImpute.")
+		("pedfile", po::value<string>()->notifier([&](string pedfilename)
+	{
+		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
+		readalphaped(pedfile);
+	}), "ped file in original PlantImpute format, similar to AlphaImpute.")
+		("genofile", po::value<string>()->notifier([&](string genofilename)
+	{
+		FILE* genofile = fopen(genofilename.c_str(), "rt");
+		readalphadata(genofile);
+	}), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
 		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
 	auto parser = po::command_line_parser(argc, argv);
