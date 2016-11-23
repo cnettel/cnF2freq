@@ -25,7 +25,7 @@
 // workarounds are used.
 #define _CRT_SECURE_NO_WARNINGS
 
-#define isnan killgnubuiltins_isnan
+//#define isnan killgnubuiltins_isnan
 
 #include <cmath>
 
@@ -232,9 +232,9 @@ template<bool zeropropagate> bool markermiss(MarkerVal& a, const MarkerVal b)
 int upflagit(int flag, int parnum, int genwidth)
 {
 
-	if (flag < 0) return flag;
+  if (flag > 0) {
 	flag >>= parnum * (genwidth - 1);
-	flag &= ((1 << (genwidth - 1)) - 1);
+	flag &= ((1 << (genwidth - 1)) - 1); }
 
 	return flag;
 }
@@ -747,7 +747,7 @@ struct individ
 	//
 	// The double overload means that the class can be treated as a conventional function call, returning a double, when the pre-lookup
 	// is not needed. In the "real" trackpossible method, one instance is called in that way, while the other one is pre-looked up.
-	template<bool update, bool zeropropagate> struct recursetrackpossible
+  template<bool update, bool zeropropagate, int genwidth> struct recursetrackpossible
 	{
 		individ* mother;
 		int upflagr;
@@ -755,7 +755,6 @@ struct individ
 		int upshiftr;
 	  double secondval;
 		const trackpossibleparams& extparams;
-		const int genwidth;
 		const MarkerVal markerval;
 		const int marker;
 		const threadblock& tb;
@@ -764,8 +763,8 @@ struct individ
 		int impossibleval;
 		bool prelok;
 
-	  recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, int genwidth, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams) :
-	    genwidth(genwidth), extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval)
+	   recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams) :
+	    extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval)
 
 		{
 			upflagr = upflagit(upflag, firstpar, genwidth);
@@ -792,26 +791,7 @@ struct individ
 			}
 		}
 
-		operator double()
-		{
-			if (!prelok)
-			{
-			  return 0;
-			}
-
-			double baseval =
-			  mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
-				upflagr,
-				upflag2r,
-				upshiftr, extparams, genwidth >> 1);
-
-			if (impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
-			{
-			  *impossibleref = impossibleval;
-			}
-
-			return baseval;
-		}
+	  operator double();
 	};
 
 	// zeropropagate also implies that there is a gstr value, we propagate zeros to find any possible source strain
@@ -828,9 +808,8 @@ struct individ
 	// individuals in the analysis.
 	// extparams: external parameters.
 	// genwidth: The width of the generation flags.
-  template<bool update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
-		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
-		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
+template<bool update, bool zeropropagate, int genwidth = 1 << (NUMGEN - 1)> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
+		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault) /*const*/
 	{
 		if (this == NULL) return 1;
 
@@ -973,12 +952,11 @@ struct individ
 				// Track to the parent generation, creating evaluation objects first
 				// These do a lookup in a special hash for combinations known to be 0, to avoid unnecessary calls
 				// Both are checked before either branch of the pedigree is actually traced.
-				recursetrackpossible<update, zeropropagate> subtrack1 =
-				  recursetrackpossible<update, zeropropagate>(this, tb, markerval, mainsecondval, marker,
+				auto subtrack1 =
+				  recursetrackpossible<update, zeropropagate, genwidth>(this, tb, markerval, mainsecondval, marker,
 					upflag,
 					upflag2,
 					upshift,
-					genwidth,
 					f2n,
 					firstpar,
 					0,
@@ -992,12 +970,11 @@ struct individ
 					baseval *= (1 - themarkersure[!realf2n]);
 					secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
 				      }
-				    baseval *= recursetrackpossible<update, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
+				    baseval *= recursetrackpossible<update, zeropropagate, genwidth>(this, tb, themarker[!realf2n], secsecondval,
 											   marker,
 					upflag,
 					upflag2,
 					upshift,
-					genwidth,
 					f2n,
 					!firstpar,
 					1,
@@ -1730,6 +1707,30 @@ return MINFACTOR;
 		return factor;
 	}
 };
+
+template<bool update, bool zeropropagate, int genwidth> individ::recursetrackpossible<update, zeropropagate, genwidth>::operator double()
+		{
+			if (!prelok)
+			{
+			  return 0;
+			}
+
+			double baseval =
+			  mother->pars[firstpar]->trackpossible<update, zeropropagate, (genwidth >> 1)>(tb, markerval, secondval, marker,
+				upflagr,
+				upflag2r,
+												      upshiftr, extparams);
+
+			if (impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
+			{
+			  *impossibleref = impossibleval;
+			}
+
+			return baseval;
+		}
+
+
+
 
 // Oh, how we waste memory, in a pseudo-O(1) manner
 individ* individer[1000000];
