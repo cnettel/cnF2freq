@@ -1119,7 +1119,7 @@ struct individ
 	}
 
 
-	// calltrackpossible is a slight wrapper that hides at least some of the interanl parameters needed for the recursion from outside callers
+	// calltrackpossible is a slight wrapper that hides at least some of the internal parameters needed for the recursion from outside callers
 	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
@@ -3478,7 +3478,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 
-					// Coordinate estimated distancse from all individuals.
+					// Coordinate estimated distances from all individuals.
 					if (q <= -1000 && DOREMAPDISTANCES)
 					{
 						double colsums[NUMTYPES] = { 0 };
