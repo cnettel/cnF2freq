@@ -151,18 +151,49 @@ class FactorUnit {};
 
 struct MarkerBaseDimension : base_dimension<MarkerBaseDimension, 931> {};
 typedef MarkerBaseDimension::dimension_type MarkerDimension;
-struct MarkerValBaseUnit : public base_unit<MarkerValBaseUnit, MarkerDimension, 932> {};
-typedef make_system<MarkerValBaseUnit>::type UnitSystem;
 
-typedef unit<MarkerDimension, UnitSystem> MarkerValUnit;
+struct MarkerValueType {};
 
-BOOST_UNITS_STATIC_CONSTANT(MarkerValue, MarkerValUnit);
+constexpr MarkerValueType MarkerValue;
 
+struct MarkerVal
+{
+private:
+	int val;
+	
+public:
+	constexpr const explicit MarkerVal(int val) : val(val) {}
+	constexpr const explicit MarkerVal() : val(0) {}
+	constexpr const int value()
+	{
+		return val;
+	}
 
-typedef quantity<MarkerValUnit, int> MarkerVal;
+	constexpr const bool operator != (const MarkerVal& rhs)
+	{
+		return val != rhs.val;
+	}
+
+	constexpr const bool operator == (const MarkerVal& rhs)
+	{
+		return val == rhs.val;
+	}
+
+	constexpr const bool operator < (const MarkerVal& rhs)
+	{
+		return val < rhs.val;
+	}
+};
+
+constexpr const MarkerVal operator* (const int& val, const MarkerValueType& rhs)
+{
+	return MarkerVal(val);
+}
+
 typedef quantity<FactorUnit, float> Factor;
 
 typedef pair<MarkerVal, MarkerVal> MarkerValPair;
+
 
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
