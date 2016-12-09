@@ -72,7 +72,7 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/mpi.hpp>*/
 #include <string>
 
-#include <boost/container/flat_map.hpp>>
+#include <boost/container/flat_map.hpp>
 #include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -114,6 +114,7 @@ using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
 using namespace boost::units;
+using namespace boost::container;
 
 
 #define none cnF2freqNONE
