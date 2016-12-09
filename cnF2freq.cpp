@@ -72,6 +72,7 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/mpi.hpp>*/
 #include <string>
 
+#include <boost/container/flat_map.hpp>>
 #include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -312,7 +313,7 @@ EXTERNFORGCC IAT impossible;
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
 EXTERNFORGCC std::array<std::array<float, 2>, INDCOUNT> haplos;
-EXTERNFORGCC std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
+EXTERNFORGCC std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 
 #if !DOFB
 // done, factors and cacheprobs all keep track of the same data
@@ -330,8 +331,8 @@ int fwbwdone[NUMSHIFTS];
 #endif
 
 EXTERNFORGCC vector<individ*> reltree;
-EXTERNFORGCC map<individ*, int> relmap;
-EXTERNFORGCC map<individ*, int> relmapshift;
+EXTERNFORGCC flat_map<individ*, int> relmap;
+EXTERNFORGCC flat_map<individ*, int> relmapshift;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
 // TODO infprobs SHOULD REALLY GO HERE, JUST SAVING MEMORY NOW AT TERRIBLE RISK
@@ -347,9 +348,9 @@ IAT impossible;
 std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
-map<individ*, int> relmap; //containing flag2 indices
-map<individ*, int> relmapshift; //containing flag2 indices
-std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
+flat_map<individ*, int> relmap; //containing flag2 indices
+flat_map<individ*, int> relmapshift; //containing flag2 indices
+std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
@@ -381,7 +382,7 @@ struct threadblock
 #endif
 	IAT* const impossible;
 	std::array<std::array<float, 2>, INDCOUNT>* const haplos;
-	std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
+	std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -751,7 +752,7 @@ struct individ
 	vector<pair<double, double> > markersure;
 
 	// Temporary storage of all possible marker values, used in fixparents.
-	vector<map<MarkerVal, pair<int, double> > > markervals;
+	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
 	vector<float> haploweight;
 	// Relative skewness, i.e. shifts between adjacent markers.
@@ -762,8 +763,8 @@ struct individ
 	vector<unsigned int> lockstart;
 	//vector<std::array<std::array<double, 40>, 4 > > semishift;
 	vector<std::array<std::array<std::array<std::array<double, 2>, 2>, 2>, 2> > parinfprobs;
-	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
-	vector<std::array<map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
+	vector<std::array<flat_map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
+	vector<std::array<flat_map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
 	vector<std::array<double, 2> > unknowninfprobs;
 
 	vector<int> genotypegrid;
@@ -1193,7 +1194,7 @@ struct individ
 						{
 							double old1 = 1;
 							int old2 = 0;
-							map<MarkerVal, pair<int, double> >::iterator i = pars[k]->markervals[marker].find((&themarker.first)[u]);
+							auto i = pars[k]->markervals[marker].find((&themarker.first)[u]);
 							if (i != pars[k]->markervals[marker].end())
 							{
 								old1 = i->second.second;
@@ -2896,7 +2897,7 @@ struct negshifter
 	}
 };
 
-bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, const map<individ*, int>& relmap, const map<individ*, int>& relmapshift)
+bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, const flat_map<individ*, int>& relmap, const flat_map<individ*, int>& relmapshift)
 {
 	int flag2filter = (1 << 30) - 1;
 	// Below lines relied on incorrect assumption of remapping of inheritance
@@ -2915,7 +2916,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 	if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
-	for (map<individ*, int>::const_iterator i = relmap.begin(), j = relmapshift.begin(); i != relmap.end(); i++, j++)
+	for (const auto i = relmap.begin(), j = relmapshift.begin(); i != relmap.end(); i++, j++)
 	{
 		int currfilter = (i->second & flag2filter);
 		int filtered = ((flag2 ^ (g * 2)) & currfilter);
@@ -4097,14 +4098,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						bool foundbest = true;
 						bool surefound = false;
 
-						map<MarkerVal, double> surenesses;
+						flat_map<MarkerVal, double> surenesses;
 
 						if (DOINFPROBS)
 						{
-							map<MarkerVal, double> sums[2];
+							flat_map<MarkerVal, double> sums[2];
 							for (int a = 0; a < 2; a++)
 							{
-								for (map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
+								for (auto i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
 								{
 									sums[a][i->first.second] += i->second;
 								}
@@ -4131,10 +4132,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								MarkerVal bestmarker;
 								double bestval = 0;
 								double bestval2 = 0;
-								map<MarkerVal, double> infprobs;
+								flat_map<MarkerVal, double> infprobs;
 
 
-								for (map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
+								for (flat_map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
 								{
 									sum += i->second;
 									infprobs[i->first.first] += i->second;
@@ -4151,7 +4152,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 								}
 
-								for (map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
+								for (flat_map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
 								{
 									double sureness = i->second / sum;
 									double origsureness = sureness;
@@ -4227,7 +4228,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											MarkerVal bestwhat = UnknownMarkerVal;
 											double bestsury = 4;
 
-											for (map<MarkerVal, double>::iterator i = surenesses.begin(); i != surenesses.end(); i++)
+											for (auto i = surenesses.begin(); i != surenesses.end(); i++)
 											{
 												if (i->first == bestvals[0]) continue;
 
@@ -4531,10 +4532,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
-					map<individ*, double> bestshift;
-					for (map<pair<individ*, individ*>, map<int, std::array<double, 8> > >::iterator i = nsm.begin(); i != nsm.end(); i++)
+					flat_map<individ*, double> bestshift;
+					for (auto i = nsm.begin(); i != nsm.end(); i++)
 					{
-						for (map<int, std::array<double, 8> >::iterator j = i->second.begin(); j != i->second.end(); j++)
+						for (auto j = i->second.begin(); j != i->second.end(); j++)
 						{
 							// 1-3 allows shifts, but not genotype switches
 							// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
