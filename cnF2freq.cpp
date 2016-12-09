@@ -99,7 +99,8 @@ namespace po = boost::program_options;
 #include <algorithm>
 #include <math.h>
 #include <map>
-#include <float.h> // use these libraries
+#include <float.h>
+#include <numeric> // use these libraries
 
 
 using namespace std; // use functions that are part of the standard library
@@ -152,18 +153,49 @@ class FactorUnit {};
 
 struct MarkerBaseDimension : base_dimension<MarkerBaseDimension, 931> {};
 typedef MarkerBaseDimension::dimension_type MarkerDimension;
-struct MarkerValBaseUnit : public base_unit<MarkerValBaseUnit, MarkerDimension, 932> {};
-typedef make_system<MarkerValBaseUnit>::type UnitSystem;
 
-typedef unit<MarkerDimension, UnitSystem> MarkerValUnit;
+struct MarkerValueType {};
 
-BOOST_UNITS_STATIC_CONSTANT(MarkerValue, MarkerValUnit);
+constexpr MarkerValueType MarkerValue;
 
+struct MarkerVal
+{
+private:
+	int val;
+	
+public:
+	constexpr const explicit MarkerVal(int val) : val(val) {}
+	constexpr const explicit MarkerVal() : val(0) {}
+	constexpr const int value()
+	{
+		return val;
+	}
 
-typedef quantity<MarkerValUnit, int> MarkerVal;
+	constexpr const bool operator != (const MarkerVal&& rhs)
+	{
+		return val != rhs.val;
+	}
+
+	constexpr const bool operator == (const MarkerVal&& rhs)
+	{
+		return val == rhs.val;
+	}
+
+	constexpr const bool operator < (const MarkerVal&& rhs)
+	{
+		return val < rhs.val;
+	}
+};
+
+constexpr const MarkerVal operator* (const int&& val, const MarkerValueType&& rhs)
+{
+	return MarkerVal(val);
+}
+
 typedef quantity<FactorUnit, float> Factor;
 
 typedef pair<MarkerVal, MarkerVal> MarkerValPair;
+
 
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
@@ -1120,7 +1152,7 @@ struct individ
 	}
 
 
-	// calltrackpossible is a slight wrapper that hides at least some of the interanl parameters needed for the recursion from outside callers
+	// calltrackpossible is a slight wrapper that hides at least some of the internal parameters needed for the recursion from outside callers
 	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
@@ -3463,15 +3495,31 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 									int mapval = 0;
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
-									if (!outmapval && val > 1e-3)
+									double pairvals[3] = { 0 };
+									for (auto left : {1 * MarkerValue, 2 * MarkerValue})
+									{
+										double leftval = dous[j]->trackpossible<false, false>(tb, left, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+										for (auto right : { 1 * MarkerValue, 2 * MarkerValue })
+										{
+											double rightval = dous[j]->trackpossible<false, false>(tb, right, 0, -q - 1000, g * 2, flag2 ^ 1, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											pairvals[left.value() + right.value()] += leftval * rightval;
+										}
+									}
+									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
+
+									for (int i = 0; &pairvals[i] != end(pairvals); i++)
+									{
+										reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
+									}
+									/*/*if (!outmapval && val > 1e-3)
 									{
 										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
 									}
 									if (mapval < 0 || mapval > 2)
 									  {
 									  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
-									  }
-									reporter.addval(q, mapval, g, flag2, val);
+									  }*/
+									//reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 								}
 							continueloop:;
@@ -3479,7 +3527,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 
-					// Coordinate estimated distancse from all individuals.
+					// Coordinate estimated distances from all individuals.
 					if (q <= -1000 && DOREMAPDISTANCES)
 					{
 						double colsums[NUMTYPES] = { 0 };
@@ -5090,32 +5138,56 @@ vector<bool> hapmonomorphs;
 
 auto word_ = x3::lexeme[+(x3::char_ - x3::space)];
 
-void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hapsFile)
+typedef std::vector<std::tuple<std::string, std::string, std::string>> sampletype;
+
+const auto marker_ = (x3::int_ > word_);
+const auto hapsLine = (marker_ > x3::omit[x3::float_] > word_ > word_ > (+x3::int_));
+const auto hapsLineIgnoreGenotypes = (marker_ > x3::long_long > word_ > word_> x3::omit[(+x3::int_)]);
+
+struct samplereader
+{
+	sampletype samples;
+
+	void read(istream& sampleFile)
+	{
+		sampleFile >> std::noskipws;
+		using namespace x3;
+
+		auto sampleHeader = omit[
+			repeat(7)[word_] > eol >
+				int_ > int_ > int_ > repeat(4)[word_] > eol];
+		auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]);
+
+		try
+		{
+			parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+			std::cout << samples.size() << " samples read." << std::endl;
+		}
+		catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+		{
+			std::cerr << "expected: " << x.which();
+			std::cerr << "got: \"" << x.where() << '"' << std::endl;
+
+			throw x;
+		}
+	}
+};
+
+void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hapsFile)
 {
 	using namespace x3;
 
-	sampleFile >> std::noskipws;
 	bimFile >> std::noskipws;
 	*hapsFile[0] >> std::noskipws;
 	
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
-	std::vector<std::tuple<std::string, std::string, std::string>> samples;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
-	
-	auto marker_ = (int_ > word_);
+		
 	auto alleles_ = word_ > word_;
 	auto bimLine = (marker_ > omit[float_] > int_ > omit[alleles_]);
-	auto hapsLine = (marker_ > omit[float_] > word_ > word_ > (+int_));
-	auto sampleHeader = omit[
-				 repeat(7)[word_] > eol >
-				    int_ > int_ > int_ > repeat(4)[word_] > eol];
-	auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]) ;
 
 	try
 	{
-	  parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
-		std::cout << samples.size() << " samples read." << std::endl;
-
 		parseToEndWithError(bimFile, (bimLine[([&](auto& context)
 		{
 			using namespace boost::fusion;
@@ -5186,7 +5258,7 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
-		/*if (me->gen > 0)*/ if ((std::string)"KA06-0532" != me->name) dous.push_back(me);
+		dous.push_back(me);
 
 		sampleInds.push_back(me);
 	}
@@ -5292,6 +5364,57 @@ void readhapssample(istream& sampleFile, istream& bimFile, vector<istream*>& hap
 	}
 }
 
+void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newhapfile)
+{
+	vector<individ*> sampleInds;
+	for (auto sample : samples)
+	{
+		sampleInds.push_back(getind(get<0>(sample), false));
+	}
+
+	std::vector<std::tuple<int, std::string, long long, std::string, std::string>> snpData;
+
+	using namespace x3;
+	
+	try
+	{
+		parseToEndWithError(oldhapfile, hapsLineIgnoreGenotypes % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+	}
+	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+	{
+		std::cerr << "expected: " << x.which();
+		std::cerr << "got: \"" << x.where() << '"' << std::endl;
+
+		throw x;
+	}
+
+	auto translateMarker = [](MarkerVal x) -> std::string
+	{
+		if (x == UnknownMarkerVal) return "?";
+		if (x == 1 * MarkerValue) return "0";
+		if (x == 2 * MarkerValue) return "1";
+		assert(false);
+	};
+
+	int i = 0;
+	for (auto marker : snpData)
+	{
+	  newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << " " << get<4>(marker);
+		for (auto ind : sampleInds)
+		{
+			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
+			if (ind->haploweight[i] > 0.5 && (((ind->pars[0] && !ind->pars[0]->empty) || (ind->pars[1] && !ind->pars[1]->empty)) || ind->children))
+			{
+				swap(data.first, data.second);
+			}
+
+			newhapfile << " " << translateMarker(data.first) << " " << translateMarker(data.second);
+		}
+		newhapfile << "\n";
+		i++;
+	}
+}
 
 void readfambed(std::string famFileName, std::string bedFileName, bool readall = true)
 {
@@ -5336,9 +5459,9 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		for (int j = 0; j < dous.size(); j++)
 		{
 		  
-		  if (!(
+		  /*if (!(
 			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
-			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;
+			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
 		  
 			int index = indArray[j];
 			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
@@ -5383,11 +5506,6 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				    }*/
 				dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			      }
-			  }
-			if (i == 558)
-			  {
-			    dous[j]->markerdata[i] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
-			    dous[j]->markersure[i] = make_pair(0.f, 0.f);
 			  }
 		}
 	}
@@ -5628,7 +5746,7 @@ void deserialize(istream& stream)
 					}
 				}
 
-				if (ind->children || !ind->founder) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
+				if (ind->children || (ind->pars[0] && !ind->pars[0]->empty) || (ind->pars[1] && !ind->pars[1]->empty)) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
 			}
 			else
 			{
@@ -5651,20 +5769,8 @@ int main(int argc, char* argv[])
 	mpi::environment env(argc, argv);
 	mpi::communicator world;
 #endif
-
-
-	//	scanf("%lf", &discstep);
-
-	printf("Number of sexes in map: ");
-	//	scanf("%d", &sexc);
 	discstep = 1;
 	sexc = 2;
-
-	// Not really related to the number of generations, but doing it like this makes the
-	// estimates similar for the two cases. Whether the old 4-state, 2-gen model was
-	// actually correct is another issue entirely.
-	//
-	// / 50 everywhere is probably more appropriate
 	if (NUMGEN == 3)
 	{
 		baserec[0] = -discstep / 50.0;
@@ -5680,50 +5786,11 @@ int main(int argc, char* argv[])
 	}
 	//selfgen = 1;
 	genrec[2] = baserec[0] /** selfgen*/;
-
-	char tlf[255];
-	//	fgets(tlf, 255, stdin);
-
-	/*	printf("Marker info file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	FILE* in = fopen(tlf, "r");
-	readmarkerinfo(in);
-	fclose(in);
-
-	printf("Pedigree file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	in = fopen(tlf, "r");
-	readped(in);
-	fclose(in);
-
-	printf("Marker data file: ");
-	fgets(tlf, 255, stdin);
-	clean(tlf);
-	in = fopen(tlf, "r");
-	readmarkerdata(in);
-	fclose(in);	*/
-
-	if (argc < 5)
-	{
-		printf("Three args expected: map, ped and geno file, followed by output filename.\n");
-		return -1;
-	}
 	 
-#ifdef READALPHADATA
-	FILE* mapfile = fopen(argv[1], "rt");
-	readalphamap(mapfile);
-	FILE* pedfile = fopen(argv[2], "rt");
-	readalphaped(pedfile);
-	FILE* datafile = fopen(argv[3], "rt");
-	readalphadata(datafile);
-#endif
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename;
-	int capmarker = 0;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename;
 	int COUNT;
 
 	desc.add_options()("samplefile", po::value<string>(), "ShapeIT-style .sample file")
@@ -5735,14 +5802,38 @@ int main(int argc, char* argv[])
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
 		("output", po::value<string>(&outputfilename), "Output file name")
-		("capmarker", po::value<int>(&capmarker), "Limit to marker count.");
+		("capmarker", po::value<int>()->notifier([&](int cap)
+	{
+		markerposes.resize(cap);
+		chromstarts[1] = min(cap, (int)chromstarts[1]);
+	}), "Limit to marker count.")
+		("mapfile", po::value<string>()->notifier([&](string mapfilename)
+	{
+		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
+		readalphamap(mapfile);
+	}), "map file in original PlantImpute format, similar to AlphaImpute.")
+		("pedfile", po::value<string>()->notifier([&](string pedfilename)
+	{
+		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
+		readalphaped(pedfile);
+	}), "ped file in original PlantImpute format, similar to AlphaImpute.")
+		("genofile", po::value<string>()->notifier([&](string genofilename)
+	{
+		FILE* genofile = fopen(genofilename.c_str(), "rt");
+		readalphadata(genofile);
+	}), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
+		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
 	auto parser = po::command_line_parser(argc, argv);
 	parser.options(desc);
 	po::store(parser.run(), inOptions);
 	po::notify(inOptions);
 
-	std::ifstream sampleFile(inOptions["samplefile"].as<string>());
+	samplereader samples;
+	{
+		std::ifstream sampleFile(inOptions["samplefile"].as<string>());
+		samples.read(sampleFile);
+	}
 	std::ifstream bimFile(inOptions["bimfile"].as<string>());
 	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
 
@@ -5752,14 +5843,8 @@ int main(int argc, char* argv[])
 	    hapFiles.push_back(new ifstream(filename));
 	  }
 
-	readhapssample(sampleFile, bimFile, hapFiles);
-	std::cout << "readhapssampple finished." << std::endl;
-
-	if (capmarker)
-	{
-		markerposes.resize(capmarker);
-		chromstarts[1] = min(capmarker, (int) chromstarts[1]);
-	}
+	readhaps(samples.samples, bimFile, hapFiles);
+	std::cout << "readhapssample finished." << std::endl;
 
 	bool docompare = (impoutput != "");
 	if (inOptions.count("famfile") + inOptions.count("bedfile"))
@@ -5792,6 +5877,15 @@ int main(int argc, char* argv[])
 		std::cout << "deserialize started." << std::endl;
 		deserialize(deserializationFile);
 		std::cout << "deserialize finished." << std::endl;
+	}
+
+	if (outputhapfilename != "")
+	{
+		// Note that C++98 had strange EOF behavior (?)
+		hapFiles[0]->seekg(0);
+		std::ofstream outputhapfile(outputhapfilename);
+		createhapfile(samples.samples, *hapFiles[0], outputhapfile);
+
 		return 0;
 	}
 	int chromnum;
