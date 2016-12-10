@@ -53,12 +53,6 @@ float templgeno[8] = { -1, -0.5,
 #include <array>
 
 #include <boost/math/distributions/binomial.hpp>
-#include <boost/units/quantity.hpp>
-#include <boost/units/conversion.hpp>
-#include <boost/units/make_system.hpp>
-#include <boost/units/base_unit.hpp>
-#include <boost/units/base_dimension.hpp>
-#include <boost/units/static_constant.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/random/linear_congruential.hpp>
 #include <boost/random/mersenne_twister.hpp>
@@ -113,7 +107,6 @@ using namespace boost;
 using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
-using namespace boost::units;
 using namespace boost::container;
 
 
@@ -148,12 +141,6 @@ struct negtrue
 		return value < 0;
 	}
 };
-
-// Declarations used for type safety based on Boost Units
-class FactorUnit {};
-
-struct MarkerBaseDimension : base_dimension<MarkerBaseDimension, 931> {};
-typedef MarkerBaseDimension::dimension_type MarkerDimension;
 
 struct MarkerValueType {};
 
@@ -192,8 +179,6 @@ constexpr const MarkerVal operator* (const int&& val, const MarkerValueType&& rh
 {
 	return MarkerVal(val);
 }
-
-typedef quantity<FactorUnit, float> Factor;
 
 typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 
