@@ -107,7 +107,7 @@ using namespace boost;
 using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
-using namespace boost::container;
+#define flat_map boost::container::flat_map
 
 
 #define none cnF2freqNONE
