@@ -3436,36 +3436,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									val = exp(val);
 									int marker = -q - 1000;
 
-									double pival = val;
-									for (int i = 0; i < 2; i++)
-									{
-										int index = i * (TYPEBITS / 2);
-										//int r = dous[j]->n;
-										int parindex = ((flag2 >> (index + 1))/* ^ (g >> index)*/) & 1;
-										// FOR g shift
-										// parindex = !parindex;
-										int flag2parindex = (flag2 >> (index + 1)) & 1;
-
-										int updateval = f2n ^ i;
-										double parfactor = 1;
-										individ* parnow = dous[j]->pars[i];
-
-										if (parnow)
-										{
-											MarkerVal mv = (&(parnow->markerdata[marker].first))[flag2parindex];
-											if (mv == UnknownMarkerVal || mv == (&(dous[j]->markerdata[marker].first))[updateval])
-											{
-												parfactor = (&(parnow->markersure[marker].first))[flag2parindex];
-											}
-											else
-												parfactor = 1 - (&(parnow->markersure[marker].first))[flag2parindex];
-										}
-										parfactor += 1e-5;
-										parfactor = 1;
-
-										pival *= parfactor;
-									}
-
 									int mapval = 0;
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									double pairvals[3] = { 0 };
