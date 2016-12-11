@@ -3044,6 +3044,28 @@ void movehaplos(int i, int k, int marker)
 	}
 }
 
+void calcdistancecolrowsums(double  &mwvals[1][1], double  &rowsums[64], double  &colsums[64], double &acc3, double &acc4, double  &mwfvals[1])
+{
+	for (int g = 0; g < NUMTYPES; g++)
+	{
+		double acc1 = 0;
+		double acc2 = 0;
+		for (int g2 = 0; g2 < NUMTYPES; g2++)
+		{
+			acc1 += mwvals[g][g2];
+			rowsums[g] += mwvals[g][g2] * mwvals[g][g2];
+
+			acc2 += mwvals[g2][g];
+			colsums[g] += mwvals[g2][g] * mwvals[g2][g];
+		}
+		acc3 += acc1;
+		acc4 += mwfvals[g];
+
+		colsums[g] -= (acc2 * acc2) / NUMTYPES;
+		rowsums[g] -= (acc1 * acc1) / NUMTYPES;
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -3479,24 +3501,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						double rowsums[NUMTYPES] = { 0 };
 						double acc3 = 0;
 						double acc4 = 0;
-						for (int g = 0; g < NUMTYPES; g++)
-						{
-							double acc1 = 0;
-							double acc2 = 0;
-							for (int g2 = 0; g2 < NUMTYPES; g2++)
-							{
-								acc1 += mwvals[g][g2];
-								rowsums[g] += mwvals[g][g2] * mwvals[g][g2];
-
-								acc2 += mwvals[g2][g];
-								colsums[g] += mwvals[g2][g] * mwvals[g2][g];
-							}
-							acc3 += acc1;
-							acc4 += mwfvals[g];
-
-							colsums[g] -= (acc2 * acc2) / NUMTYPES;
-							rowsums[g] -= (acc1 * acc1) / NUMTYPES;
-						}
+						calcdistancecolrowsums(mwvals, rowsums, colsums, acc3, acc4, mwfvals);
 
 						double relinfo1 = 0;
 						double relinfo2 = 0;
