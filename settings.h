@@ -33,6 +33,8 @@ const bool HAPLOTYPING = true;
 const int SELFMASK = ((1 << SELFBITS) - 1);
 const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)*/;
 
+const int NUMTURNS = 1 << (TYPEBITS + 1);
+
 // Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
 // TODO: Reorder bits...
 const int VALIDSELFNUMTYPES = RELSKEWSTATES ? NUMTYPES : (NUMTYPES - SELFING * (NUMTYPES >> 2));
