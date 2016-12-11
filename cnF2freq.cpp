@@ -512,13 +512,14 @@ public:
 const struct trackpossibleparams
 {
 	const float updateval;
+	MarkerVal markerval;
 	int* const gstr;
 
-	trackpossibleparams() : updateval(0.0f), gstr(0)
+	trackpossibleparams() : updateval(0.0f), gstr(0), markerval(UnknownMarkerVal)
 	{
 	}
 
-	trackpossibleparams(float updateval, int* gstr) : updateval(updateval), gstr(gstr)
+	trackpossibleparams(float updateval, int* gstr, MarkerVal markerval = UnknownMarkerVal) : updateval(updateval), gstr(gstr), markerval(markerval)
 	{
 	}
 } tpdefault;
@@ -769,6 +770,9 @@ struct individ
 	vector<MarkerValPair > markerdata;
 	vector<pair<double, double> > markersure;
 
+	vector<MarkerValPair > priormarkerdata;
+	vector<pair<double, double> > priormarkersure;
+
 	// Temporary storage of all possible marker values, used in fixparents.
 	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
@@ -779,11 +783,8 @@ struct individ
 	vector<double> negshift;
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
-	//vector<std::array<std::array<double, 40>, 4 > > semishift;
-	vector<std::array<std::array<std::array<std::array<double, 2>, 2>, 2>, 2> > parinfprobs;
-	vector<std::array<flat_map<pair<MarkerVal, MarkerVal>, double>, 2> > infprobs;
-	vector<std::array<flat_map<pair<MarkerVal, MarkerVal>, double>, 2> > sureinfprobs;
-	vector<std::array<double, 2> > unknowninfprobs;
+
+	vector<std::array<flat_map<MarkerVal, double>, 2> > infprobs;
 
 	vector<int> genotypegrid;
 
@@ -1129,7 +1130,7 @@ struct individ
 				(*tb.haplos)[n][f2n] += extparams.updateval;
 				if (DOINFPROBS)
 				  {
-				    (*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
+				    (*tb.infprobs)[n][realf2n][extparams.markerval] += extparams.updateval;
 				  }
 			}
 		}
@@ -1140,10 +1141,10 @@ struct individ
 
 	// calltrackpossible is a slight wrapper that hides at least some of the internal parameters needed for the recursion from outside callers
 	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
-		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
+		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0, const MarkerVal markerval = UnknownMarkerVal)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
-			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
+			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0, markerval));
 	}
 
 	// "Fix" parents, i.e. infer correct marker values for any zero values existing.
@@ -1229,15 +1230,15 @@ struct individ
 	}
 
 	// Verifies that an update should take place and performs it. Just a wrapper to calltrackpossible.
-	void updatehaplo(const threadblock& tb, const unsigned int marker, const unsigned int i, const int flag2, const double updateval)
+	void updatehaplo(const threadblock& tb, const unsigned int marker, const unsigned int i, const int flag2, const double updateval, MarkerVal markerval)
 	{
 		MarkerValPair& themarker = markerdata[marker];
 
-		double ok = calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
+		double ok = calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2, updateval, markerval);
 
 		if (ok)
 		{
- 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
+ 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval, markerval);
 		}
 		else
 		{
