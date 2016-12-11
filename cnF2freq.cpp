@@ -3017,6 +3017,33 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use EM estimate".
 double scalefactor = 0.02;
 
+void movehaplos(int i, int k, int marker)
+{
+	if (haplos[i][0] || haplos[i][1])
+	{
+		if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
+		{
+			double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
+			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
+
+			double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
+			//intended -= reltree[k]->haploweight[marker];
+
+			bool neg = intended < 0;
+
+			//intended /= sqrt(fabs(intended) + 1.0);
+			// if (neg) intended = -intended;
+
+			{
+				reltree[k]->haplobase[marker] += log(b1 / b2);
+				reltree[k]->haplocount[marker] += 1;
+			}
+		}
+		haplos[i][0] = 0;
+		haplos[i][1] = 0;
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -3786,6 +3813,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma ivdep
 							for (int k = 0; k < (int)reltree.size(); k++)
 							{
+								moveinfprobs();
 								int i = reltree[k]->n;
 								/*							for (int side = 0; side < 2; side++)
 															{
@@ -3793,29 +3821,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																{
 																	reltree[k]->infprobs[marker]
 																}*/
-								if (haplos[i][0] || haplos[i][1])
-								{
-									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
-									{
-									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
-									  double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
-
-										double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
-										//intended -= reltree[k]->haploweight[marker];
-
-										bool neg = intended < 0;
-
-										//intended /= sqrt(fabs(intended) + 1.0);
-										// if (neg) intended = -intended;
-
-										{
-											reltree[k]->haplobase[marker] += log(b1 / b2);
-											reltree[k]->haplocount[marker] += 1;
-										}
-									}
-									haplos[i][0] = 0;
-									haplos[i][1] = 0;
-								}
+								movehaplos(i, k, marker);
 							}
 						}
 					}
