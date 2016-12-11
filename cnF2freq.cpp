@@ -2070,9 +2070,6 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		ind->negshift.resize(markerposes.size());
 
 		ind->infprobs.resize(markerposes.size());
-		ind->sureinfprobs.resize(markerposes.size());
-		ind->unknowninfprobs.resize(markerposes.size());
-		ind->parinfprobs.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
 
 		if (RELSKEWS)
@@ -2289,9 +2286,6 @@ void readqtlmas14()
 		ind->negshift.resize(markerposes.size());
 
 		ind->infprobs.resize(markerposes.size());
-		ind->sureinfprobs.resize(markerposes.size());
-		ind->unknowninfprobs.resize(markerposes.size());
-		ind->parinfprobs.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
 		//		ind->semishift.resize(5000);
 		ind->lastinved.resize(chromstarts.size());
@@ -3445,44 +3439,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										pival *= parfactor;
 									}
 
-									if (DOINFPROBS) for (int i = 0; i < 2; i++)
-									{
-										int index = i * (TYPEBITS / 2);
-										//int r = dous[j]->n;
-										int parindex = ((flag2 >> (index + 1))/* ^ (g >> index)*/) & 1;
-										// FOR g shift
-										// parindex = !parindex;
-										int flag2parindex = (flag2 >> (index + 1)) & 1;
-
-										int updateval = f2n ^ i;
-
-										for (int evil = 0; evil < 2; evil++)
-										{
-											individ* parnow = dous[j]->pars[i];
-											double factor = 1;
-
-											if (parnow && evil)
-											{
-												MarkerVal mv = (&(parnow->markerdata[marker].first))[flag2parindex];
-												if (mv == UnknownMarkerVal || mv == (&(dous[j]->markerdata[marker].first))[updateval])
-												{
-													factor = (&(parnow->markersure[marker].first))[flag2parindex];
-												}
-												else
-													factor = 1 - (&(parnow->markersure[marker].first))[flag2parindex];
-
-												factor += 1e-3;
-											}
-											pival = val;
-											//										    pival *= factor;
-
-											dous[j]->parinfprobs[marker][i][parindex][updateval][evil] += pival;
-
-										}
-									}
 									int mapval = 0;
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									double pairvals[3] = { 0 };
+									double sidevals[2][2] = { 0 };
+
 									for (auto left : {1 * MarkerValue, 2 * MarkerValue})
 									{
 										double leftval = dous[j]->trackpossible<false, false>(tb, left, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
@@ -3632,74 +3593,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 
 							if (pinfsum[a] < 1e-10) pinfsum[a] = 1e-10;
-						}
-
-
-						if (DOINFPROBS) {
-#pragma omp critical(infprobs)
-						{
-							for (int a = 0; a < 2; a++)
-							{
-								if (!dous[j]->pars[a]) continue;
-
-								for (int c = 0; c < 2; c++)
-								{
-									double maxval = 0;
-									double partsum = 0;
-									for (int b = 0; b < 2; b++)
-									{
-										//		  if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal) continue;
-
-										// pinfsum calculated for d, or evil, equalling 0, 
-										for (int d = 0; d < 2; d++)
-										{
-											dous[j]->parinfprobs[marker][a][c][b][d] /= pinfsum[a];
-
-											if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal)
-											{
-												dous[j]->pars[a]->unknowninfprobs[marker][c] += dous[j]->parinfprobs[marker][a][c][b][d];
-												continue;
-											}
-
-											dous[j]->pars[a]->infprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
-												+= dous[j]->parinfprobs[marker][a][c][b][d];
-											partsum += dous[j]->parinfprobs[marker][a][c][b][d];
-										}
-
-										if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal) continue;
-										if (dous[j]->parinfprobs[marker][a][c][b][0] > maxval) maxval = dous[j]->parinfprobs[marker][a][c][b][0];
-									}
-
-									partsum -= maxval;
-
-									double surelimit = 0.99;
-									bool homo = false;
-									if (dous[j]->markerdata[marker].first == dous[j]->markerdata[marker].second)
-									{
-										surelimit /= 2;
-										homo = true;
-										partsum = 0;
-									}
-
-									//partsum = 0.5 - maxval;
-
-									//								if (maxval > surelimit)
-									{
-										for (int b = 0; b < 2; b++)
-										{
-											if ((&(dous[j]->markerdata[marker].first))[b] == UnknownMarkerVal) continue;
-
-											double toadd = dous[j]->parinfprobs[marker][a][c][b][0] - partsum;
-											if (toadd < 0) continue;
-
-											dous[j]->pars[a]->sureinfprobs[marker][c][make_pair((&(dous[j]->markerdata[marker].first))[b], (&(dous[j]->markerdata[marker].first))[!b])]
-												+= toadd;
-										}
-									}
-								}
-							}
-						}
-						}
+						}						
 					}					
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
