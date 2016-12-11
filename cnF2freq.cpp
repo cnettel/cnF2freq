@@ -3017,6 +3017,89 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use EM estimate".
 double scalefactor = 0.02;
 
+pair<int, int> fixtrees(int j, )
+{
+	int flag2ignore = 0;
+	int shiftignore = 0;
+
+	reltree.clear();
+	relmap.clear();
+	relmapshift.clear();
+	reltree.push_back(dous[j]);
+	relmap[dous[j]] = 1;
+	relmapshift[dous[j]] = 1;
+
+	if (HAPLOTYPING)
+	{
+		flag2ignore = 1;
+		shiftignore = 0;
+		bool anylev1 = false;
+		for (int lev1 = 0; lev1 < 2; lev1++)
+		{
+			individ* lev1i = dous[j]->pars[lev1];
+			if (!lev1i) continue;
+			int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
+			int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
+
+			if (!lev1i->empty)
+			{
+				flag2ignore |= flag2base;
+				relmap[lev1i] |= flag2base;
+				relmapshift[lev1i] |= shiftval;
+			}
+
+			bool anypars = false;
+			reltree.push_back(lev1i);
+			if (NUMGEN > 2)
+			{
+				for (int lev2 = 0; lev2 < 2; lev2++)
+				{
+					individ* lev2i = lev1i->pars[lev2];
+					if (!lev2i) continue;
+
+					if (!lev2i->empty)
+					{
+						flag2ignore |= (flag2base << (lev2 + 1));
+						relmap[lev2i] |= (flag2base << (lev2 + 1));
+						relmapshift[lev2i] |= 0;
+						anypars = true;
+					}
+					reltree.push_back(lev2i);
+				}
+			}
+
+			if (anypars)
+			{
+				shiftignore |= shiftval;
+			}
+			else
+			{
+				//lev1i->founder = true;
+			}
+			// Any information of relevance in parents
+			if (anypars || !lev1i->empty)
+			{
+				anylev1 = true;
+			}
+		}
+		if (anylev1)
+		{
+			shiftignore |= 1;
+		}
+		else
+		{
+			dous[j]->founder = true;
+		}
+		flag2ignore ^= (NUMPATHS - 1);
+		shiftignore ^= (NUMSHIFTS - 1);
+	}
+
+	sort(reltree.begin(), reltree.end());
+	reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
+
+	return make_pair(shiftignore, flag2ignore);
+}
+
 void movehaplos(int i, int k, int marker)
 {
 	if (haplos[i][0] || haplos[i][1])
@@ -3279,84 +3362,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shifts = 0;
 				int shiftend = NUMSHIFTS;
 
-				reltree.clear();
-				relmap.clear();
-				relmapshift.clear();
-				reltree.push_back(dous[j]);
-				relmap[dous[j]] = 1;
-				relmapshift[dous[j]] = 1;
-				int flag2ignore = 0;
-
 				// Special optimization hardcoded for this population structure, eagerly skipping flags that do not
 				// correspond to any inheritance, i.e. if not the full pedigree of 6 individuals back is present.
-				int shiftignore = 0;
-				if (HAPLOTYPING)
-				{
-					flag2ignore = 1;
-					shiftignore = 0;
-					bool anylev1 = false;
-					for (int lev1 = 0; lev1 < 2; lev1++)
-					{
-						individ* lev1i = dous[j]->pars[lev1];
-						if (!lev1i) continue;
-						int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
-						int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
+				int shiftignore;
+				int flag2ignore;
 
-						if (!lev1i->empty)
-						{
-							flag2ignore |= flag2base;
-							relmap[lev1i] |= flag2base;
-							relmapshift[lev1i] |= shiftval;
-						}
-
-						bool anypars = false;
-						reltree.push_back(lev1i);
-						if (NUMGEN > 2)
-						{
-							for (int lev2 = 0; lev2 < 2; lev2++)
-							{
-								individ* lev2i = lev1i->pars[lev2];
-								if (!lev2i) continue;
-
-								if (!lev2i->empty)
-								{
-									flag2ignore |= (flag2base << (lev2 + 1));
-									relmap[lev2i] |= (flag2base << (lev2 + 1));
-									relmapshift[lev2i] |= 0;
-									anypars = true;
-								}
-								reltree.push_back(lev2i);
-							}
-						}
-
-						if (anypars)
-						{
-							shiftignore |= shiftval;
-						}
-						else
-						{
-						  //lev1i->founder = true;
-						}
-						// Any information of relevance in parents
-						if (anypars || !lev1i->empty)
-						  {
-						    anylev1 = true;
-						  }
-					}
-					if (anylev1)
-					  {
-					    shiftignore |= 1;
-					  }
-					else
-					{
-						dous[j]->founder = true;
-					}
-					flag2ignore ^= (NUMPATHS - 1);
-					shiftignore ^= (NUMSHIFTS - 1);
-				}
-
-				sort(reltree.begin(), reltree.end());
-				reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
+				std::tie(shiftignore, flag2ignore) = fixtrees(j);
 
 				bool skipsome = false;
 				for (int u = 0; u < reltree.size() && !skipsome; u++)
