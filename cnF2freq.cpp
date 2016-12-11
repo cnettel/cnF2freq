@@ -3795,33 +3795,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																}*/
 								if (haplos[i][0] || haplos[i][1])
 								{
-									float base;
-
-									bool zerobase = false;
-									/*for (int z = 0; z < 2; z++)
-									{
-									if ((&(reltree[k]->markerdata[marker].first))[z] == UnknownMarkerVal)
-									{
-									haplos[i][z] -= haplos[i][!z];
-									if (haplos[i][z] < 0) haplos[i][z] = 0;
-									//zerobase = true;
-									}
-									}*/
-
-									//									if (/*reltree[k] != dous[j] || true*/ !zerobase && fabs(reltree[k]->haploweight[marker] - 0.5) < 0.49999)
-									//									{
-									//										base = min(haplos[i][0] / reltree[k]->haploweight[marker], haplos[i][1] / (1.0f - reltree[k]->haploweight[marker]));
-									//									}
-									//									else
-									//										base = 0;
-									//									
-									//#pragma omp critical(update)
-									//									{
-									//										getind(i)->haplobase[marker] += haplos[i][0] - base * reltree[k]->haploweight[marker];
-									//										getind(i)->haplocount[marker] += haplos[i][1] + haplos[i][0] - base;
-									//									}
-
-
 									if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
 									{
 									  double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
