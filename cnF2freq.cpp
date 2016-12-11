@@ -3100,6 +3100,46 @@ pair<int, int> fixtrees(int j, )
 	return make_pair(shiftignore, flag2ignore);
 }
 
+void moveinfprobs(int i, int k, int marker)
+{
+	// TODO: Sanitize for zero, inf, nan.
+	for (int side = 0; side < 2; side++)
+	{
+		MarkerVal priorval = UnknownMarkerVal;
+		std::array<double, 2> compfactors = { 1, 1 };
+		if (reltree[k]->priormarkerdata.size() > marker)
+		{
+			priorval = (&reltree[k]->priormarkerdata[marker].first)[side];
+		}
+
+		if (priorval != UnknownMarkerVal)
+		{
+			double priorprob = 1.0 - (&reltree[k]->priormarkersure[marker].first)[side];
+
+			MarkerVal nowval = (&reltree[k]->markerdata[marker].first)[side];
+			double nowprob = 1.0 - (&reltree[k]->priormarkersure[marker].first)[side];
+			if (nowval != priorval)
+			{
+				nowprob = 1.0 - nowprob;
+			}
+			compfactors = { (1.0 - priorprob) / (1.0 - nowprob), priorprob / nowprob};
+		}
+
+		double sum = 0;
+		for (auto infval : infprobs[i][side])
+		{
+			sum += infval.second * compfactors[infval.first == priorval];
+		}
+
+		sum = 1 / sum;
+
+		for (auto infval : infprobs[i][side])
+		{
+			reltree[k]->infprobs[marker][infval.first] += infval.second * compfactors[infval.first == priorval] * sum;
+		}
+	}
+}
+
 void movehaplos(int i, int k, int marker)
 {
 	if (haplos[i][0] || haplos[i][1])
@@ -3801,14 +3841,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma ivdep
 							for (int k = 0; k < (int)reltree.size(); k++)
 							{
-								moveinfprobs();
 								int i = reltree[k]->n;
-								/*							for (int side = 0; side < 2; side++)
-															{
-																for (map<MarkerVal, float>::iterator i = infprobs[i][side].begin(); i != infprobs[i][side].end(); i++)
-																{
-																	reltree[k]->infprobs[marker]
-																}*/
+								moveinfprobs(i, k, marker);
 								movehaplos(i, k, marker);
 							}
 						}
