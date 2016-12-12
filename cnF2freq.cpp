@@ -3029,6 +3029,291 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use EM estimate".
 double scalefactor = 0.02;
 
+void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * out)
+{
+	MarkerVal bestvals[2] = { UnknownMarkerVal, UnknownMarkerVal };
+	double bestsure[2] = { ind->markersure[j].first, ind->markersure[j].second };
+	bool foundbest = true;
+	bool surefound = false;
+
+	flat_map<MarkerVal, double> surenesses;
+
+	if (DOINFPROBS)
+	{
+		flat_map<MarkerVal, double> sums[2];
+		for (int a = 0; a < 2; a++)
+		{
+			for (auto i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
+			{
+				sums[a][i->first.second] += i->second;
+			}
+		}
+
+		sums[0][UnknownMarkerVal] = 1;
+		sums[1][UnknownMarkerVal] = 1;
+
+		for (int a = 0; a < 2; a++)
+		{
+			// Clear old infprobs
+			for (int b = 0; b < 2; b++)
+			{
+				for (int c = 0; c < 2; c++)
+				{
+					for (int d = 0; d < 2; d++)
+					{
+						ind->parinfprobs[j][a][b][c][d] = 0;
+					}
+				}
+			}
+
+			double sum = 0;
+			MarkerVal bestmarker;
+			double bestval = 0;
+			double bestval2 = 0;
+			flat_map<MarkerVal, double> infprobs;
+
+
+			for (flat_map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
+			{
+				sum += i->second;
+				infprobs[i->first.first] += i->second;
+			}
+			if (sum <= 1e-12)
+			{
+				sum = 500;
+				if ((&(ind->markerdata[j].first))[a] != UnknownMarkerVal)
+				{
+					bestval = 1 - (&(ind->markersure[j].first))[a];
+					bestval2 = 1 - (&(ind->markersure[j].first))[a];
+					//									if (bestval2 < 0.99) bestval2 += 0.01;
+					bestmarker = (&(ind->markerdata[j].first))[a];
+				}
+			}
+
+			for (flat_map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
+			{
+				double sureness = i->second / sum;
+				double origsureness = sureness;
+
+				if (!((&(ind->markerdata[j].first))[a] == UnknownMarkerVal))
+				{
+					if (i->first != (&(ind->markerdata[j].first))[a])
+					{
+						if (sureness > 0.9999)
+						{
+							sureness = 0.9999;
+						}
+					}
+				}
+
+				if (origsureness > 0.9999) origsureness = 0.9999;
+				surenesses[i->first] += 1 - origsureness;
+
+				if (sureness > bestval)
+				{
+					bestval = sureness;
+					bestval2 = origsureness;
+					bestmarker = i->first;
+				}
+			}
+
+			double origsum = sum;
+			double sureness = bestval;
+			if (sureness > ((iter % 30 == 19 && false) ? 0.99 : 0.49))
+			{
+				bestvals[a] = bestmarker;
+				bestsure[a] = 1 - bestval2;
+			}
+			else
+			{
+				printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
+				foundbest = false;
+			}
+		}
+	}
+
+	if (DOINFPROBS)
+	{
+		if (ind->sex) foundbest = false;
+
+		if (!foundbest && ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal && (bestvals[0] != UnknownMarkerVal || bestvals[1] != UnknownMarkerVal))
+		{
+			foundbest = true;
+			bestvals[0] = UnknownMarkerVal;
+			bestvals[1] = UnknownMarkerVal;
+
+			bestsure[0] = 0;
+			bestsure[1] = 0;
+		}
+
+		if (ind->lastinved[cno] == -1 || true)
+		{
+			if (foundbest)
+			{
+				/*bestsure[0] *= 0.99;
+				bestsure[1] *= 0.99;*/
+				if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
+				{
+					if (bestsure[0] + bestsure[1] > 0.5 && false)
+					{
+						double bsum = bestsure[0] + bestsure[1];
+
+						int index = bestsure[0] > bestsure[1];
+						bestsure[index] /= 2;
+
+						//if (bestsure[index] < 0.01) bestsure[index] = 0.01;
+
+						MarkerVal bestwhat = UnknownMarkerVal;
+						double bestsury = 4;
+
+						for (auto i = surenesses.begin(); i != surenesses.end(); i++)
+						{
+							if (i->first == bestvals[0]) continue;
+
+							if (i->second < bestsury)
+							{
+								bestsury = i->second;
+								bestwhat = i->first;
+							}
+						}
+
+						if (bestwhat == UnknownMarkerVal) bestsury = 0;
+						/*else
+						{
+						bestsury /= 2;
+						bestsury = 1 / (1 + bestsury);
+						bestsury *= 2;
+						bestsury = (1 - bestsury) / bestsury;
+						}*/
+
+						if (bestsury < 0 || bestsury > 1) fprintf(out, "Bestsury problem %d %d %lf\n", ind->n, j, bestsury);
+
+						bestsure[!index] = (2 - bestsury) / 2;
+						bestvals[!index] = bestwhat;
+					}
+
+					double sum = (bestsure[0] + bestsure[1]) / 2;
+					double diff = fabs(bestsure[0] / sum - 1) + fabs(bestsure[1] / sum - 1);
+				}
+				if (fabs(0.5 - ind->haploweight[j]) == 0.5)
+				{
+					int min = 0;
+					if (bestsure[1] < bestsure[0]) min = 1;
+					if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
+					{
+						bestsure[min] = 0;
+					}
+					else
+					{
+						bestsure[!min] /*-= bestsure[min]*/ = 0;
+						bestsure[min] = 0;
+					}
+				}
+				/*				  if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
+				{
+				double delta = -0.1;
+
+				if (ind->haploweight[j] > 0.5) delta = -delta;
+
+				ind->haploweight[j] += delta;
+
+				if (ind->haploweight[j] < 0.001) ind->haploweight[j] = 0.001;
+				if (ind->haploweight[j] > 0.999) ind->haploweight[j] = 0.999;
+				}*/
+
+				if ((bestvals[0] == ind->markerdata[j].second || bestvals[1] == ind->markerdata[j].first) && bestvals[0] != bestvals[1])
+				{
+					/*swap(bestvals[0], bestvals[1]);
+					swap(bestsure[0], bestsure[1]);*/
+					//ind->haploweight[j] = 1 - ind->haploweight[j];
+				}
+				bool nochange = true;
+				for (int i = 0; i < 2; i++)
+				{
+					if ((&(ind->markerdata[j].first))[i] != bestvals[i]) nochange = false;
+				}
+
+				for (int i = 0; i < 2; i++)
+				{
+					double old = (&(ind->markersure[j].first))[i];
+
+					if (bestvals[i] == UnknownMarkerVal)
+					{
+						bestsure[i] = 0;
+						continue;
+					}
+
+
+
+					if ((&(ind->markerdata[j].first))[i] != bestvals[i])
+					{
+						if (bestvals[i] == bestvals[!i] && (&(ind->markerdata[j].first))[i] == UnknownMarkerVal) old = 0.5;
+						else
+							old = 1 - old;
+					}
+
+					if (old == 0)
+					{
+						bestsure[i] = 0;
+					}
+
+					/*old *= 2;
+					bestsure[i] *= old;
+
+					if (bestsure[i] < old * 0.35) bestsure[i] = old * 0.35;*/
+
+					//if (bestsure[i] <= old * 1.021) bestsure[i] *= 0.98;
+					//								double factor = fabs(ind->haploweight[j] - 0.5) + 0.01;
+					//								bestsure[i] *= factor;
+					bestsure[i] += old/* * (0.51 - factor)*/;
+					bestsure[i] /= 2 /* 0.51 */;
+
+
+					/*bestsure[i] *= bestsure[i];
+					bestsure[i] *= 2;*/
+				}
+
+				/*							if (nochange && bestvals[0] != bestvals[1])
+				{
+				bestsure[0] *= 0.99;
+				bestsure[1] *= 0.99;
+				}*/
+
+				if (nochange && bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
+				{
+					double ratio = bestsure[0] / bestsure[1];
+					if (ratio < 1) ratio = 1 / ratio;
+
+					if (ratio < 1.0001)
+					{
+						double val = bestsure[0] * 0.01;
+						bestsure[0] -= val;
+						bestsure[1] += val;
+						if (bestsure[0] > 0.01)
+						{
+							fprintf(out, "Bringing aside %d %d %lf\n", ind->n, j, bestsure[0]);
+						}
+					}
+				}
+
+				/*							if (bestvals[0] != ind->markerdata[j].first || bestvals[1] != ind->markerdata[j].second || bestsure[0] + bestsure[1] + ind->markersure[j].first + ind->markersure[j].second > 0.01 || bestvals[0] == UnknownMarkerVal || ind->n == 1633)
+				{
+				fprintf(out, "Individual %d stochastic fix at marker %d, %d:%d, was %d:%d %c %lf %lf\n", ind->n, j, bestvals[0], bestvals[1], ind->markerdata[j].first, ind->markerdata[j].second, surefound ? 'S' : 'I', bestsure[0], bestsure[1]);
+				}*/
+
+				ind->markerdata[j] = make_pair(bestvals[0], bestvals[1]);
+				ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
+			}
+		}
+		for (int a = 0; a < 2; a++)
+		{
+			ind->sureinfprobs[j][a].clear();
+			ind->infprobs[j][a].clear();
+			ind->unknowninfprobs[j][a] = 0;
+		}
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4134,287 +4419,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					{
 						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 
-						MarkerVal bestvals[2] = { UnknownMarkerVal, UnknownMarkerVal };
-						double bestsure[2] = { ind->markersure[j].first, ind->markersure[j].second };
-						bool foundbest = true;
-						bool surefound = false;
-
-						flat_map<MarkerVal, double> surenesses;
-
-						if (DOINFPROBS)
-						{
-							flat_map<MarkerVal, double> sums[2];
-							for (int a = 0; a < 2; a++)
-							{
-								for (auto i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
-								{
-									sums[a][i->first.second] += i->second;
-								}
-							}
-
-							sums[0][UnknownMarkerVal] = 1;
-							sums[1][UnknownMarkerVal] = 1;
-
-							for (int a = 0; a < 2; a++)
-							{
-								// Clear old infprobs
-								for (int b = 0; b < 2; b++)
-								{
-									for (int c = 0; c < 2; c++)
-									{
-										for (int d = 0; d < 2; d++)
-										{
-											ind->parinfprobs[j][a][b][c][d] = 0;
-										}
-									}
-								}
-
-								double sum = 0;
-								MarkerVal bestmarker;
-								double bestval = 0;
-								double bestval2 = 0;
-								flat_map<MarkerVal, double> infprobs;
-
-
-								for (flat_map<pair<MarkerVal, MarkerVal>, double>::iterator i = ind->infprobs[j][a].begin(); i != ind->infprobs[j][a].end(); i++)
-								{
-									sum += i->second;
-									infprobs[i->first.first] += i->second;
-								}
-								if (sum <= 1e-12)
-								{
-									sum = 500;
-									if ((&(ind->markerdata[j].first))[a] != UnknownMarkerVal)
-									{
-										bestval = 1 - (&(ind->markersure[j].first))[a];
-										bestval2 = 1 - (&(ind->markersure[j].first))[a];
-										//									if (bestval2 < 0.99) bestval2 += 0.01;
-										bestmarker = (&(ind->markerdata[j].first))[a];
-									}
-								}
-
-								for (flat_map<MarkerVal, double>::iterator i = infprobs.begin(); i != infprobs.end(); i++)
-								{
-									double sureness = i->second / sum;
-									double origsureness = sureness;
-
-									if (!((&(ind->markerdata[j].first))[a] == UnknownMarkerVal))
-									{
-										if (i->first != (&(ind->markerdata[j].first))[a])
-										{
-											if (sureness > 0.9999)
-											{
-												sureness = 0.9999;
-											}
-										}
-									}
-
-									if (origsureness > 0.9999) origsureness = 0.9999;
-									surenesses[i->first] += 1 - origsureness;
-
-									if (sureness > bestval)
-									{
-										bestval = sureness;
-										bestval2 = origsureness;
-										bestmarker = i->first;
-									}
-								}
-
-								double origsum = sum;
-								double sureness = bestval;
-								if (sureness > ((iter % 30 == 19 && false) ? 0.99 : 0.49))
-								{
-									bestvals[a] = bestmarker;
-									bestsure[a] = 1 - bestval2;
-								}
-								else
-								{
-									printf("Foundbest now false, with sureness %lf, marker %d, pair-half %d for ind %d\n", sureness, j, a, ind->n);
-									foundbest = false;
-								}
-							}
-						}
-
-						if (DOINFPROBS)
-						{
-							if (ind->sex) foundbest = false;
-
-							if (!foundbest && ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal && (bestvals[0] != UnknownMarkerVal || bestvals[1] != UnknownMarkerVal))
-							{
-								foundbest = true;
-								bestvals[0] = UnknownMarkerVal;
-								bestvals[1] = UnknownMarkerVal;
-
-								bestsure[0] = 0;
-								bestsure[1] = 0;
-							}
-
-							if (ind->lastinved[cno] == -1 || true)
-							{
-								if (foundbest)
-								{
-									/*bestsure[0] *= 0.99;
-									bestsure[1] *= 0.99;*/
-									if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
-									{
-										if (bestsure[0] + bestsure[1] > 0.5 && false)
-										{
-											double bsum = bestsure[0] + bestsure[1];
-
-											int index = bestsure[0] > bestsure[1];
-											bestsure[index] /= 2;
-
-											//if (bestsure[index] < 0.01) bestsure[index] = 0.01;
-
-											MarkerVal bestwhat = UnknownMarkerVal;
-											double bestsury = 4;
-
-											for (auto i = surenesses.begin(); i != surenesses.end(); i++)
-											{
-												if (i->first == bestvals[0]) continue;
-
-												if (i->second < bestsury)
-												{
-													bestsury = i->second;
-													bestwhat = i->first;
-												}
-											}
-
-											if (bestwhat == UnknownMarkerVal) bestsury = 0;
-											/*else
-											{
-											bestsury /= 2;
-											bestsury = 1 / (1 + bestsury);
-											bestsury *= 2;
-											bestsury = (1 - bestsury) / bestsury;
-											}*/
-
-											if (bestsury < 0 || bestsury > 1) fprintf(out, "Bestsury problem %d %d %lf\n", ind->n, j, bestsury);
-
-											bestsure[!index] = (2 - bestsury) / 2;
-											bestvals[!index] = bestwhat;
-										}
-
-										double sum = (bestsure[0] + bestsure[1]) / 2;
-										double diff = fabs(bestsure[0] / sum - 1) + fabs(bestsure[1] / sum - 1);
-									}
-									if (fabs(0.5 - ind->haploweight[j]) == 0.5)
-									{
-										int min = 0;
-										if (bestsure[1] < bestsure[0]) min = 1;
-										if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
-										{
-											bestsure[min] = 0;
-										}
-										else
-										{
-											bestsure[!min] /*-= bestsure[min]*/ = 0;
-											bestsure[min] = 0;
-										}
-									}
-									/*				  if (bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
-									{
-									double delta = -0.1;
-
-									if (ind->haploweight[j] > 0.5) delta = -delta;
-
-									ind->haploweight[j] += delta;
-
-									if (ind->haploweight[j] < 0.001) ind->haploweight[j] = 0.001;
-									if (ind->haploweight[j] > 0.999) ind->haploweight[j] = 0.999;
-									}*/
-
-									if ((bestvals[0] == ind->markerdata[j].second || bestvals[1] == ind->markerdata[j].first) && bestvals[0] != bestvals[1])
-									{
-										/*swap(bestvals[0], bestvals[1]);
-										swap(bestsure[0], bestsure[1]);*/
-										//ind->haploweight[j] = 1 - ind->haploweight[j];
-									}
-									bool nochange = true;
-									for (int i = 0; i < 2; i++)
-									{
-										if ((&(ind->markerdata[j].first))[i] != bestvals[i]) nochange = false;
-									}
-
-									for (int i = 0; i < 2; i++)
-									{
-										double old = (&(ind->markersure[j].first))[i];
-
-										if (bestvals[i] == UnknownMarkerVal)
-										{
-											bestsure[i] = 0;
-											continue;
-										}
-
-
-
-										if ((&(ind->markerdata[j].first))[i] != bestvals[i])
-										{
-											if (bestvals[i] == bestvals[!i] && (&(ind->markerdata[j].first))[i] == UnknownMarkerVal) old = 0.5;
-											else
-												old = 1 - old;
-										}
-
-										if (old == 0)
-										{
-											bestsure[i] = 0;
-										}
-
-										/*old *= 2;
-										bestsure[i] *= old;
-
-										if (bestsure[i] < old * 0.35) bestsure[i] = old * 0.35;*/
-
-										//if (bestsure[i] <= old * 1.021) bestsure[i] *= 0.98;
-										//								double factor = fabs(ind->haploweight[j] - 0.5) + 0.01;
-										//								bestsure[i] *= factor;
-										bestsure[i] += old/* * (0.51 - factor)*/;
-										bestsure[i] /= 2 /* 0.51 */;
-
-
-										/*bestsure[i] *= bestsure[i];
-										bestsure[i] *= 2;*/
-									}
-
-									/*							if (nochange && bestvals[0] != bestvals[1])
-									{
-									bestsure[0] *= 0.99;
-									bestsure[1] *= 0.99;
-									}*/
-
-									if (nochange && bestvals[0] == bestvals[1] && bestvals[0] != UnknownMarkerVal)
-									{
-										double ratio = bestsure[0] / bestsure[1];
-										if (ratio < 1) ratio = 1 / ratio;
-
-										if (ratio < 1.0001)
-										{
-											double val = bestsure[0] * 0.01;
-											bestsure[0] -= val;
-											bestsure[1] += val;
-											if (bestsure[0] > 0.01)
-											{
-												fprintf(out, "Bringing aside %d %d %lf\n", ind->n, j, bestsure[0]);
-											}
-										}
-									}
-
-									/*							if (bestvals[0] != ind->markerdata[j].first || bestvals[1] != ind->markerdata[j].second || bestsure[0] + bestsure[1] + ind->markersure[j].first + ind->markersure[j].second > 0.01 || bestvals[0] == UnknownMarkerVal || ind->n == 1633)
-									{
-									fprintf(out, "Individual %d stochastic fix at marker %d, %d:%d, was %d:%d %c %lf %lf\n", ind->n, j, bestvals[0], bestvals[1], ind->markerdata[j].first, ind->markerdata[j].second, surefound ? 'S' : 'I', bestsure[0], bestsure[1]);
-									}*/
-
-									ind->markerdata[j] = make_pair(bestvals[0], bestvals[1]);
-									ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
-								}
-							}
-							for (int a = 0; a < 2; a++)
-							{
-								ind->sureinfprobs[j][a].clear();
-								ind->infprobs[j][a].clear();
-								ind->unknowninfprobs[j][a] = 0;
-							}
-						}						
+						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
 					{
