@@ -3273,6 +3273,7 @@ void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int 
 	}
 }
 
+#if 0
 void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * out)
 {
 	MarkerVal bestvals[2] = { UnknownMarkerVal, UnknownMarkerVal };
@@ -3557,6 +3558,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 		}
 	}
 }
+#endif
 
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
