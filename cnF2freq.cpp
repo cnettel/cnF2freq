@@ -95,7 +95,14 @@ namespace po = boost::program_options;
 #include <map>
 #include <float.h>
 #include <numeric> // use these libraries
+#include <type_traits>
 
+// Will be in C++17...
+template <class T>
+constexpr std::add_const_t<T>& as_const(T& t) noexcept
+{
+  return t;
+}
 
 using namespace std; // use functions that are part of the standard library
 #ifdef _MSC_VER
@@ -2934,7 +2941,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 	if (flag2 & (flag2ignore & flag2filter)) return true;
 
 	int marker = -q - 1000;
-	for (const auto i = relmap.begin(), j = relmapshift.begin(); i != relmap.end(); i++, j++)
+	for (auto i = as_const(relmap).begin(), j = as_const(relmapshift).begin(); i != relmap.end(); i++, j++)
 	{
 		int currfilter = (i->second & flag2filter);
 		int filtered = ((flag2 ^ (g * 2)) & currfilter);
