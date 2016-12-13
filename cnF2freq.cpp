@@ -159,7 +159,7 @@ private:
 	int val;
 	
 public:
-        constexpr explicit MarkerVal(int val) : val(val) {}
+    constexpr explicit MarkerVal(int val) : val(val) {}
 	constexpr MarkerVal() : val(0) {}
 	constexpr int value() const
 	{
@@ -4317,6 +4317,28 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					{
 						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 
+						for (int side = 0; side < 2; side++)
+						{
+							double bestprob = 0;
+							MarkerVal bestmarker = UnknownMarkerVal;
+							double sum = 0;
+
+							for (auto probpair : ind->infprobs[j][side])
+							{
+								sum += probpair.second;
+								if (probpair.second > bestprob)
+								{
+									bestmarker = probpair.first;
+									bestprob = probpair.second;
+								}
+							}
+
+							if (bestmarker != UnknownMarkerVal || bestprob > 0)
+							{
+								(&ind->markerdata[j].first)[side] = bestmarker;
+								(&ind->markersure[j].first)[side] = 1.0 - bestprob / sum;
+							}
+						}
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
