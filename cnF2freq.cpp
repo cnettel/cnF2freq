@@ -3024,7 +3024,7 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use EM estimate".
 double scalefactor = 0.02;
 
-pair<int, int> fixtrees(int j, )
+pair<int, int> fixtrees(int j)
 {
 	int flag2ignore = 0;
 	int shiftignore = 0;
