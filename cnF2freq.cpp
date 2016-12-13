@@ -5280,6 +5280,12 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 			}
 		}
 	}
+
+	for (int j = 0; j < sampleInds.size(); j++)
+	{
+		sampleInds[j]->priormarkerdata = sampleInds[j]->markerdata;
+		sampleInds[j]->priormarkersure = sampleInds[j]->markersure;
+	}
 }
 
 void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newhapfile)
@@ -5390,7 +5396,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			{
 			case 0:
 				marker = make_pair(1 * MarkerValue, 1 * MarkerValue);
-				isachange = marker != dous[j]->markerdata[i];
+				isachange = marker != dous[j]->priormarkerdata[i];
 				break;
 			case 1:
 				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
@@ -5398,13 +5404,13 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				break;
 			case 2:			  
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
-				isachange = dous[j]->markerdata[i].first == dous[j]->markerdata[i].second;
+				isachange = dous[j]->priormarkerdata[i].first == dous[j]->priormarkerdata[i].second;
 				break;
 			case 3:
 				// ShapeIT will turn A A to 0 A, making all genotypes homozygotes for the second allele, rather than the first
 				int val = 2 - hapmonomorphs[i];
 				marker = make_pair(val * MarkerValue, val * MarkerValue);
-				isachange = marker != dous[j]->markerdata[i];
+				isachange = marker != dous[j]->priormarkerdata[i];
 				break;
 			}
 			if (isachange)
@@ -5415,14 +5421,14 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			if (readall || marker.first == UnknownMarkerVal || isachange)
 			  {
 			    //cout << "/// " << dous[j]->name << " " << i << std::endl;
-			    dous[j]->markerdata[i] = marker;
+			    dous[j]->priormarkerdata[i] = marker;
 			    if (marker.first == UnknownMarkerVal)
 			      {
 				/*if (RELSKEWS)
 				  {
 				    dous[j]->relhaplo[i] = 1;
 				    }*/
-				dous[j]->markersure[i] = make_pair(0.f, 0.f);
+				dous[j]->priormarkersure[i] = make_pair(0.f, 0.f);
 			      }
 			  }
 		}
