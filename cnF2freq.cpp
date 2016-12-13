@@ -3999,27 +3999,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						if (delta < -0.1 && q > qend + 2) fprintf(out, "RECOMB:\t%d\t%d\t%lf\n", dous[j]->n, q, delta);
 					}
 
-					if (!full)
-					{
-						int marker = -q - 1000;
-						double pinfsum[2] = { 0, 0 };
-						for (int a = 0; a < 2; a++)
-						{
-							for (int c = 0; c < 2; c++)
-							{
-								for (int b = 0; b < 2; b++)
-								{
-									for (int d = 0; d < 1; d++)
-									{
-										pinfsum[a] += dous[j]->parinfprobs[marker][a][c][b][d];
-									}
-								}
-							}
-
-							if (pinfsum[a] < 1e-10) pinfsum[a] = 1e-10;
-						}						
-					}					
-
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
@@ -4945,9 +4924,6 @@ void readmerlinped(FILE* pedfile)
 		ind->negshift.resize(markerposes.size());
 
 		ind->infprobs.resize(markerposes.size());
-		ind->sureinfprobs.resize(markerposes.size());
-		ind->unknowninfprobs.resize(markerposes.size());
-		ind->parinfprobs.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
 		//		ind->semishift.resize(5000);
 		ind->lastinved.resize(chromstarts.size());
