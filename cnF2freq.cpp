@@ -3142,7 +3142,7 @@ void moveinfprobs(int i, int k, int marker)
 
 		for (auto infval : infprobs[i][side])
 		{
-		  reltree[k]->infprobs[marker][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
+		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
 		}
 	}
 }
