@@ -519,14 +519,13 @@ public:
 const struct trackpossibleparams
 {
 	const float updateval;
-	MarkerVal markerval;
 	int* const gstr;
 
-	trackpossibleparams() : updateval(0.0f), gstr(0), markerval(UnknownMarkerVal)
+	trackpossibleparams() : updateval(0.0f), gstr(0)
 	{
 	}
 
-	trackpossibleparams(float updateval, int* gstr, MarkerVal markerval = UnknownMarkerVal) : updateval(updateval), gstr(gstr), markerval(markerval)
+	trackpossibleparams(float updateval, int* gstr, MarkerVal markerval = UnknownMarkerVal) : updateval(updateval), gstr(gstr)
 	{
 	}
 } tpdefault;
@@ -750,6 +749,8 @@ template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double sta
 	return actrec[k][j];
 }
 
+const int HAPLOS = 1;
+const int GENOS = 2;
 
 // A structure containing most of the information on an individual
 struct individ
@@ -935,7 +936,7 @@ struct individ
 	// individuals in the analysis.
 	// extparams: external parameters.
 	// genwidth: The width of the generation flags.
-	template<bool update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
+	template<int update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
 		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
 		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
 	{
@@ -1101,7 +1102,7 @@ struct individ
 						0,
 						extparams);
 
-				if (subtrack1.prelok && (!zeropropagate || rootgen))
+				if (subtrack1.prelok && (!zeropropagate || rootgen) && !(update & GENOS))
 				{
 					double secsecondval = 0;
 					if (themarkersure[!realf2n])
@@ -1132,13 +1133,13 @@ struct individ
 
 			ok += baseval;
 
-			if (update /*&& !allthesame*/ && doupdatehaplo)
+			if ((update & HAPLOS) /*&& !allthesame*/ && doupdatehaplo)
 			{
-				(*tb.haplos)[n][f2n] += extparams.updateval;
-				if (DOINFPROBS)
-				  {
-				    (*tb.infprobs)[n][realf2n][extparams.markerval] += extparams.updateval;
-				  }
+				(*tb.haplos)[n][f2n] += extparams.updateval;				
+			}
+			if (update & GENOS)
+			{
+				(*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
 			}
 		}
 		if (selfingNOW && extparams.gstr) *extparams.gstr *= 2;
@@ -1148,10 +1149,10 @@ struct individ
 
 	// calltrackpossible is a slight wrapper that hides at least some of the internal parameters needed for the recursion from outside callers
 	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
-		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0, const MarkerVal markerval = UnknownMarkerVal)
+		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
-			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0, markerval));
+			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
 	}
 
 	// "Fix" parents, i.e. infer correct marker values for any zero values existing.
@@ -1237,15 +1238,15 @@ struct individ
 	}
 
 	// Verifies that an update should take place and performs it. Just a wrapper to calltrackpossible.
-	void updatehaplo(const threadblock& tb, const unsigned int marker, const unsigned int i, const int flag2, const double updateval, MarkerVal markerval)
+	void updatehaplo(const threadblock& tb, const unsigned int marker, const unsigned int i, const int flag2, const double updateval)
 	{
 		MarkerValPair& themarker = markerdata[marker];
 
-		double ok = calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2, updateval, markerval);
+		double ok = calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 
 		if (ok)
 		{
- 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval, markerval);
+ 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 		}
 		else
 		{
@@ -3882,24 +3883,24 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									int mapval = 0;
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
-									double pairvals[3] = { 0 };
 									double sidevals[2][2] = { 0 };
+									double sidevalsums[2] = { 0 };
 
-									for (auto left : {1 * MarkerValue, 2 * MarkerValue})
+									for (int side = 0; side < 2; side++)
 									{
-										double leftval = dous[j]->trackpossible<false, false>(tb, left, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
-										for (auto right : { 1 * MarkerValue, 2 * MarkerValue })
+										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double rightval = dous[j]->trackpossible<false, false>(tb, right, 0, -q - 1000, g * 2 + 1, flag2 ^ 1, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
-											pairvals[left.value() + right.value() - 2] += leftval * rightval;
+											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											sidevals[side][markerval.value() - 1] += sideval;
+											sidevalsums[side] += sideval;
 										}
 									}
-									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
+//									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
 
-									for (int i = 0; &pairvals[i] != end(pairvals); i++)
+/*									for (int i = 0; &pairvals[i] != end(pairvals); i++)
 									{
 									  reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
-									}
+									}*/
 									/*/*if (!outmapval && val > 1e-3)
 									{
 										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
@@ -3909,7 +3910,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
 									  }*/
 									//reporter.addval(q, mapval, g, flag2, val);
-									if (!full && HAPLOTYPING) dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
+									if (!full && HAPLOTYPING)
+									{
+										dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
+
+										for (int side = 0; side < 2; side++)
+										{
+											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+											{
+												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
+												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
+											}
+										}
+									}
 								}
 							continueloop:;
 							}
