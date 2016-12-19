@@ -360,8 +360,7 @@ EXTERNFORGCC flat_map<individ*, int> relmap;
 EXTERNFORGCC flat_map<individ*, int> relmapshift;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-// TODO infprobs SHOULD REALLY GO HERE, JUST SAVING MEMORY NOW AT TERRIBLE RISK
-#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, relmapshift)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, relmapshift, infprobs)
 #if !DOFB
 #pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
 #else
