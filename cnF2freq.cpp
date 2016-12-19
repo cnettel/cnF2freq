@@ -3138,7 +3138,6 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 			sum += infval.second * compfactors[infval.first == priorval];
-			infval.second = 0;
 		}
 
 		sum = 1 / sum;
@@ -3147,6 +3146,7 @@ void moveinfprobs(int i, int k, int marker)
 		{
 		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
 		}
+		infprobs[i][side].clear();
 	}
 }
 
@@ -4332,6 +4332,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								(&ind->markerdata[j].first)[side] = bestmarker;
 								(&ind->markersure[j].first)[side] = 1.0 - bestprob / sum;
 							}
+							ind->infprobs[j][side].clear();
 						}
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
