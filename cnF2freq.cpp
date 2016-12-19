@@ -3130,7 +3130,8 @@ void moveinfprobs(int i, int k, int marker)
 			{
 				nowprob = 1.0 - nowprob;
 			}
-			compfactors = { (1.0 - priorprob) * (1.0 - priorprob) / (1.0 - nowprob), priorprob * priorprob / nowprob};
+			//compfactors = { (1.0 - priorprob) * (1.0 - priorprob) / (1.0 - nowprob), priorprob * priorprob / nowprob};
+			compfactors = { (1.0 - priorprob), priorprob };
 		}
 
 		double sum = 0;
