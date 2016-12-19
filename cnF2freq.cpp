@@ -3138,6 +3138,7 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 			sum += infval.second * compfactors[infval.first == priorval];
+			infval.second = 0;
 		}
 
 		sum = 1 / sum;
