@@ -5612,15 +5612,13 @@ void readhaplodata(FILE* in, int swap)
 	}
 }
 
-
-// For now, only reads haploweight values
 void deserialize(istream& stream)
 {
 	/*
 	This is what we're unserializing
 	fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);*/
-  auto haploline = x3::double_ >> x3::omit[x3::int_ >> x3::int_ >> x3::double_ >> x3::double_ >> x3::double_];
+  auto haploline = x3::double_ >> x3::int_ >> x3::int_ >> x3::omit[x3::double_ >> x3::double_ >> x3::double_];
 	
 	while (!stream.eof())
 	{
@@ -5645,18 +5643,26 @@ void deserialize(istream& stream)
 				for (int i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
-					if (!x3::phrase_parse(line.begin(), line.end(), haploline, x3::space, ind->haploweight[i]))
+					pair<double, pair<int, int> > output;
+					if (!x3::phrase_parse(line.begin(), line.end(), haploline, x3::space, output))
 					{
 						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::endl;
 					}
 					else
 					{
+						ind->haploweight[i] = output.first;
 						if (ind->haploweight[i] == 0.5) continue;
 
 						int newphase = 1 + (ind->haploweight[i] > 0.5);
 						if (oldphase && oldphase != newphase) switches++;
 
 						oldphase = newphase;
+
+						pair<MarkerVal, MarkerVal> pmv = make_pair(output.second.first * MarkerValue, output.second.second * MarkerValue);
+						if (pmv != ind->markerdata[i])
+						{
+							std::cerr << "Genotype mismatch for marker " << i << " for individual " << ind->name << " (" << ind->markerdata[i].first.value() << "," << ind->markerdata[i].second.value() << ") to " <<
+								" (" << pmv.first.value() << "," << pmv.second.value() << ")" << std::endl;
 					}
 				}
 
