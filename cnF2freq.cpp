@@ -4329,7 +4329,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (bestmarker != UnknownMarkerVal || bestprob > 0)
 							{
 								(&ind->markerdata[j].first)[side] = bestmarker;
-								(&ind->markersure[j].first)[side] = 1.0 - bestprob / sum;
+								double intended = 1.0 - bestprob / sum;
+								intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
+								intended = max((float)intended, maxdiff / (ind->children + 1));
+								(&ind->markersure[j].first)[side] = intended;
 							}
 							ind->infprobs[j][side].clear();
 						}
@@ -5373,7 +5376,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
 		for (int j = 0; j < dous.size(); j++)
 		{
-		  
+		  continue;
 		  /*if (!(
 			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
 			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
