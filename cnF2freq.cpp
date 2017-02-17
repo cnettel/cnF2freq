@@ -4352,7 +4352,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (fabs(denominator2) > 1e-3)
 									{
 										numerator = sqrt(square(log(1.0 - priorprob) - log(priorprob) + sum) + 4 * nowprob *
-											(log(priorprob - log(1.0 - priorprob)))) - log(1 - priorprob) + log(priorprob) - sum;
+											(log(priorprob) - log(1.0 - priorprob))) - log(1 - priorprob) + log(priorprob) - sum;
 										denominator = denominator2;
 									}									
 								}
