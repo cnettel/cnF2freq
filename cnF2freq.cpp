@@ -5647,14 +5647,14 @@ void deserialize(istream& stream)
 				for (int i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
-					pair<double, pair<int, int> > output;
+					std::tuple<double, int, int> output;
 					if (!x3::phrase_parse(line.begin(), line.end(), haploline, x3::space, output))
 					{
 						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::endl;
 					}
 					else
 					{
-						ind->haploweight[i] = output.first;
+					  ind->haploweight[i] = std::get<0>(output);
 						if (ind->haploweight[i] == 0.5) continue;
 
 						int newphase = 1 + (ind->haploweight[i] > 0.5);
@@ -5662,11 +5662,12 @@ void deserialize(istream& stream)
 
 						oldphase = newphase;
 
-						pair<MarkerVal, MarkerVal> pmv = make_pair(output.second.first * MarkerValue, output.second.second * MarkerValue);
+						pair<MarkerVal, MarkerVal> pmv = make_pair(std::get<1>(output) * MarkerValue, std::get<2>(output) * MarkerValue);
 						if (pmv != ind->markerdata[i])
 						{
 							std::cerr << "Genotype mismatch for marker " << i << " for individual " << ind->name << " (" << ind->markerdata[i].first.value() << "," << ind->markerdata[i].second.value() << ") to " <<
 								" (" << pmv.first.value() << "," << pmv.second.value() << ")" << std::endl;
+						}
 					}
 				}
 
