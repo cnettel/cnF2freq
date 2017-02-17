@@ -4356,7 +4356,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										denominator = denominator2;
 									}									
 								}
-								ind->infprobs[j][side] = numerator / denominator;
+								ind->infprobs[j][side][probpair.first] = numerator / denominator;
 							}
 
 							for (auto probpair : ind->infprobs[j][side])
