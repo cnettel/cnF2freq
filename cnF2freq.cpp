@@ -3002,6 +3002,11 @@ struct statereporter : valuereporter<NUMTYPES>
 	}
 };
 
+template<typename T> T square(T v)
+{
+	return v * v;
+}
+
 void resizecaches()
 {
 	// Some heaps are not properly synchronized. Putting a critical section here makes the operations not safe,
@@ -4316,9 +4321,46 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							MarkerVal bestmarker = UnknownMarkerVal;
 							double sum = 0;
 
+
 							for (auto probpair : ind->infprobs[j][side])
 							{
 								sum += probpair.second;
+							}
+
+							MarkerVal priorval = UnknownMarkerVal;
+							if (ind->priormarkerdata.size() > j)
+							{
+								priorval = (&ind->priormarkerdata[j].first)[side];
+							}							
+
+							for (auto probpair : ind->infprobs[j][side])
+							{
+								double nowprob = probpair.second;
+								double numerator = nowprob;
+								double denominator = sum;
+								if (priorval != UnknownMarkerVal)
+								{
+									double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
+
+									MarkerVal nowval = probpair.first;
+									if (nowval != priorval)
+									{
+										priorprob = 1.0 - priorprob;
+									}							
+
+									double denominator2 = 2 * (log(priorprob) - log(1.0 - priorprob));
+									if (fabs(denominator2) > 1e-3)
+									{
+										numerator = sqrt(square(log(1.0 - priorprob) - log(priorprob) + sum) + 4 * nowprob *
+											(log(priorprob - log(1.0 - priorprob)))) - log(1 - priorprob) + log(priorprob) - sum;
+										denominator = denominator2;
+									}									
+								}
+								ind->infprobs[j][side] = numerator / denominator;
+							}
+
+							for (auto probpair : ind->infprobs[j][side])
+							{
 								if (probpair.second > bestprob)
 								{
 									bestmarker = probpair.first;
@@ -4329,7 +4371,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (bestmarker != UnknownMarkerVal || bestprob > 0)
 							{
 								(&ind->markerdata[j].first)[side] = bestmarker;
-								double intended = 1.0 - bestprob / sum;
+								double intended = 1.0 - bestprob;
 								intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
 								intended = max((float)intended, maxdiff / (ind->children + 1));
 								(&ind->markersure[j].first)[side] = intended;
@@ -5784,7 +5826,7 @@ int main(int argc, char* argv[])
 	}
 
 	bool docompare = (impoutput != "");
-	if (inOptions.count("famfile") + inOptions.count("bedfile"))
+	if (inOptions.count("famfile") + inOptions.count("bedfile") == 2)
 	{
 	  std::cout << "readfambed started." << std::endl;
 	  readfambed(famfilename, bedfilename, docompare);
