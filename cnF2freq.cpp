@@ -3172,7 +3172,7 @@ void movehaplos(int i, int k, int marker)
 			// if (neg) intended = -intended;
 
 			{
-				reltree[k]->haplobase[marker] += log(b1 / b2);
+				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1;
 				reltree[k]->haplocount[marker] += 1;
 			}
 		}
@@ -4435,7 +4435,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							  double val;
 							  if (ind->haplocount[j])
 							    {
-							      val = exp(ind->haplobase[j] / ind->haplocount[j]);
+							      //val = exp(ind->haplobase[j] / ind->haplocount[j]);
+								  val = ind->haplobase[j] / ind->haplocount[j];
 							      val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
 							    }
 							  else
