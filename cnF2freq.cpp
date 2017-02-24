@@ -3149,6 +3149,7 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
+		  if (reltree[k]->n == 433 && marker >= 4088 && marker <= 4089) fprintf(stdout, "INFPROBS: %d %d %d %lf %lf (%d)", reltree[k]->n, marker, infval.first, infval.second, sum, shiftflagmode);
 		}
 		infprobs[i][side].clear();
 	}
