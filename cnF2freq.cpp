@@ -4328,6 +4328,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (auto probpair : ind->infprobs[j][side])
 							{
 								sum += probpair.second;
+								if (ind->n == 433 && j >= 4088 && j <= 4089) fprintf("PROBPAIR A: %d %d %d %lf\n", j, side, probpair.first.value(), probpair.second);
 							}
 
 							MarkerVal priorval = UnknownMarkerVal;
@@ -4369,6 +4370,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									bestmarker = probpair.first;
 									bestprob = probpair.second;
 								}
+								if (ind->n == 433 && j >= 4088 && j <= 4089) fprintf("PROBPAIR B: %d %d %d %lf\n", j, side, probpair.first.value(), probpair.second);
 							}
 
 							if (bestmarker != UnknownMarkerVal || bestprob > 0)
