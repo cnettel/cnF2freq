@@ -193,7 +193,7 @@ typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
 
-const float maxdiff = 0.000005;
+const float maxdiff = 0.00000005;
 
 #include "settings.h"
 
@@ -3172,7 +3172,7 @@ void movehaplos(int i, int k, int marker)
 			// if (neg) intended = -intended;
 
 			{
-				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1;
+			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
 			}
 		}
