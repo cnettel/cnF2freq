@@ -3119,6 +3119,8 @@ void moveinfprobs(int i, int k, int marker)
 	{
 		MarkerVal priorval = UnknownMarkerVal;
 		std::array<double, 2> compfactors = { 1, 1 };
+		//TODO REMOVE PRIOR HANDLING FROM HERE
+		/*
 		if (reltree[k]->priormarkerdata.size() > marker)
 		{
 			priorval = (&reltree[k]->priormarkerdata[marker].first)[side];
@@ -3136,7 +3138,7 @@ void moveinfprobs(int i, int k, int marker)
 			}
 			//compfactors = { (1.0 - priorprob) * (1.0 - priorprob) / (1.0 - nowprob), priorprob * priorprob / nowprob};
 			compfactors = { (1.0 - priorprob), priorprob };
-		}
+		}*/
 
 		double sum = 0;
 		for (auto infval : infprobs[i][side])
@@ -3149,7 +3151,7 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
-		  if (reltree[k]->n == 433 && marker >= 4088 && marker <= 4089) fprintf(stdout, "INFPROBS: %d %d %d %lf %lf (%d)", reltree[k]->n, marker, infval.first, infval.second, sum, shiftflagmode);
+		  if (reltree[k]->n == 433 && marker >= 4088 && marker <= 4089) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
 		}
 		infprobs[i][side].clear();
 	}
