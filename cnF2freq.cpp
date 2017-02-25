@@ -5477,6 +5477,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				dous[j]->priormarkersure[i] = make_pair(
 					0.5 * (0.5 + dous[j]->priormarkersure[i].first),
 					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
+				cout << "Increasing prior uncertainty individual " << dous[j]->n << ", marker " << i << std::endl;
 			}
 		}
 	}
