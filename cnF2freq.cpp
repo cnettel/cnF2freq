@@ -5424,7 +5424,6 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
 		for (int j = 0; j < dous.size(); j++)
 		{
-		  continue;
 		  /*if (!(
 			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
 			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
@@ -5460,7 +5459,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			  cout << "!!! " << dous[j]->name << " " << i << " " << marker.first.value() << marker.second.value() << " " << std::endl;
 			}
 
-			if (readall || marker.first == UnknownMarkerVal || isachange)
+			/*if (readall || marker.first == UnknownMarkerVal || isachange)
 			  {
 			    //cout << "/// " << dous[j]->name << " " << i << std::endl;
 			    dous[j]->priormarkerdata[i] = marker;
@@ -5470,9 +5469,15 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				  {
 				    dous[j]->relhaplo[i] = 1;
 				    }*/
-				dous[j]->priormarkersure[i] = make_pair(0.f, 0.f);
+				/*dous[j]->priormarkersure[i] = make_pair(0.f, 0.f);
 			      }
-			  }
+			  }*/
+			if (isachange || marker.first == UnknownMarkerVal)
+			{
+				dous[j]->priormarkersure = make_pair(
+					0.5 * (0.5 + dous[j]->priormarkersure[i].first),
+					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
+			}
 		}
 	}
 }
