@@ -4490,7 +4490,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
-									double nnn = 1.6;
+									double nnn = 3;
 									if (nnn < 1.0) nnn = 1.0;
 
 									double limn = (nnn - 1.0) * ind->haploweight[j] * (-1 + ind->haploweight[j]);
@@ -5479,6 +5479,12 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
 				cout << "Increasing prior uncertainty individual " << dous[j]->n << ", marker " << i << std::endl;
 			}
+			if (dous[j]->priormarkerdata[i].first != UnknownMarkerVal)
+			  {
+			    dous[j]->priormarkersure[i] = make_pair(
+								    max(1e-3, dous[j]->priormarkersure[i].first),
+								    max(1e-3, dous[j]->priormarkersure[i].second));			  
+			  }
 		}
 	}
 }
