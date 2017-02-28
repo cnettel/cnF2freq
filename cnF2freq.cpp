@@ -1027,6 +1027,7 @@ struct individ
 			if (markermiss<zeropropagate>(markerval, themarker[f2n]))
 			{
 				baseval = themarkersure[f2n] + (1.0 - themarkersure[f2n]) * secondval;
+				if (!attopnow && themarkersure[f2n]) mainsecondval = (1.0 - themarkersure[f2n]) / (themarkersure[f2n]);
 			}
 			else
 			{
@@ -3899,7 +3900,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, -q - 1000, g * 2, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(0, nullptr));
 											sidevals[side][markerval.value() - 1] += sideval;
 											sidevalsums[side] += sideval;
 										}
@@ -3928,7 +3929,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 											{
 												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
-												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, -q - 1000, g * 2, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
+												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(updateval, nullptr));
 											}
 										}
 									}
