@@ -903,7 +903,7 @@ struct individ
 
 			if (!mother || !mother->pars[firstpar])
 			{
-				return 1;
+				return 1 + secondval;
 			}
 
 			double baseval =
@@ -1026,13 +1026,14 @@ struct individ
 			// If this marker value is not compatible, there is no point in trying.
 			if (markermiss<zeropropagate>(markerval, themarker[f2n]))
 			{
-				baseval = themarkersure[f2n] + (1.0 - themarkersure[f2n]) * secondval;
-				if (!attopnow && themarkersure[f2n]) mainsecondval = (1.0 - themarkersure[f2n]) / (themarkersure[f2n]);
+				baseval = themarkersure[f2n];
+				if (!attopnow && themarkersure[f2n]) mainsecondval = (1.0 - themarkersure[f2n]) * secondval / baseval;
 			}
 			else
 			{
-				if (!attopnow && themarkersure[f2n]) mainsecondval = (themarkersure[f2n]) / (1.0 - themarkersure[f2n]);
-				baseval = 1.0 - themarkersure[f2n] + themarkersure[f2n] * secondval;
+				double effectivesecondval = (marker == UnknownMarkerVal) ? 1 : secondval;				
+				baseval = 1.0 - themarkersure[f2n];
+				if (!attopnow && themarkersure[f2n]) mainsecondval = (themarkersure[f2n] * effectivesecondval) / (1.0 - themarkersure[f2n]);
 			}
 
 			if (!baseval) continue;
