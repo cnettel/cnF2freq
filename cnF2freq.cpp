@@ -849,7 +849,7 @@ struct individ
 	//
 	// The double overload means that the class can be treated as a conventional function call, returning a double, when the pre-lookup
 	// is not needed. In the "real" trackpossible method, one instance is called in that way, while the other one is pre-looked up.
-	template<bool update, bool zeropropagate> struct recursetrackpossible
+	template<int update, bool zeropropagate> struct recursetrackpossible
 	{
 		individ* mother;
 		int upflagr;
@@ -1160,7 +1160,7 @@ struct individ
 
 
 	// calltrackpossible is a slight wrapper that hides at least some of the internal parameters needed for the recursion from outside callers
-	template<bool update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
+	template<int update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
