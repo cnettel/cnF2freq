@@ -1027,13 +1027,13 @@ struct individ
 			if (markermiss<zeropropagate>(markerval, themarker[f2n]))
 			{
 				baseval = themarkersure[f2n];
-				if (!attopnow && themarkersure[f2n] && secondval) mainsecondval = (1.0 - themarkersure[f2n]) * secondval / baseval;
+				if (themarkersure[f2n] && secondval) mainsecondval = (1.0 - themarkersure[f2n]) * secondval / baseval;
 			}
 			else
 			{
 				double effectivesecondval = (inmarkerval == UnknownMarkerVal) ? 1 : secondval;				
 				baseval = 1.0 - themarkersure[f2n];
-				if (!attopnow && themarkersure[f2n] && effectivesecondval) mainsecondval = (themarkersure[f2n] * effectivesecondval) / baseval;
+				if (themarkersure[f2n] && effectivesecondval) mainsecondval = (themarkersure[f2n] * effectivesecondval) / baseval;
 			}
 
 			if (!baseval) continue;
