@@ -2959,6 +2959,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(((bool)filtered) ^ ((bool)(shiftflagmode & j->second))) &&
 			((!RELSKEWSTATES || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
 		{
+			return false;
 			return true;
 		}
 	}
