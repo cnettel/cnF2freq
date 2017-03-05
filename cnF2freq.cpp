@@ -1059,7 +1059,7 @@ struct individ
 				doupdatehaplo = false;
 			}
 			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) || selfingNOW)
+			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (false && themarkersure[0] == themarkersure[1]))) || selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
 				doupdatehaplo = false;
