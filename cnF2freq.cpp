@@ -3913,7 +3913,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(0, nullptr));
+											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2 + 1, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
 											sidevals[side][markerval.value() - 1] += sideval;
 											sidevalsums[side] += sideval;
 										}
@@ -3943,7 +3943,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											{
 												std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ":" << markerval.value() << ", fl2" << flag2 << ", sfm " << *(tb.shiftflagmode) << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
 												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
-												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(updateval, nullptr));
+												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + 1, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
 											}
 										}
 									}
