@@ -3905,7 +3905,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									int marker = -q - 1000;
 
 									int mapval = 0;
-									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, -q - 1000, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
+									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, marker, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									double sidevals[2][2] = { 0 };
 									double sidevalsums[2] = { 0 };
 
@@ -3913,7 +3913,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(0, nullptr));
+											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(0, nullptr));
 											sidevals[side][markerval.value() - 1] += sideval;
 											sidevalsums[side] += sideval;
 										}
@@ -3941,8 +3941,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										{
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 											{
+												std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
 												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
-												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, -q - 1000, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(updateval, nullptr));
+												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(updateval, nullptr));
 											}
 										}
 									}
