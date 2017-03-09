@@ -3941,7 +3941,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										{
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 											{
-												std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
+												std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ":" << markerval.value() << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
 												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
 												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode) ^ side, trackpossibleparams(updateval, nullptr));
 											}
