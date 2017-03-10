@@ -4922,6 +4922,8 @@ void readalphadata(FILE* in)
 				}
 			}
 		}
+		ime->priormarkerdata = ime->markerdata;
+		ime->priormarkersure = ime->markersure;
 	}
 }
 
