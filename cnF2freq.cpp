@@ -3165,7 +3165,7 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
-		  if (reltree[k]->n == 433 && marker >= 4086 && marker <= 4087) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
+		  if (true || (reltree[k]->n == 433 && marker >= 4086 && marker <= 4087)) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
 		}
 		infprobs[i][side].clear();
 	}
@@ -4343,7 +4343,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (auto probpair : ind->infprobs[j][side])
 							{
 								sum += probpair.second;
-								if (ind->n == 433 && j >= 4086 && j <= 4087) fprintf(stdout, "PROBPAIR A: %d %d %d %lf\n", j, side, probpair.first.value(), probpair.second);
+								if (true || (ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 							}
 
 							MarkerVal priorval = UnknownMarkerVal;
@@ -4385,7 +4385,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									bestmarker = probpair.first;
 									bestprob = probpair.second;
 								}
-								if (ind->n == 433 && j >= 4086 && j <= 4087) fprintf(stdout, "PROBPAIR B: %d %d %d %lf\n", j, side, probpair.first.value(), probpair.second);
+								if (true || (ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 							}
 
 							if (bestmarker != UnknownMarkerVal || bestprob > 0)
