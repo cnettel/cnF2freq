@@ -4354,9 +4354,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							for (auto probpair : ind->infprobs[j][side])
 							{
-								double nowprob = probpair.second;
-								double numerator = nowprob;
-								double denominator = sum;
+								double curprob = 0.5;
+								auto curmarker = (&ind->markerdata[j].first)[side];
+
+								if (curmarker != UnknownMarkerVal)
+								{
+									curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
+								}
+
+								double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+
 								if (priorval != UnknownMarkerVal)
 								{
 									double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
@@ -4367,15 +4374,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										priorprob = 1.0 - priorprob;
 									}							
 
-									double denominator2 = 2 * (log(priorprob) - log(1.0 - priorprob));
-									if (fabs(denominator2) > 1e-3)
-									{
-										numerator = sqrt(square(log(1.0 - priorprob) - log(priorprob) + sum) + 4 * nowprob *
-											(log(priorprob) - log(1.0 - priorprob))) - log(1 - priorprob) + log(priorprob) - sum;
-										denominator = denominator2;
-									}									
+									d += log(priorprob) - log(1 - priorprob);
 								}
-								ind->infprobs[j][side][probpair.first] = numerator / denominator;
+								ind->infprobs[j][side][probpair.first] = curprob + d * scalefactor;
 							}
 
 							for (auto probpair : ind->infprobs[j][side])
