@@ -3165,7 +3165,7 @@ void moveinfprobs(int i, int k, int marker)
 		for (auto infval : infprobs[i][side])
 		{
 		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * sum;
-		  if (true || (reltree[k]->n == 433 && marker >= 4086 && marker <= 4087)) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
+		  if ((reltree[k]->n == 433 && marker >= 4086 && marker <= 4087)) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
 		}
 		infprobs[i][side].clear();
 	}
@@ -4041,7 +4041,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
-						if (RELSKEWS && !RELSKEWSTATES)
+						if (RELSKEWS && !RELSKEWSTATES && false)
 #pragma omp critical(negshifts)
 						{
 							double prevval = dous[j]->haploweight[marker];
@@ -4343,7 +4343,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (auto probpair : ind->infprobs[j][side])
 							{
 								sum += probpair.second;
-								if (true || (ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 							}
 
 							MarkerVal priorval = UnknownMarkerVal;
@@ -4386,7 +4386,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									bestmarker = probpair.first;
 									bestprob = probpair.second;
 								}
-								if (true || (ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 							}
 
 							if (bestmarker != UnknownMarkerVal || bestprob > 0)
@@ -4467,7 +4467,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 								double relskewterm = 0;
-								if (RELSKEWS && j)
+								if (false && RELSKEWS && j)
 								{
 									// Modify haplotype based on relhaplo relationship with raw intended haploweight for j - 1
 									double relval = ind->relhaplo[j - 1];
