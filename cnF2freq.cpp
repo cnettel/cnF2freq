@@ -3041,7 +3041,7 @@ void resizecaches()
 }
 
 // Global scale factor, 1.0 meaning "use EM estimate".
-double scalefactor = 0.02;
+double scalefactor = 0.002;
 
 pair<int, int> fixtrees(int j)
 {
@@ -4490,8 +4490,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 								
-								double intended = exp((log(val) * ind->haplocount[j] + relskewterm) * scalefactor + baseterm);
-								intended = intended / (intended + 1.0);
+								double intended = ind->haploweight[j] + scalefactor * (ind->haplocount[j] - ind->haploweight[j] * ind->haplobase[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
