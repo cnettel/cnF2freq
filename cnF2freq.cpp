@@ -193,7 +193,7 @@ typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
 
-const float maxdiff = 0.00000005;
+const float maxdiff = 0.00000005 * 20;
 
 #include "settings.h"
 
