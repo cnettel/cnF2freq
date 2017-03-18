@@ -3584,6 +3584,38 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 }
 #endif
 
+double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn)
+{
+	double nnn = 3;
+	if (nnn < 1.0) nnn = 1.0;
+
+	double limn = (nnn - 1.0) * orig * (-1 + orig);
+
+	double limd1 = -1 - (nnn - 1.0) * orig;
+	double limd2 = (nnn - 1.0) * orig - nnn;
+
+	double lim = min(limn / limd1, limn / limd2);
+
+	intended = min((double)intended, 1.0 - epsilon);
+	intended = max((double)intended, epsilon);
+	double diff = intended - orig;
+
+
+	if (diff > limn / limd1)
+	{
+		intended = orig + limn / limd1;
+		hitnnn = true;
+	}
+
+	if (diff < -limn / limd2)
+	{
+		intended = orig - limn / limd2;
+		hitnnn = true;
+	}
+
+	return intended;
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4376,7 +4408,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 									d += log(priorprob) - log(1 - priorprob);
 								}
-								ind->infprobs[j][side][probpair.first] = curprob + d * scalefactor;
+								if (d)
+								{
+									ind->infprobs[j][side][probpair.first] = caplogitchange(curprob + d * scalefactor, curprob, maxdiff / (ind->children + 1), hitnnn);
+								}
 							}
 
 							for (auto probpair : ind->infprobs[j][side])
@@ -4393,8 +4428,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 								(&ind->markerdata[j].first)[side] = bestmarker;
 								double intended = 1.0 - bestprob;
-								intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
-								intended = max((float)intended, maxdiff / (ind->children + 1));
 								(&ind->markersure[j].first)[side] = intended;
 							}
 							ind->infprobs[j][side].clear();
@@ -4505,32 +4538,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
-									double nnn = 3;
-									if (nnn < 1.0) nnn = 1.0;
-
-									double limn = (nnn - 1.0) * ind->haploweight[j] * (-1 + ind->haploweight[j]);
-
-									double limd1 = -1 - (nnn - 1.0) * ind->haploweight[j];
-									double limd2 = (nnn - 1.0) * ind->haploweight[j] - nnn;
-
-									double lim = min(limn / limd1, limn / limd2);
-
-									intended = min((float)intended, 1.0f - maxdiff / (ind->children + 1));
-									intended = max((float)intended, maxdiff / (ind->children + 1));
-									double diff = intended - ind->haploweight[j];
-
-
-									if (diff > limn / limd1)
-									{
-									  intended = ind->haploweight[j] + limn / limd1;
-									  hitnnn = true;
-									}
-
-									if (diff < -limn / limd2)
-									{
-										intended = ind->haploweight[j] - limn / limd2;
-										hitnnn = true;
-									}
+									  intended = caplogitchange(intended, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 									
