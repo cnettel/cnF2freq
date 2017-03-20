@@ -4212,8 +4212,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (!sumnegval[t]) sumnegval[t] = 1;
 						}
 
-
-#pragma omp critical(negshifts)
 						// Changed for EBBA's degree project
 						// Reminder: NUMTURNS is a bitflag with relevant individuals that should be changed
 						// remaining individuals should not be changed (= negative numbers)
