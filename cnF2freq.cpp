@@ -4252,7 +4252,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									exists[1] = true;
 									numbind++;
 								}
-								test << " Parent1: " << temp;
+								//test << " Parent1: " << temp;
 
 								if (dous[j]->pars[0]->pars[0]) {
 									temp = dous[j]->pars[0]->pars[0]->n;
