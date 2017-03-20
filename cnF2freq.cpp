@@ -92,6 +92,7 @@ namespace po = boost::program_options;
 #include <set>
 #include <algorithm>
 #include <math.h>
+#include <bitset>
 #include <map>
 #include <float.h>
 #include <numeric> // use these libraries
@@ -750,6 +751,41 @@ template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double sta
 
 const int HAPLOS = 1;
 const int GENOS = 2;
+
+struct clause
+{
+	double weight;
+	vector<int> cinds;
+	//vector<individ*> individuals;
+
+	string toString() {
+		string s = boost::lexical_cast<std::string>(weight);
+		//std::stringstream ints;
+		//std::copy(cInds.begin(), cInds.end(), std::ostream_iterator<int>(ints, " "));
+		for (int i = 0; i < cinds.size(); i++) {
+			if (cinds[i]) {
+				s = s + " " + boost::lexical_cast<std::string>(cinds[i]);
+			}
+		}
+		//s = s + " " + ints.str();
+		return s;// note each line ends in a space
+	}
+
+	string clausetostring() {
+		string s = "";
+		for (int i = 0; i < cinds.size(); i++) {
+			if (cinds[i]) {
+				s = s + " " + boost::lexical_cast<std::string>(cinds[i]);
+			}
+		}
+		return s;
+	}
+
+	string weighttostring() {
+		return boost::lexical_cast<std::string>(weight);
+	}
+
+};
 
 // A structure containing most of the information on an individual
 struct individ
@@ -3712,6 +3748,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 	}
 
+	vector<set<negshiftcand> > negshiftcands;
+	negshiftcands.resize(chromstarts.size());
+
 	for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 	{
 		//printf("Chromosome %d\n", i + 1);
@@ -3720,6 +3759,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		// want the output to be done in order.
 		vector<vector<char> > outqueue;
 		outqueue.resize(dous.size());
+
+		// Create a vector where each element corresponds to a marker and
+		//contains a referense to a vector containing all the clauses for said marker
+		//EBBA also: Here starts the parallels, investigate names
+		vector<vector<clause>> toulInput;
+		std::set<int> indnumbers;// to count individuals
+		long long int maxweight = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
 		for (int j = 0; j < (int)dous.size(); j++)
@@ -3734,6 +3780,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			threadblock tb = tborig;
 
 			resizecaches();
+			toulInput.resize(qstart - qend); //EBBA
+		//TODO: WRONG RANGE
 
 			if (dous[j]->markerdata.size())
 			{
@@ -4166,7 +4214,138 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 #pragma omp critical(negshifts)
-						updatenegshifts(validg, shifts, shiftend, shiftignore, rawvals, j, marker);
+						// Changed for EBBA's degree project
+						// Reminder: NUMTURNS is a bitflag with relevant individuals that should be changed
+						// remaining individuals should not be changed (= negative numbers)
+						// All individuals ancestors (assuming max 3 gens) should be included in clause
+						// The weight is the sum of rawvals (?)
+						// The current individual is dous[j]
+						// structure of container: vector<vector<clause*>> toulInput;
+
+#pragma omp critical(negshifts)
+						{
+							//Markers stored in q (see line 2844 in original cnF2freq)
+							//such that
+							int mark = -q - 1000;
+							int numbind = 1;
+
+							//Do we have parents and grand parents?
+							//Store their identifying numbers in an array.
+							//Hard coded for max 3 gens.
+							std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
+							vector<int> cands(7);
+							vector<bool> exists(7, false);
+							std::set<int> family;
+							int temp = dous[j]->n;
+							cands[0] = temp;
+							exists[0] = true;
+							family.insert(temp);
+
+
+
+							// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
+
+							test << "Mark: " << mark << " Individ: " << dous[j]->n;
+
+							if (dous[j]->pars[0]) {
+								temp = dous[j]->pars[0]->n;
+								if (family.insert(temp).second) {//if family member is unique
+									cands[1] = temp;
+									exists[1] = true;
+									numbind++;
+								}
+								test << " Parent1: " << temp;
+
+								if (dous[j]->pars[0]->pars[0]) {
+									temp = dous[j]->pars[0]->pars[0]->n;
+									if (family.insert(temp).second) {
+										cands[2] = temp;
+										exists[2] = true;
+										numbind++;
+									}
+									test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
+								}
+								if (dous[j]->pars[0]->pars[1]) {
+									temp = dous[j]->pars[0]->pars[1]->n;
+									if (family.insert(temp).second) {
+										cands[3] = temp;
+										exists[3] = true;
+										numbind++;
+									}
+									test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
+								}
+							}
+
+							if (dous[j]->pars[1]) {
+								temp = dous[j]->pars[1]->n;
+								numbind++;
+								if (family.insert(temp).second) {
+									cands[4] = temp;
+									exists[4] = true;
+									numbind++;
+								}
+								test << " Parent2: " << dous[j]->pars[1]->n;
+								if (dous[j]->pars[1]->pars[0]) {
+									temp = dous[j]->pars[1]->pars[0]->n;
+									if (family.insert(temp).second) {
+										cands[5] = temp;
+										exists[5] = true;
+										numbind++;
+									}
+									test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
+								}
+								if (dous[j]->pars[1]->pars[1]) {
+									temp = dous[j]->pars[1]->pars[1]->n;
+									if (family.insert(temp).second) {
+										cands[6] = temp;
+										exists[6] = true;
+										numbind++;
+									}
+									test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
+								}
+							}
+							test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
+
+																											//Use structure clause to store weight and values.
+
+																											//loop over NUMTURNS
+																											// get relevant weights and individuals, insert to container
+
+																											//for (int g = 0; g < NUMTURNS; g++) {
+							for (int g = 0; g < exp2(numbind); g++) {
+								std::bitset<16> bits(g);
+								vector<int> claus;
+								int cind;
+								for (int b = 0; b < 7; b++) {
+									if (exists[b]) {
+										cind = cands[b];
+										indnumbers.insert(cind);
+										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
+										if (bits[b]) {
+											claus.push_back(cands[b]);
+										}
+										else {
+											claus.push_back(-cands[b]);
+										}
+										//}
+									}
+								}
+								double w = 0;
+								for (int s = 0; s < NUMSHIFTS; s++) {
+									w += rawvals[g][s];
+								}
+								//Now simply construct a clause type and send it to the right marker
+								clause c;
+								w = w * 1000000000;
+								c.weight = w;
+								if (w > maxweight) {
+									maxweight = w;
+								}
+								c.cinds = claus;
+								test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
+								toulInput[mark].push_back(c);
+							}
+						}
 					}
 
 					reporter.report(outqueue[j]);
@@ -4196,6 +4375,114 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			fflush(stderr);
 		}
 
+		//Print all information to seperate files EBBA
+		// stored by marker in toulIn  vector<vector<clause>>
+		//Then run toulbar and save best solution in relevant negshift vectors
+		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
+		std::string toulin("toul_in.wcnf");
+		std::string toulout("toul_out.txt");
+		int nbvar = indnumbers.size();
+		int minsumweight = std::numeric_limits<int>::max();
+		std::set<negshiftcand> bestcands;
+		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
+			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
+			std::fstream output(toulout, ios::out | ios::in | ios::trunc);
+			if (!infile) {
+				perror("Toulbars input file failed to open to be written to because: ");
+			}
+
+			infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
+			infile << "c Where p is the weight\n";
+			infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
+			infile << "c nbclauses is the exact number of clauses contained in the file\n";
+			infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
+
+			int nbclauses = (int)toulInput[m].size();
+			int nbc = nbclauses + nbvar * 2;
+			//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
+			//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
+			infile << "p wcnf " << nbvar << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+			vector<int> inds;
+
+			for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
+				infile << "1 " << cind << " 0\n";
+				infile << "1 " << -cind << " 0\n";
+				inds.push_back(cind);
+			}
+
+			clause c;
+			for (int g = 0; g < nbclauses; g++) {
+				c = toulInput[m][g];
+				c.weight = (long long int) (maxweight - c.weight + 1);
+				infile << c.weighttostring() << c.clausetostring() << " 0\n";
+				//infile<< toulInput[m][g].toString() << "\n";
+				//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
+			}
+			infile.close();
+
+
+			string str = "toulbar2 toul_in.wcnf -m=1 -w -s  > toul_out.txt"; //works as in it runs, not as in it actually does what we want
+																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
+
+
+																			 // Convert string to const char * as system requires
+			const char *command = str.c_str();
+			system(command);
+
+			//Read outfile and store best result in negshift
+			std::fstream touloutput("sol", ios::in);
+			//read from file to string of 0s and 1s
+			int rawinput;
+			vector<int> tf;
+			while (touloutput >> rawinput) {
+				tf.push_back(rawinput);
+			}
+
+			//Read outfile and store sum of clauses not fulfuilled in sumweight
+
+			string instr;
+			int sumweight = 0;
+			while (output >> instr) {
+				if (instr.compare("Optimum:")) {
+					break;
+				}
+			}
+			output >> sumweight;
+
+			if (minsumweight > sumweight) {
+				//vector containing all individuals numbers who should be shifted
+				minsumweight = sumweight;
+				//vector<int> neg;
+				bestcands.clear();
+				for (int g = 0; g<tf.size(); g++) {
+					if (tf[g]) {
+						bestcands.emplace(negshiftcand(dous[inds[g]], sumweight, m));
+						//neg.push_back(inds[g]);
+					}
+				}
+
+				//if(neg.size()>1){
+				//cout<< "There is a place where double shifts would be good!"<< endl;//(string) neg <<
+				//}
+			}
+
+
+			//Close file
+			touloutput.close();
+			//output.close();
+		}
+
+		//Data structure to fill: vector<set<negshiftcand> > negshiftcands (0);
+		if (bestcands.size() == 1) {
+			cout << "Only one individual is switching!" << endl;
+		}
+		else if (bestcands.size()>1) {
+			cout << "A switch!" << bestcands.size() << "individuals are changing!" << endl; //For Ebbas degree projects results
+		}
+		negshiftcands.push_back(bestcands);
+		bestcands.clear(); // uneccesary, just for clarity
+						   //End of Ebbas code
 
 		for (unsigned int j = 0; j < outqueue.size(); j++)
 		{
@@ -4248,10 +4535,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 		if (!full && HAPLOTYPING)
-		{
-			vector<set<negshiftcand> > negshiftcands;
-			negshiftcands.resize(chromstarts.size());
-
+		{			
 			for (unsigned int i = 0; i < INDCOUNT; i++)
 			{
 				individ* ind = getind(i);
