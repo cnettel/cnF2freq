@@ -3780,13 +3780,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			threadblock tb = tborig;
 
 			resizecaches();
-			toulInput.resize(qstart - qend); //EBBA
-		//TODO: WRONG RANGE
 
 			if (dous[j]->markerdata.size())
 			{
 				int qstart = -1000 - chromstarts[i];
 				int qend = -1000 - chromstarts[i + 1];
+				toulInput.resize(qstart - qend); //EBBA
+												 //TODO: WRONG RANGE
 				int qd = -1;
 				int f2s = 0;
 				int f2end = NUMPATHS;
