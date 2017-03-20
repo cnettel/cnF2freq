@@ -4230,7 +4230,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//Do we have parents and grand parents?
 							//Store their identifying numbers in an array.
 							//Hard coded for max 3 gens.
-							std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
+							//std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
 							vector<int> cands(7);
 							vector<bool> exists(7, false);
 							std::set<int> family;
@@ -4243,7 +4243,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
 
-							test << "Mark: " << mark << " Individ: " << dous[j]->n;
+							//test << "Mark: " << mark << " Individ: " << dous[j]->n;
 
 							if (dous[j]->pars[0]) {
 								temp = dous[j]->pars[0]->n;
@@ -4261,7 +4261,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										exists[2] = true;
 										numbind++;
 									}
-									test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
+									//test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
 								}
 								if (dous[j]->pars[0]->pars[1]) {
 									temp = dous[j]->pars[0]->pars[1]->n;
@@ -4270,7 +4270,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										exists[3] = true;
 										numbind++;
 									}
-									test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
+									//test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
 								}
 							}
 
@@ -4282,7 +4282,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									exists[4] = true;
 									numbind++;
 								}
-								test << " Parent2: " << dous[j]->pars[1]->n;
+								//test << " Parent2: " << dous[j]->pars[1]->n;
 								if (dous[j]->pars[1]->pars[0]) {
 									temp = dous[j]->pars[1]->pars[0]->n;
 									if (family.insert(temp).second) {
@@ -4290,7 +4290,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										exists[5] = true;
 										numbind++;
 									}
-									test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
+									//test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
 								}
 								if (dous[j]->pars[1]->pars[1]) {
 									temp = dous[j]->pars[1]->pars[1]->n;
@@ -4299,10 +4299,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										exists[6] = true;
 										numbind++;
 									}
-									test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
+									//test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
 								}
 							}
-							test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
+							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
 
 																											//Use structure clause to store weight and values.
 
@@ -4340,7 +4340,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									maxweight = w;
 								}
 								c.cinds = claus;
-								test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
+								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
 								toulInput[mark].push_back(c);
 							}
 						}
