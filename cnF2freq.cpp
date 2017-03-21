@@ -4220,7 +4220,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// The current individual is dous[j]
 						// structure of container: vector<vector<clause*>> toulInput;
 
-#pragma omp critical(negshifts)
 						{
 							//Markers stored in q (see line 2844 in original cnF2freq)
 							//such that
@@ -4310,7 +4309,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											// get relevant weights and individuals, insert to container
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
-							for (int g = 0; g < exp2(numbind); g++) {
+							for (int g = 0; g < NUMTURNS; g++) {
+								if (g & (flag2ignore >> 1)) continue;
+
 								std::bitset<16> bits(g);
 								vector<int> claus;
 								int cind;
@@ -4320,10 +4321,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										indnumbers.insert(cind);
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
 										if (bits[b]) {
-											claus.push_back(cands[b]);
+											claus.push_back(-cands[b]);
 										}
 										else {
-											claus.push_back(-cands[b]);
+											claus.push_back(cands[b]);
 										}
 										//}
 									}
@@ -4341,6 +4342,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
+#pragma omp critical(negshifts)
 								toulInput[mark].push_back(c);
 							}
 						}
