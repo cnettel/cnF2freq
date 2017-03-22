@@ -4331,11 +4331,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								double w = 0;
 								for (int s = 0; s < NUMSHIFTS; s++) {
-									w += rawvals[g][s];
+								  w += rawvals[g][s];
 								}
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
-								w = w * 1000000000;
+								w = log(w) * 1000000000;
 								c.weight = w;
 								if (w > maxweight) {
 									maxweight = w;
@@ -6202,6 +6202,7 @@ int main(int argc, char* argv[])
 		out = fopen(outputfilename.c_str(), "w");
 	}
 
+	dous.resize(100);
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
 		{
