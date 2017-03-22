@@ -4157,15 +4157,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int g = 0; g < NUMTURNS; g++)
 						{
-							if (g & (flag2ignore >> 1)) continue;
-
-							int c = 0;
-							for (int p = 0; p < TYPEBITS + 1; p++)
-							{
-								if (g & (1 << p)) c++;
-							}
-
-							if (c > 1) continue;
+							if (g & flag2ignore) continue;
 
 							aroundturner turn(g);
 							for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
@@ -4310,7 +4302,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
 							for (int g = 0; g < NUMTURNS; g++) {
-								if (g & (flag2ignore >> 1)) continue;
+								if (g & flag2ignore) continue;
 
 								std::bitset<16> bits(g);
 								vector<int> claus;
@@ -4330,7 +4322,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 								}
 								double w = 0;
-								for (int s = 0; s < NUMSHIFTS; s++) {
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
 									w += rawvals[g][s];
 								}
 								//Now simply construct a clause type and send it to the right marker
