@@ -4157,7 +4157,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int g = 0; g < NUMTURNS; g++)
 						{
-							if (g & flag2ignore) continue;
+							if (g & (flag2ignore >> 1)) continue;
 
 							aroundturner turn(g);
 							for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
@@ -4226,8 +4226,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							vector<bool> exists(7, false);
 							std::set<int> family;
 							int temp = dous[j]->n;
-							cands[0] = temp;
-							exists[0] = true;
+							cands[6] = temp;
+							exists[6] = true;
 							family.insert(temp);
 
 
@@ -4239,8 +4239,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (dous[j]->pars[0]) {
 								temp = dous[j]->pars[0]->n;
 								if (family.insert(temp).second) {//if family member is unique
-									cands[1] = temp;
-									exists[1] = true;
+									cands[0] = temp;
+									exists[0] = true;
 									numbind++;
 								}
 								//test << " Parent1: " << temp;
@@ -4248,8 +4248,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (dous[j]->pars[0]->pars[0]) {
 									temp = dous[j]->pars[0]->pars[0]->n;
 									if (family.insert(temp).second) {
-										cands[2] = temp;
-										exists[2] = true;
+										cands[1] = temp;
+										exists[1] = true;
 										numbind++;
 									}
 									//test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
@@ -4257,8 +4257,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (dous[j]->pars[0]->pars[1]) {
 									temp = dous[j]->pars[0]->pars[1]->n;
 									if (family.insert(temp).second) {
-										cands[3] = temp;
-										exists[3] = true;
+										cands[2] = temp;
+										exists[2] = true;
 										numbind++;
 									}
 									//test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
@@ -4269,16 +4269,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								temp = dous[j]->pars[1]->n;
 								numbind++;
 								if (family.insert(temp).second) {
-									cands[4] = temp;
-									exists[4] = true;
+									cands[3] = temp;
+									exists[3] = true;
 									numbind++;
 								}
 								//test << " Parent2: " << dous[j]->pars[1]->n;
 								if (dous[j]->pars[1]->pars[0]) {
 									temp = dous[j]->pars[1]->pars[0]->n;
 									if (family.insert(temp).second) {
-										cands[5] = temp;
-										exists[5] = true;
+										cands[4] = temp;
+										exists[4] = true;
 										numbind++;
 									}
 									//test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
@@ -4286,8 +4286,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (dous[j]->pars[1]->pars[1]) {
 									temp = dous[j]->pars[1]->pars[1]->n;
 									if (family.insert(temp).second) {
-										cands[6] = temp;
-										exists[6] = true;
+										cands[5] = temp;
+										exists[5] = true;
 										numbind++;
 									}
 									//test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
@@ -4302,7 +4302,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
 							for (int g = 0; g < NUMTURNS; g++) {
-								if (g & flag2ignore) continue;
+								if (g & (flag2ignore >> 1)) continue;
 
 								std::bitset<16> bits(g);
 								vector<int> claus;
