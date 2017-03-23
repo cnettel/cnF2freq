@@ -4321,11 +4321,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//}
 									}
 								}
-								double w = 0;
+								double w = 1e-100;
 
 								for (int s = shifts; s < shiftend; s++) {
 									if (s & shiftignore) continue;
-									w += log(rawvals[g][s]);
+									w += rawvals[g][s];
 								}
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
