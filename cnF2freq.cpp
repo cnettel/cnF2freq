@@ -4381,9 +4381,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,32)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-			std::string toulin("toul_in" + omp_get_thread_num() + ".wcnf");
-			std::string toulout("toul_out" + omp_get_thread_num() + ".txt");
-			std::string sol("sol" + omp_get_thread_num());
+			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
+			std::string toulin(std::string("toul_in") + tid + ".wcnf");
+			std::string toulout(std::string("toul_out") + tid + ".txt");
+			std::string sol(std::string("sol") + tid;
 			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);			
 			if (!infile) {
 				perror("Toulbars input file failed to open to be written to because: ");
