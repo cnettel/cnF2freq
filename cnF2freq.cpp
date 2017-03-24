@@ -4373,15 +4373,17 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		// stored by marker in toulIn  vector<vector<clause>>
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
-		std::string toulin("toul_in.wcnf");
-		std::string toulout("toul_out.txt");
+
 		int nbvar = indnumbers.size();
 		int minsumweight = std::numeric_limits<int>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+#pragma omp parallel for schedule(dynamic,32)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
-			std::fstream output(toulout, ios::out | ios::in | ios::trunc);
+			std::string toulin("toul_in" + omp_get_thread_num() + ".wcnf");
+			std::string toulout("toul_out" + omp_get_thread_num() + ".txt");
+			std::string sol("sol" + omp_get_thread_num());
+			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);			
 			if (!infile) {
 				perror("Toulbars input file failed to open to be written to because: ");
 			}
@@ -4416,7 +4418,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 toul_in.wcnf -m=1 -w -s  > toul_out.txt"; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 toul_in.wcnf -m=1 -w=" + sol + " -s  > " + toul_out; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -4425,7 +4427,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			system(command);
 
 			//Read outfile and store best result in negshift
-			std::fstream touloutput("sol", ios::in);
+			std::fstream touloutput(sol, ios::in);
 			//read from file to string of 0s and 1s
 			int rawinput;
 			vector<int> tf;
@@ -4438,7 +4440,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Read outfile and store sum of clauses not fulfuilled in sumweight
-
+			std::fstream output(toulout, ios::in);
 			string instr;
 			int sumweight = 0;
 			while (output >> instr) {
@@ -4448,6 +4450,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 			output >> sumweight;
 
+#pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
 				//vector containing all individuals numbers who should be shifted
 				minsumweight = sumweight;
