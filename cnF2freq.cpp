@@ -30,6 +30,7 @@
 #include <vector>
 #include <string.h>
 #include <stdio.h>
+#include <omp.h>
 
 
 const int ANALYZE_FLAG_FORWARD = 0;
