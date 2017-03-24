@@ -4418,7 +4418,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 toul_in.wcnf -m=1 -w=" + sol + " -s  > " + toul_out; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 toul_in.wcnf -m=1 -w=" + sol + " -s  > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
