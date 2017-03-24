@@ -4325,7 +4325,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								double w = 1e-100;
 
 								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore) continue;
+									if (s & shiftignore || rawvals[g][s] <= 0) continue;
 									w += rawvals[g][s];
 								}
 								//Now simply construct a clause type and send it to the right marker
@@ -4400,7 +4400,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			int nbc = nbclauses + nbvar * 2;
 			//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 			//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
-			infile << "p wcnf " << nbvar << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+			infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 			vector<int> inds;
 
 			for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
@@ -4420,7 +4420,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 toul_in.wcnf -m=1 -w=" + sol + " -s  > " + toul_out; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 toul_in.wcnf -m=1 -w=" + sol + " -s  > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -4435,6 +4435,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			vector<int> tf;
 			while (touloutput >> rawinput) {
 				tf.push_back(rawinput);
+				if (rawinput)
+				  {
+				    fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size() - 1, m);
+				  }
 			}
 
 			//Read outfile and store sum of clauses not fulfuilled in sumweight
@@ -4456,7 +4460,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				bestcands.clear();
 				for (int g = 0; g<tf.size(); g++) {
 					if (tf[g]) {
-						bestcands.emplace(negshiftcand(dous[inds[g]], sumweight, m));
+						bestcands.emplace(dous[inds[g]], sumweight, m);
 						//neg.push_back(inds[g]);
 					}
 				}
