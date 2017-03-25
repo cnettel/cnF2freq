@@ -4420,7 +4420,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 " + toul_in + " -m=1 -w=" + sol + " -s  > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin + " -m=1 -w=" + sol + " -s  -timer=16 > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -4575,7 +4575,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				// Perform the inversions indicated by the negshift data, at most a single one per individual
 				// and chromosome, maybe 0.
-				for (int c = 0; c < (int)chromstarts.size() - 1; c++)
+				if (false) for (int c = 0; c < (int)chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-10;
