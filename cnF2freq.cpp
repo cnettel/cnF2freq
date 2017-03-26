@@ -4308,6 +4308,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								std::bitset<16> bits(g);
 								vector<int> claus;
 								int cind;
+								int shiftcount = 0;
 								for (int b = 0; b < 7; b++) {
 									if (exists[b]) {
 										cind = cands[b];
@@ -4315,6 +4316,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
 										if (bits[b]) {
 											claus.push_back(-cands[b]);
+											shiftcount++;
 										}
 										else {
 											claus.push_back(cands[b]);
@@ -4331,6 +4333,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								w = log(w) * 1000000000;
+								w -= shiftcount;
 								c.weight = w;
 								if (w > maxweight) {
 									maxweight = w;
@@ -4401,12 +4404,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 			//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
 			infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
-			vector<int> inds;
 
 			for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
 				infile << "1 " << cind << " 0\n";
 				infile << "1 " << -cind << " 0\n";
-				inds.push_back(cind);
 			}
 
 			clause c;
@@ -4420,7 +4421,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 " + toulin + " -m=1 -w=" + sol + " -s  -timer=16 > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin + " -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -4460,7 +4461,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				bestcands.clear();
 				for (int g = 0; g<tf.size(); g++) {
 					if (tf[g]) {
-						bestcands.emplace(dous[inds[g]], sumweight, m);
+						bestcands.emplace(dous[g + 1], sumweight, m);
 						//neg.push_back(inds[g]);
 					}
 				}
