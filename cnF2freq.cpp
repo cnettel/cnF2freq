@@ -3751,6 +3751,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	vector<set<negshiftcand> > negshiftcands;
 	negshiftcands.resize(chromstarts.size());
+	// Create a vector where each element corresponds to a marker and
+	//contains a referense to a vector containing all the clauses for said marker
+	//EBBA also: Here starts the parallels, investigate names
+	vector<vector<clause>> toulInput;
+	toulInput.resize(markerposes.size()); //EBBA
 
 	for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
 	{
@@ -3761,10 +3766,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		vector<vector<char> > outqueue;
 		outqueue.resize(dous.size());
 
-		// Create a vector where each element corresponds to a marker and
-		//contains a referense to a vector containing all the clauses for said marker
-		//EBBA also: Here starts the parallels, investigate names
-		vector<vector<clause>> toulInput;
 		std::set<int> indnumbers;// to count individuals
 		long long int maxweight = 0;
 
@@ -3786,7 +3787,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			{
 				int qstart = -1000 - chromstarts[i];
 				int qend = -1000 - chromstarts[i + 1];
-				toulInput.resize(qstart - qend); //EBBA
 												 //TODO: WRONG RANGE
 				int qd = -1;
 				int f2s = 0;
@@ -4333,7 +4333,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								w = log(w) * 1000000000;
-								w -= shiftcount;
+								w -= g;
 								c.weight = w;
 								if (w > maxweight) {
 									maxweight = w;
@@ -4383,7 +4383,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,32)
-		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
+		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m+=10) {
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
