@@ -4345,6 +4345,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp critical(negshifts)
 								toulInput[mark].push_back(c);
 							}
+#pragma omp critical(negshifts)
+							for (int b = 0; b < 7; b++) {
+								if (exists[b]) {
+									indnumbers.insert(cands[b]);
+								}
+							}
 						}
 					}
 
