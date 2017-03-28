@@ -1096,7 +1096,7 @@ struct individ
 				doupdatehaplo = false;
 			}
 			//			else if (/*!empty &&*/ (allthesame && (CORRECTIONINFERENCE) || (themarker[0] == UnknownMarkerVal && themarker[1] == UnknownMarkerVal && themarkersure[0] + themarkersure[1] == 0)))
-			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (false && themarkersure[0] == themarkersure[1]))) || selfingNOW)
+			else if (/*!empty &&*/ ((!relskewingNOW) && allthesame && ((CORRECTIONINFERENCE) || (themarkersure[0] == themarkersure[1]))) || selfingNOW)
 			{
 				baseval *= ((f2n) ? 1.0 : 0.0);
 				doupdatehaplo = false;
@@ -2996,8 +2996,8 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(((bool)filtered) ^ ((bool)(shiftflagmode & j->second))) &&
 			((!RELSKEWSTATES || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
 		{
-			return false;
-			return true;
+		  //			return false;
+		  return true;
 		}
 	}
 	return false;
@@ -4122,6 +4122,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
+						if ((marker - chromstarts[i]) % 10) continue;
+
 						if (RELSKEWS && !RELSKEWSTATES && false)
 #pragma omp critical(negshifts)
 						{
@@ -4379,10 +4381,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
 		int nbvar = indnumbers.size();
-		int minsumweight = std::numeric_limits<int>::max();
+		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
-#pragma omp parallel for schedule(dynamic,32)
+#pragma omp parallel for schedule(dynamic,1)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m+=10) {
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
@@ -4445,13 +4447,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			//Read outfile and store sum of clauses not fulfuilled in sumweight
 			std::fstream output(toulout, ios::in);
 			string instr;
-			int sumweight = 0;
+			long long sumweight = std::numeric_limits<long long>::max();
 			while (output >> instr) {
-				if (instr.compare("Optimum:")) {
+				if (instr.compare("Optimum:") == 0) {
+				  output >> sumweight;
 					break;
 				}
 			}
-			output >> sumweight;
+			fprintf(stderr, "Read back optimum %lld\n", sumweight);
 
 #pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
@@ -4461,7 +4464,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				bestcands.clear();
 				for (int g = 0; g<tf.size(); g++) {
 					if (tf[g]) {
-						bestcands.emplace(dous[g + 1], sumweight, m);
+					  bestcands.emplace(getind(g + 1), sumweight, m);
 						//neg.push_back(inds[g]);
 					}
 				}
@@ -4484,7 +4487,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		else if (bestcands.size()>1) {
 			cout << "A switch!" << bestcands.size() << "individuals are changing!" << endl; //For Ebbas degree projects results
 		}
-		negshiftcands.push_back(bestcands);
+		negshiftcands[i] = bestcands;
 		bestcands.clear(); // uneccesary, just for clarity
 						   //End of Ebbas code
 
