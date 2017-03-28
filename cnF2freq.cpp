@@ -6209,7 +6209,6 @@ int main(int argc, char* argv[])
 		out = fopen(outputfilename.c_str(), "w");
 	}
 
-	dous.resize(100);
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
 		{
