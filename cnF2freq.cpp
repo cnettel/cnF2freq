@@ -4423,7 +4423,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			infile.close();
 
 
-			string str = "toulbar2 " + toulin + " -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin + " -p=8 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -4445,18 +4445,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long minweight = 0;
+			long long sumweight = 0;
 			for (int g = 0; g < nbclauses; g++) {
-				bool viol = false;
+				bool viol = true;
 				for (int val : toulInput[m][g].cinds)
 				{
 					int ind = val < 0 ? -val : val;
-					if (rawinput[ind] ^ (val > 0))
+					if ((tf[ind - 1] ^ (val > 0)) == false)
 					{
-						viol = true;
+						viol = false;
 					}
 				}
-				if (viol) minweight += toulInput[m][g].weight;
+				if (viol) sumweight += toulInput[m][g].weight;
 			}
 			
 			
