@@ -4444,17 +4444,22 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  }
 			}
 
-			//Read outfile and store sum of clauses not fulfuilled in sumweight
-			std::fstream output(toulout, ios::in);
-			string instr;
-			long long sumweight = std::numeric_limits<long long>::max();
-			while (output >> instr) {
-				if (instr.compare("Optimum:") == 0) {
-				  output >> sumweight;
-					break;
+			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
+			long long minweight = 0;
+			for (int g = 0; g < nbclauses; g++) {
+				bool viol = false;
+				for (int val : toulInput[m][g].cinds)
+				{
+					int ind = val < 0 ? -val : val;
+					if (rawinput[ind] ^ (val > 0))
+					{
+						viol = true;
+					}
 				}
+				if (viol) minweight += toulInput[m][g].weight;
 			}
-			fprintf(stderr, "Read back optimum %lld\n", sumweight);
+			
+			
 
 #pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
