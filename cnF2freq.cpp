@@ -4304,6 +4304,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											// get relevant weights and individuals, insert to container
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
+							double normsum = 0;
+							for (int s = shifts; s < shiftend; s++) {
+								if (s & shiftignore || rawvals[g][s] <= 0) continue;
+								normfactor += rawvals[0][s];
+							}
+							double normfactor = 1 / normsum;
+
 							for (int g = 0; g < NUMTURNS; g++) {
 								if (g & (flag2ignore >> 1)) continue;
 
@@ -4332,6 +4339,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (s & shiftignore || rawvals[g][s] <= 0) continue;
 									w += rawvals[g][s];
 								}
+								w *= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								w = log(w) * 1000000000;
