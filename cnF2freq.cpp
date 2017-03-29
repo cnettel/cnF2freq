@@ -3990,6 +3990,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double sidevals[2][2] = { 0 };
 									double sidevalsums[2] = { 0 };
 
+									if (DOINFPROBS)
 									for (int side = 0; side < 2; side++)
 									{
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
@@ -4018,6 +4019,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
 
+										if (DOINFPROBS)
 										for (int side = 0; side < 2; side++)
 										{
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
@@ -4663,6 +4665,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					fflush(out);
 
 					int cno = 0;
+					if (DOINFPROBS)
 					for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 					{
 						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
