@@ -4308,8 +4308,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											//for (int g = 0; g < NUMTURNS; g++) {
 							double normsum = 0;
 							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore || rawvals[g][s] <= 0) continue;
-								normfactor += rawvals[0][s];
+								if (s & shiftignore || rawvals[0][s] <= 0) continue;
+								normsum += rawvals[0][s];
 							}
 							double normfactor = 1 / normsum;
 
@@ -4474,6 +4474,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				if (viol) sumweight += toulInput[m][g].weight;
 			}
+
+			fprintf(stderr, "Marker %d score %lld\n", sumweight);
 			
 			
 
