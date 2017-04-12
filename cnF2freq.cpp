@@ -755,7 +755,7 @@ const int GENOS = 2;
 
 struct clause
 {
-	double weight;
+	long long weight;
 	vector<int> cinds;
 	//vector<individ*> individuals;
 
@@ -3767,7 +3767,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		outqueue.resize(dous.size());
 
 		std::set<int> indnumbers;// to count individuals
-		long long int maxweight = 0;
+		long long maxweight = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
 		for (int j = 0; j < (int)dous.size(); j++)
@@ -4184,7 +4184,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								/*								if (c > 1) continue;*/
 								validg[g] = true;
 
-								if (rawervals[g][oldshift] < 0)
+								if (!isfinite(rawervals[g][oldshift]))
 								{
 									rawvals[g][oldshift] = 0;
 									continue;
@@ -4345,15 +4345,17 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								w = log(w) * 1000000000;
-								w -= g;
 								c.weight = w;
-								if (w > maxweight) {
-									maxweight = w;
-								}
+								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
 #pragma omp critical(negshifts)
-								toulInput[mark].push_back(c);
+								{
+								  if (c.weight > maxweight) {
+								    maxweight = c.weight;
+								  }
+								  toulInput[mark].push_back(c);
+								}
 							}
 #pragma omp critical(negshifts)
 							for (int b = 0; b < 7; b++) {
@@ -4428,10 +4430,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				infile << "1 " << -cind << " 0\n";
 			}
 
-			clause c;
 			for (int g = 0; g < nbclauses; g++) {
-				c = toulInput[m][g];
-				c.weight = (long long int) (maxweight - c.weight + 1);
+				clause& c = toulInput[m][g];
+				c.weight = maxweight - c.weight + 1;
+				if (c.weight < 0)
+				  {
+				    fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
+				  }
 				infile << c.weighttostring() << c.clausetostring() << " 0\n";
 				//infile<< toulInput[m][g].toString() << "\n";
 				//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
@@ -4462,20 +4467,25 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
 			long long sumweight = 0;
+			int vc = 0;
 			for (int g = 0; g < nbclauses; g++) {
 				bool viol = true;
 				for (int val : toulInput[m][g].cinds)
 				{
 					int ind = val < 0 ? -val : val;
-					if ((tf[ind - 1] ^ (val > 0)) == false)
+					if (tf[ind - 1] == (val > 0))
 					{
 						viol = false;
 					}
 				}
-				if (viol) sumweight += toulInput[m][g].weight;
+				if (viol)
+				  {
+				    sumweight += toulInput[m][g].weight;
+				    vc++;
+				  }
 			}
 
-			fprintf(stderr, "Marker %d score %lld\n", sumweight);
+			fprintf(stderr, "Marker %d score %lld, %d/%d clauses, %d vars in tf\n", m, sumweight, vc, nbclauses, tf.size());
 			
 			
 
