@@ -4847,6 +4847,26 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									prevval = prevval / (prevval + 1.0);
 								}
 
+								double scorea = 1.0 - ind->markersure[j].first;
+								double scoreb = 1.0 - ind->markersure[j].second;
+								if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
+
+								double similarity = scorea * scoreb * (1 - scorea) * (1 - scoreb);
+								if (similarity >= 1 - maxdiff)
+								{
+									ind->haplobase[j] = 0;
+								}
+								else
+								{
+									double count = ind->haplocount[j] * 0.5;
+									ind->haplobase[j] -= count;
+									count = count - similarity * count;
+									ind->haplocount[j] = count;
+									ind->haplobase[j] += count;
+									if (ind->haplobase[j] < 0) ind->haplobase = 0;
+									if (ind->haplobase[j] >= count) ind->haplobase = count;
+								}
+
 								
 								double intended = ind->haploweight[j] + scalefactor * (ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]);
 
