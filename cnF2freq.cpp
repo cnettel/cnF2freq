@@ -6053,7 +6053,7 @@ void deserialize(istream& stream)
 	This is what we're unserializing
 	fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);*/
-  auto haploline = x3::double_ >> x3::int_ >> x3::int_ >> x3::omit[x3::double_ >> x3::double_ >> x3::double_];
+  auto haploline = x3::double_ >> x3::int_ >> x3::int_ >> x3::double_ >> x3::double_ >> x3::double_;
 	
 	while (!stream.eof())
 	{
@@ -6078,7 +6078,7 @@ void deserialize(istream& stream)
 				for (int i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
-					std::tuple<double, int, int> output;
+					std::tuple<double, int, int, double, double, double> output;
 					if (!x3::phrase_parse(line.begin(), line.end(), haploline, x3::space, output))
 					{
 						std::cerr << "Reading haplotype for marker " << i << " for individual " << ind->name << " failed: " << line << std::endl;
@@ -6099,6 +6099,8 @@ void deserialize(istream& stream)
 							std::cerr << "Genotype mismatch for marker " << i << " for individual " << ind->name << " (" << ind->markerdata[i].first.value() << "," << ind->markerdata[i].second.value() << ") to " <<
 								" (" << pmv.first.value() << "," << pmv.second.value() << ")" << std::endl;
 						}
+						ind->markerdata[i] = pmv;
+						ind->markersure[i] = make_pair(std::get<4>(output), std::get<5>(output));
 					}
 				}
 
