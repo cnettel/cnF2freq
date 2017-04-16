@@ -195,7 +195,7 @@ typedef pair<MarkerVal, MarkerVal> MarkerValPair;
 const MarkerVal UnknownMarkerVal = (MarkerVal)0;
 const MarkerVal sexmarkerval = 9 * MarkerValue;
 
-const float maxdiff = 0.00000005;
+const float maxdiff = 0.000005;
 
 #include "settings.h"
 
@@ -3623,7 +3623,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 
 double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn)
 {
-	double nnn = 3;
+	double nnn = 100;
 	if (nnn < 1.0) nnn = 1.0;
 
 	double limn = (nnn - 1.0) * orig * (-1 + orig);
@@ -3640,12 +3640,14 @@ double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn
 
 	if (diff > limn / limd1)
 	{
+	  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn/limd1, intended, orig);
 		intended = orig + limn / limd1;
 		hitnnn = true;
 	}
 
 	if (diff < -limn / limd2)
 	{
+	  fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn/limd2, intended, orig);
 		intended = orig - limn / limd2;
 		hitnnn = true;
 	}
@@ -4124,7 +4126,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
-						if ((marker - chromstarts[i]) % 10) continue;
 
 						if (RELSKEWS && !RELSKEWSTATES && false)
 #pragma omp critical(negshifts)
@@ -4403,7 +4404,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
-		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m+=10) {
+		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
@@ -4851,20 +4852,20 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								double scoreb = 1.0 - ind->markersure[j].second;
 								if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
 
-								double similarity = scorea * scoreb * (1 - scorea) * (1 - scoreb);
+								double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
 								if (similarity >= 1 - maxdiff)
 								{
 									ind->haplobase[j] = 0;
 								}
 								else
 								{
-									double count = ind->haplocount[j] * 0.5;
-									ind->haplobase[j] -= count;
+									double count = ind->haplocount[j];
+									ind->haplobase[j] -= count * 0.5;
 									count = count - similarity * count;
 									ind->haplocount[j] = count;
-									ind->haplobase[j] += count;
-									if (ind->haplobase[j] < 0) ind->haplobase = 0;
-									if (ind->haplobase[j] >= count) ind->haplobase = count;
+									ind->haplobase[j] += count * 0.5;
+									if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
+									if (ind->haplobase[j] >= count) ind->haplobase[j] = count;
 								}
 
 								
