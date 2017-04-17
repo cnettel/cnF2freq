@@ -4860,10 +4860,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								else
 								{
 									double count = ind->haplocount[j];
-									ind->haplobase[j] -= count * 0.5;
+									ind->haplobase[j] -= count * ind->haploweight[j];
 									count = count - similarity * count;
 									ind->haplocount[j] = count;
-									ind->haplobase[j] += count * 0.5;
+									ind->haplobase[j] += count * ind->haploweight[j];
 									if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
 									if (ind->haplobase[j] >= count) ind->haplobase[j] = count;
 								}
