@@ -3874,11 +3874,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					if (flag2ignore & (1 << k)) countf2i++;
 				}
-				factor -= log(1 << countf2i);
+				//factor -= log(1 << countf2i);
 
 				// This output can get ugly due to race conditions. One shouldn't rely on it.
 				printf("%d,%03d,%03d: %lf\t", dous[j]->n, flag2ignore, shiftignore, factor);
-				//factor += log(realfactor);
+				factor += log(realfactor);
 				printf("%lf %d\n", factor, shiftend);
 				fflush(stdout);
 				if (_isnan(factor) || factor < MINFACTOR) continue;
