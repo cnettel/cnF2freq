@@ -4126,6 +4126,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
+						if (marker % 10) continue;
 
 						if (RELSKEWS && !RELSKEWSTATES && false)
 #pragma omp critical(negshifts)
@@ -4405,6 +4406,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
+		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
@@ -4721,6 +4723,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 								double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+								d += log( 1 / curprob - 1);
 
 								if (priorval != UnknownMarkerVal)
 								{
@@ -4869,7 +4872,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 								
-								double intended = ind->haploweight[j] + scalefactor * (ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]);
+								double intended = ind->haploweight[j] + scalefactor * ((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) + log(1/ind->haploweight[j] - 1));
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
@@ -5002,6 +5005,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  {
 				    scalefactor *= 1.1;
 				  }
+				if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf\n", scalefactor);
 				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {
