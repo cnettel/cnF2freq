@@ -4325,7 +4325,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								for (int b = 0; b < 7; b++) {
 									if (exists[b]) {
 										cind = cands[b];
-										indnumbers.insert(cind);
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
 										if (bits[b]) {
 											claus.push_back(-cands[b]);
