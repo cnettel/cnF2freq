@@ -4854,7 +4854,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
 
 								double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
-								if (similarity >= 1 - maxdiff)
+								if (similarity >= 1 - maxdiff || !ind->haplocount[j])
 								{
 									ind->haplobase[j] = 0;
 								}
