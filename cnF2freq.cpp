@@ -4866,7 +4866,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									ind->haplobase[j] += count * ind->haploweight[j];
 									ind->haplobase[j] *= ind->haplocount[j] / count;
 									if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
-									if (ind->haplobase[j] >= count) ind->haplobase[j] = count;
+									if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 								}
 
 								
