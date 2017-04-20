@@ -3640,14 +3640,14 @@ double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn
 
 	if (diff > limn / limd1)
 	{
-	  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn/limd1, intended, orig);
+	  if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn/limd1, intended, orig);
 		intended = orig + limn / limd1;
 		hitnnn = true;
 	}
 
 	if (diff < -limn / limd2)
 	{
-	  fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn/limd2, intended, orig);
+	  if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn/limd2, intended, orig);
 		intended = orig - limn / limd2;
 		hitnnn = true;
 	}
@@ -4126,7 +4126,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
-						if (marker % 10) continue;
 
 						if (RELSKEWS && !RELSKEWSTATES && false)
 #pragma omp critical(negshifts)
