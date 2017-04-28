@@ -3623,7 +3623,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 
 double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn)
 {
-	double nnn = 100;
+	double nnn = 3;
 	if (nnn < 1.0) nnn = 1.0;
 
 	double limn = (nnn - 1.0) * orig * (-1 + orig);
@@ -5003,7 +5003,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  {
 				    scalefactor *= 1.1;
 				  }
-				if (scalefactor < 0.01) scalefactor = 0.01;
+				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf\n", scalefactor);
 				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {
