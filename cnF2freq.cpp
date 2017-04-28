@@ -4861,26 +4861,26 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 								double relskewterm = 0;
-								if (RELSKEWS && j)
+								if (RELSKEWS)
 								{
-									// Modify haplotype based on relhaplo relationship with raw intended haploweight for j - 1
-									double relval = ind->relhaplo[j - 1];
-									double sum = 0;
-									double term = ind->haploweight[j] * (prevval * relval + (1 - prevval) * (1 - relval));
-									double lo = term;
-									sum += term;
-
-									term = (1 - ind->haploweight[j]) * ((1 - prevval) * relval + prevval * (1 - relval));
-									sum += term;
-									
-									if (sum)
+									for (int d = -1; d < 1; d++)
 									{
-										lo /= sum;
-										relskewterm = log((lo + 1e-300) / ((1 - lo) + 1e-300)) - baseterm;
-									}
+										double otherval;
+										if (d == -1)
+										{
+											if (!j) continue;
+											otherval = ind->haploweight[j - 1];
+										}
+										else
+										{
+											if (j >= markerposes.size())) continue;
+											otherval = ind->haploweight[j + 1];
+										}
+										relskewterm = 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
-									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-									prevval = prevval / (prevval + 1.0);
+										/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+										prevval = prevval / (prevval + 1.0);*/
+									}
 								}
 
 								double scorea = 1.0 - ind->markersure[j].first;
@@ -4904,7 +4904,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 								
-								double intended = ind->haploweight[j] + scalefactor * ((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) + log(1/ind->haploweight[j] - 1));
+								double intended = ind->haploweight[j] + scalefactor *
+									((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) +
+										log(1/ind->haploweight[j] - 1) + relskewterm);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
