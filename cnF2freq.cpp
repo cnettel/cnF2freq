@@ -358,11 +358,12 @@ int fwbwdone[NUMSHIFTS];
 #endif
 
 EXTERNFORGCC vector<individ*> reltree;
+EXTERNFORGCC vector<individ*> reltreeordered;
 EXTERNFORGCC flat_map<individ*, int> relmap;
 EXTERNFORGCC flat_map<individ*, int> relmapshift;
 
 //#pragma omp threadprivate(realdone, realfactors, realcacheprobs)
-#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, relmap, relmapshift, infprobs)
+#pragma omp threadprivate(generation, shiftflagmode, impossible, haplos, lockpos, reltree, reltreeordered, relmap, relmapshift, infprobs)
 #if !DOFB
 #pragma omp threadprivate(quickmark, quickgen, quickmem, quickfactor, quickendfactor, quickendprobs, done, factors, cacheprobs)
 #else
@@ -374,6 +375,7 @@ IAT impossible;
 std::array<std::array<float, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
+vector<individ*> reltreeordered;
 flat_map<individ*, int> relmap; //containing flag2 indices
 flat_map<individ*, int> relmapshift; //containing flag2 indices
 std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
@@ -3089,6 +3091,7 @@ pair<int, int> fixtrees(int j)
 	relmap.clear();
 	relmapshift.clear();
 	reltree.push_back(dous[j]);
+	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
 	relmap[dous[j]] = 1;
 	relmapshift[dous[j]] = 1;
 
@@ -3101,14 +3104,15 @@ pair<int, int> fixtrees(int j)
 		{
 			individ* lev1i = dous[j]->pars[lev1];
 			if (!lev1i) continue;
-			int flag2base = 1 << (1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1));
+			int flag2index = 1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1);
 			int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
 
 			if (!lev1i->empty)
 			{
-				flag2ignore |= flag2base;
-				relmap[lev1i] |= flag2base;
+				flag2ignore |= 1 << flag2index;
+				relmap[lev1i] |= 1 << flag2index;
 				relmapshift[lev1i] |= shiftval;
+				reltreeordered[flag2index] = lev1i;
 			}
 
 			bool anypars = false;
@@ -3122,9 +3126,10 @@ pair<int, int> fixtrees(int j)
 
 					if (!lev2i->empty)
 					{
-						flag2ignore |= (flag2base << (lev2 + 1));
-						relmap[lev2i] |= (flag2base << (lev2 + 1));
+						flag2ignore |= 1 << (flag2index + lev2 + 1);
+						relmap[lev2i] |= 1 << (flag2index + lev2 + 1);
 						relmapshift[lev2i] |= 0;
+						reltreeordered[flag2index + lev2 + 1] = lev2i;
 						anypars = true;
 					}
 					reltree.push_back(lev2i);
@@ -3157,6 +3162,7 @@ pair<int, int> fixtrees(int j)
 		shiftignore ^= (NUMSHIFTS - 1);
 	}
 
+	reltreeordered = reltree;
 	sort(reltree.begin(), reltree.end());
 	reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
 
@@ -3623,7 +3629,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 
 double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn)
 {
-	double nnn = 100;
+	double nnn = 3;
 	if (nnn < 1.0) nnn = 1.0;
 
 	double limn = (nnn - 1.0) * orig * (-1 + orig);
@@ -4126,30 +4132,50 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;
+						
+						const int TURNBITS = TYPEBITS + 1;
 
-						if (RELSKEWS && !RELSKEWSTATES && false)
-#pragma omp critical(negshifts)
+						array<double, TURNBITS> skewterms;
+
+
+						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							double prevval = dous[j]->haploweight[marker];
-
-							// TODO: OVERRUN AT MARKER + 1 ?
-							for (int k = 0; k < 2; k++)
+							for (int i = 0; k < skewterms.size(); k++)
 							{
-								double relval = fabs(k - dous[j]->relhaplo[marker]);
-								double sum = 0;
-								double term = dous[j]->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
-								double lo = term;
-								sum += term;
+								if (!reltreeordered[i]) continue;
 
-								term = (1 - dous[j]->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
-								sum += term;
-								dous[j]->negshift[marker] += (0 == k ? 1 : -1) * log(sum);
+								int truei = i;
+								// A different ordering regime for flag2 values vs. turn values
+								if (i == 0)
+								{
+									truei = TURNBITS - 1;
+								}
+								else
+								{
+									truei >>= 1;	´
+								}
+
+								double prevval = reltreeordered[i]->haploweight[marker];
+
+								// TODO: OVERRUN AT MARKER + 1 ?
+								for (int k = 0; k < 2; k++)
+								{
+									double relval = fabs(k - dous[j]->relhaplo[marker]);
+									double sum = 0;
+									double term = dous[j]->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+									double lo = term;
+									sum += term;
+
+									term = (1 - dous[j]->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+									sum += term;
+									skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+								}
 							}
 						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
-						double sumnegval[TYPEBITS + 1] = { 0 };
+						double sumnegval[TURNBITS] = { 0 };
 						bool validg[NUMTURNS] = { 0 };
 
 						for (int g = 0; g < NUMTURNS; g++)
@@ -4165,6 +4191,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (g & (flag2ignore >> 1)) continue;
 
+							double skewfactor = 1;
+							for (int i = 0; i < TURNBITS; i++)
+							{
+								if (g & (1 << i))
+								{
+									skewfactor *= exp(skewterms[i]);
+								}
+							}
 							aroundturner turn(g);
 							for (shiftflagmode = shifts; shiftflagmode < shiftend; shiftflagmode++)
 							{
@@ -4827,26 +4861,26 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 								double relskewterm = 0;
-								if (false && RELSKEWS && j)
+								if (RELSKEWS)
 								{
-									// Modify haplotype based on relhaplo relationship with raw intended haploweight for j - 1
-									double relval = ind->relhaplo[j - 1];
-									double sum = 0;
-									double term = ind->haploweight[j] * (prevval * relval + (1 - prevval) * (1 - relval));
-									double lo = term;
-									sum += term;
-
-									term = (1 - ind->haploweight[j]) * ((1 - prevval) * relval + prevval * (1 - relval));
-									sum += term;
-									
-									if (sum)
+									for (int d = -1; d < 1; d++)
 									{
-										lo /= sum;
-										relskewterm = log((lo + 1e-300) / ((1 - lo) + 1e-300)) - baseterm;
-									}
+										double otherval;
+										if (d == -1)
+										{
+											if (!j) continue;
+											otherval = ind->haploweight[j - 1];
+										}
+										else
+										{
+											if (j >= markerposes.size())) continue;
+											otherval = ind->haploweight[j + 1];
+										}
+										relskewterm = 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
-									prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-									prevval = prevval / (prevval + 1.0);
+										/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+										prevval = prevval / (prevval + 1.0);*/
+									}
 								}
 
 								double scorea = 1.0 - ind->markersure[j].first;
@@ -4870,7 +4904,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 								
-								double intended = ind->haploweight[j] + scalefactor * ((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) + log(1/ind->haploweight[j] - 1));
+								double intended = ind->haploweight[j] + scalefactor *
+									((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) +
+										log(1/ind->haploweight[j] - 1) + relskewterm);
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
@@ -5003,7 +5039,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  {
 				    scalefactor *= 1.1;
 				  }
-				if (scalefactor < 0.01) scalefactor = 0.01;
+				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf\n", scalefactor);
 				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {

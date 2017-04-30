@@ -5,7 +5,7 @@ const int SELFBITS = 2;
 
 const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
-const bool DOINFPROBS = false;
+const bool DOINFPROBS = true;
 const bool DOIMPOSSIBLE = false;
 const bool SELFING = false;
 const bool RELSKEWS = true;
@@ -33,7 +33,8 @@ const bool HAPLOTYPING = true;
 const int SELFMASK = ((1 << SELFBITS) - 1);
 const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)*/;
 
-const int NUMTURNS = 1 << (TYPEBITS + 1);
+const int TURNBITS = TYPEBITS + 1;
+const int NUMTURNS = 1 << TURNBITS;
 
 // Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
 // TODO: Reorder bits...
