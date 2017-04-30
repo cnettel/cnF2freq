@@ -3077,7 +3077,7 @@ void resizecaches()
 	}
 }
 
-// Global scale factor, 1.0 meaning "use EM estimate".
+// Global scale factor, 1.0 meaning "use unscaled gradient".
 double scalefactor = 0.002;
 
 pair<int, int> fixtrees(int j)
