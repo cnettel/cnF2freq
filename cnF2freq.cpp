@@ -86,8 +86,8 @@ float templgeno[8] = { -1, -0.5,
 #include <vector>
 
 using namespace boost::spirit;
-using namespace boost::numeric::odeint;
 namespace po = boost::program_options;
+namespace ode = boost::numeric::odeint;
 
 #include <errno.h>
 #include <assert.h>
@@ -3665,11 +3665,14 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 	return intended;
 }
 
-double cappedgd(auto gradient, double orig, double epsilon, bool& hitnnn)
+template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
-	return
-		caplogitchange(integrate_const(runge_kutta4< std::array<double, 1> >(), gradient, orig, 0, scalefactor, scalefactor * 0.01),
-		orig, epsilon, hitnnn);
+  std::array<double, 1> state{orig};
+  ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
+		       gradient, state,
+		       0., scalefactor, scalefactor * 0.01);
+
+  return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
 // The actual walking over all chromosomes for all individuals in "dous"
@@ -4787,7 +4790,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									}
 
 									out[0] = d;
-								}
+								};
 
 								ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
 							}
@@ -4926,22 +4929,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
 											log(1 / in[0] - 1) + // Entropy term
 											relskewterm);
-								}
+								};
 
-								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
-									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
-									cleared[cno])
-								{
-									allhalf[cno] = false;
-									fprintf(out, "Locking: %d %d %lf\n", ind->n, j, ind->negshift[j]);
-									ind->haploweight[j] = (intended < 0.5) ? 0 : 1;
-								}
-								else
-								{
+
 								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
-									  intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+									  double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 									
@@ -4959,7 +4953,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											nudgeme[cno] = j;
 										}
 									}
-								}
 
 								/*							if (ind->haploweight[j] != 0.5)
 								{
