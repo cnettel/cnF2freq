@@ -3080,7 +3080,7 @@ void resizecaches()
 }
 
 // Global scale factor, 1.0 meaning "use EM estimate".
-double scalefactor = 0.002;
+double scalefactor = 0.2;
 
 pair<int, int> fixtrees(int j)
 {
@@ -3628,6 +3628,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 #endif
 
 int oldhitnnn = 0;
+int oldhitnnn2 = 0;
 double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn)
 {
 	double nnn = 3;
@@ -5034,15 +5035,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 				}
-				bool badhit = hitnnn > oldhitnnn;
+				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (badhit)
 				  {
 				    scalefactor /= 1.1;
 				  }
 				else
 				  {
-				    scalefactor *= 1.01;
+				    scalefactor *= 1.1;
 				  }
+				oldhitnnn2 = oldhitnnn;
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
