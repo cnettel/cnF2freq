@@ -3629,7 +3629,8 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 }
 #endif
 
-double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn)
+int oldhitnnn = 0;
+double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn)
 {
 	double nnn = 3;
 	if (nnn < 1.0) nnn = 1.0;
@@ -3650,14 +3651,14 @@ double caplogitchange(double intended, double orig, double epsilon, bool& hitnnn
 	{
 	  if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn/limd1, intended, orig);
 		intended = orig + limn / limd1;
-		hitnnn = true;
+		hitnnn++;
 	}
 
 	if (diff < -limn / limd2)
 	{
 	  if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn/limd2, intended, orig);
 		intended = orig - limn / limd2;
-		hitnnn = true;
+		hitnnn++;
 	}
 
 	return intended;
@@ -4144,14 +4145,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						
 						const int TURNBITS = TYPEBITS + 1;
 
-						array<double, TURNBITS> skewterms;
+						std::array<double, TURNBITS> skewterms;
 
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							for (int i = 0; k < skewterms.size(); k++)
+							for (int i = 0; i < skewterms.size(); i++)
 							{
-								if (!reltreeordered[i]) continue;
+							  individ* ind = reltreeordered[i];
+								if (!ind) continue;
 
 								int truei = i;
 								// A different ordering regime for flag2 values vs. turn values
@@ -4161,7 +4163,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								else
 								{
-									truei >>= 1;	´
+									truei >>= 1;
 								}
 
 								double prevval = reltreeordered[i]->haploweight[marker];
@@ -4169,13 +4171,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								// TODO: OVERRUN AT MARKER + 1 ?
 								for (int k = 0; k < 2; k++)
 								{
-									double relval = fabs(k - dous[j]->relhaplo[marker]);
+									double relval = fabs(k - ind->relhaplo[marker]);
 									double sum = 0;
-									double term = dous[j]->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+									double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
 									double lo = term;
 									sum += term;
 
-									term = (1 - dous[j]->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+									term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
 									sum += term;
 									skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
 								}
@@ -4717,7 +4719,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
-			  bool hitnnn = false;
+
+			  std::atomic_int hitnnn(0);
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
@@ -4886,10 +4889,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										}
 										else
 										{
-											if (j >= markerposes.size())) continue;
+										  if (j + 1 >= markerposes.size()) continue;
 											otherval = ind->haploweight[j + 1];
 										}
-										relskewterm = 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+										relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
 										/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 										prevval = prevval / (prevval + 1.0);*/
@@ -5047,16 +5050,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 				}
-				if (hitnnn)
+				bool badhit = hitnnn > oldhitnnn;
+				if (badhit)
 				  {
 				    scalefactor /= 1.1;
 				  }
 				else
 				  {
-				    scalefactor *= 1.1;
+				    scalefactor *= 1.01;
 				  }
+				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
-				fprintf(stdout, "Scale factor now %lf\n", scalefactor);
+				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
 				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {
 				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
