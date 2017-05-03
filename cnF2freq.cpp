@@ -4145,12 +4145,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					// Consider doing haplotype reversal from a specific position and all the way down.
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
-						int marker = -q - 1000;
-						
-						const int TURNBITS = TYPEBITS + 1;
-
+						int marker = -q - 1000;					       
 						std::array<double, TURNBITS> skewterms;
-
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
