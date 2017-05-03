@@ -79,12 +79,14 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/fusion/include/std_tuple.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/fusion/include/at_c.hpp>
+#include <boost/numeric/odeint.hpp>
 #include <iostream>
 #include <fstream>
 
 #include <vector>
 
 using namespace boost::spirit;
+using namespace boost::numeric::odeint;
 namespace po = boost::program_options;
 
 #include <errno.h>
@@ -3663,6 +3665,13 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 	return intended;
 }
 
+double cappedgd(auto gradient, double orig, double epsilon, bool& hitnnn)
+{
+	return
+		caplogitchange(integrate_const(runge_kutta4< std::array<double, 1> >(), gradient, orig, 0, scalefactor, scalefactor * 0.01),
+		orig, epsilon, hitnnn);
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4758,25 +4767,29 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
 								}
 
-								double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
-								d += log( 1 / curprob - 1);
-
-								if (priorval != UnknownMarkerVal)
+								auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 								{
-									double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
+									double curprob = in[0];
+									double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+									d += log(1 / curprob - 1); // Entropy term
 
-									MarkerVal nowval = probpair.first;
-									if (nowval != priorval)
+									if (priorval != UnknownMarkerVal)
 									{
-										priorprob = 1.0 - priorprob;
-									}							
+										double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
 
-									d += log(priorprob) - log(1 - priorprob);
+										MarkerVal nowval = probpair.first;
+										if (nowval != priorval)
+										{
+											priorprob = 1.0 - priorprob;
+										}
+
+										d += log(priorprob) - log(1 - priorprob);
+									}
+
+									out[0] = d;
 								}
-								if (d)
-								{
-									ind->infprobs[j][side][probpair.first] = caplogitchange(curprob + d * scalefactor, curprob, maxdiff / (ind->children + 1), hitnnn);
-								}
+
+								ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
 							}
 
 							for (auto probpair : ind->infprobs[j][side])
@@ -4907,10 +4920,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 								}
 
-								
-								double intended = ind->haploweight[j] + scalefactor *
-									((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) +
-										log(1/ind->haploweight[j] - 1) + relskewterm);
+								auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+								{
+									out[0] =
+										((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
+											log(1 / in[0] - 1) + // Entropy term
+											relskewterm);
+								}
 
 								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
 									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
@@ -4925,7 +4941,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 								    {
 									// Cap the change if the net difference is small/miniscule
-									  intended = caplogitchange(intended, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+									  intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
 
 									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 									
