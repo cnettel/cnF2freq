@@ -3791,6 +3791,154 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	ind->infprobs[j][side].clear();
 }
 
+void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hitnnn)
+{
+
+	vector<bool> allhalf;
+	vector<bool> anyinfo;
+	vector<bool> cleared;
+	vector<int> nudgeme;
+
+
+	anyinfo.resize(chromstarts.size());
+	allhalf.resize(chromstarts.size());
+	cleared.resize(chromstarts.size());
+	nudgeme.resize(chromstarts.size());
+	for (int k = 0; k < chromstarts.size(); k++)
+	{
+		anyinfo[k] = false;
+		allhalf[k] = true;
+		cleared[k] = false;
+		nudgeme[k] = -1;
+	}
+
+	cno = 0;
+	double prevval = 0.5;
+	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+	{
+		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
+		anyinfo[cno] = true;
+
+		if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
+		{
+			double b1 = ind->haplobase[j];
+			double b2 = ind->haplocount[j] - ind->haplobase[j];
+			/*if (!allhalf[cno])
+			{
+			ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
+			}*/
+
+			if (!early && fabs(ind->negshift[j]) < 1e-5)
+			{
+				fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
+				//lockhaplos(ind, cno);
+				cleared[cno] = true;
+				ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
+				ind->haplocount[j] = 0;
+			}
+			else
+				allhalf[cno] = false;
+		}
+
+
+		if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
+		{
+
+			double val;
+			if (ind->haplocount[j])
+			{
+				//val = exp(ind->haplobase[j] / ind->haplocount[j]);
+				val = ind->haplobase[j] / ind->haplocount[j];
+				val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
+			}
+			else
+			{
+				val = 1;
+			}
+
+			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
+			double relskewterm = 0;
+			if (RELSKEWS)
+			{
+				for (int d = -1; d < 1; d++)
+				{
+					double otherval;
+					if (d == -1)
+					{
+						if (!j) continue;
+						otherval = ind->haploweight[j - 1];
+					}
+					else
+					{
+						if (j + 1 >= markerposes.size()) continue;
+						otherval = ind->haploweight[j + 1];
+					}
+					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+
+					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+					prevval = prevval / (prevval + 1.0);*/
+				}
+			}
+
+			double scorea = 1.0 - ind->markersure[j].first;
+			double scoreb = 1.0 - ind->markersure[j].second;
+			if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
+
+			double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
+			if (similarity >= 1 - maxdiff || !ind->haplocount[j])
+			{
+				ind->haplobase[j] = 0;
+			}
+			else
+			{
+				double count = ind->haplocount[j];
+				ind->haplobase[j] -= count * ind->haploweight[j];
+				count = count - similarity * count;
+				ind->haplobase[j] += count * ind->haploweight[j];
+				ind->haplobase[j] *= ind->haplocount[j] / count;
+				if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
+				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
+			}
+
+			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+			{
+				out[0] =
+					((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
+						log(1 / in[0] - 1) + // Entropy term
+						relskewterm);
+			};
+
+
+			if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+			{
+				// Cap the change if the net difference is small/miniscule
+				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+
+				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
+
+
+				/*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
+				{
+				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
+				}*/
+				ind->haploweight[j] = intended;
+
+
+				// Nudging flag currently not respected
+				if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
+				{
+					nudgeme[cno] = j;
+				}
+			}
+
+			/*							if (ind->haploweight[j] != 0.5)
+			{
+			allhalf[cno] = false;
+			}*/
+		}
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4825,151 +4973,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
-					{
-						vector<bool> allhalf;
-						vector<bool> anyinfo;
-						vector<bool> cleared;
-						vector<int> nudgeme;
-
-
-						anyinfo.resize(chromstarts.size());
-						allhalf.resize(chromstarts.size());
-						cleared.resize(chromstarts.size());
-						nudgeme.resize(chromstarts.size());
-						for (int k = 0; k < chromstarts.size(); k++)
-						{
-							anyinfo[k] = false;
-							allhalf[k] = true;
-							cleared[k] = false;
-							nudgeme[k] = -1;
-						}
-
-						cno = 0;
-						double prevval = 0.5;
-						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
-						{
-							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
-							anyinfo[cno] = true;
-
-							if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
-							{
-								double b1 = ind->haplobase[j];
-								double b2 = ind->haplocount[j] - ind->haplobase[j];
-								/*if (!allhalf[cno])
-								{
-								ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
-								}*/
-
-								if (!early && fabs(ind->negshift[j]) < 1e-5)
-								{
-									fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
-									//lockhaplos(ind, cno);
-									cleared[cno] = true;
-									ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
-									ind->haplocount[j] = 0;
-								}
-								else
-									allhalf[cno] = false;
-							}
-
-
-							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
-							{
-							  
-							  double val;
-							  if (ind->haplocount[j])
-							    {
-							      //val = exp(ind->haplobase[j] / ind->haplocount[j]);
-								  val = ind->haplobase[j] / ind->haplocount[j];
-							      val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
-							    }
-							  else
-							    {
-							      val = 1;
-							    }
-
-								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
-								double relskewterm = 0;
-								if (RELSKEWS)
-								{
-									for (int d = -1; d < 1; d++)
-									{
-										double otherval;
-										if (d == -1)
-										{
-											if (!j) continue;
-											otherval = ind->haploweight[j - 1];
-										}
-										else
-										{
-										  if (j + 1 >= markerposes.size()) continue;
-											otherval = ind->haploweight[j + 1];
-										}
-										relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-
-										/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-										prevval = prevval / (prevval + 1.0);*/
-									}
-								}
-
-								double scorea = 1.0 - ind->markersure[j].first;
-								double scoreb = 1.0 - ind->markersure[j].second;
-								if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
-
-								double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
-								if (similarity >= 1 - maxdiff || !ind->haplocount[j])
-								{
-									ind->haplobase[j] = 0;
-								}
-								else
-								{
-									double count = ind->haplocount[j];
-									ind->haplobase[j] -= count * ind->haploweight[j];
-									count = count - similarity * count;
-									ind->haplobase[j] += count * ind->haploweight[j];
-									ind->haplobase[j] *= ind->haplocount[j] / count;
-									if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
-									if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
-								}
-
-								auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
-								{
-									out[0] =
-										((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
-											log(1 / in[0] - 1) + // Entropy term
-											relskewterm);
-								};
-
-
-								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
-								    {
-									// Cap the change if the net difference is small/miniscule
-									  double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
-
-									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-									
-									
-									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
-										{
-											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
-											}*/
-									  ind->haploweight[j] = intended;
-
-
-										// Nudging flag currently not respected
-										if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
-										{
-											nudgeme[cno] = j;
-										}
-									}
-
-								/*							if (ind->haploweight[j] != 0.5)
-								{
-								allhalf[cno] = false;
-								}*/
-							}
-						}
-					}
+					updatehaploweights(cno, ind, out, hitnnn);
 					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 					flat_map<individ*, double> bestshift;
 					for (auto i = nsm.begin(); i != nsm.end(); i++)
@@ -5089,6 +5093,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	generation++;
 }
+
+
 
 // Handle the fuss of trailing \r, \n characters when combining scanf and gets and stuff.
 void clean(char* tlf)
