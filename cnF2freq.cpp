@@ -3265,6 +3265,42 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 	}
 }
 
+void calcskewterms(int marker, array<double, TURNBITS>& skewterms)
+{
+	for (int i = 0; i < skewterms.size(); i++)
+	{
+		individ* ind = reltreeordered[i];
+		if (!ind) continue;
+
+		int truei = i;
+		// A different ordering regime for flag2 values vs. turn values
+		if (i == 0)
+		{
+			truei = TURNBITS - 1;
+		}
+		else
+		{
+			truei >>= 1;
+		}
+
+		double prevval = reltreeordered[i]->haploweight[marker];
+
+		// TODO: OVERRUN AT MARKER + 1 ?
+		for (int k = 0; k < 2; k++)
+		{
+			double relval = fabs(k - ind->relhaplo[marker]);
+			double sum = 0;
+			double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+			double lo = term;
+			sum += term;
+
+			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+			sum += term;
+			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+		}
+	}
+}
+
 void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int shiftignore, const double rawvals[NUMTURNS][NUMSHIFTS], int j, int marker)
 {
 	for (int g = 0; g < NUMTURNS; g++)
@@ -4156,38 +4192,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							for (int i = 0; i < skewterms.size(); i++)
-							{
-							  individ* ind = reltreeordered[i];
-								if (!ind) continue;
-
-								int truei = i;
-								// A different ordering regime for flag2 values vs. turn values
-								if (i == 0)
-								{
-									truei = TURNBITS - 1;
-								}
-								else
-								{
-									truei >>= 1;
-								}
-
-								double prevval = reltreeordered[i]->haploweight[marker];
-
-								// TODO: OVERRUN AT MARKER + 1 ?
-								for (int k = 0; k < 2; k++)
-								{
-									double relval = fabs(k - ind->relhaplo[marker]);
-									double sum = 0;
-									double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
-									double lo = term;
-									sum += term;
-
-									term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
-									sum += term;
-									skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-								}
-							}
+							calcskewterms(marker, skewterms);
 						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
