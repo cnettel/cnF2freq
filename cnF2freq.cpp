@@ -3981,7 +3981,6 @@ void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
 
 	if (ind->pars[1]) {
 		temp = ind->pars[1]->n;
-		numbind++;
 		if (family.insert(temp).second) {
 			cands[3] = temp;
 			exists[3] = true;
