@@ -4028,6 +4028,42 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
+void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, const vector<clause>& clauses)
+{
+	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
+	if (!infile) {
+		perror("Toulbars input file failed to open to be written to because: ");
+	}
+
+	infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
+	infile << "c Where p is the weight\n";
+	infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
+	infile << "c nbclauses is the exact number of clauses contained in the file\n";
+	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
+
+	int nbclauses = (int) clauses.size();
+	int nbc = nbclauses + nbvar * 2;
+	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
+	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
+	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+
+	for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
+		infile << "1 " << cind << " 0\n";
+		infile << "1 " << -cind << " 0\n";
+	}
+
+	for (const clause& c : clauses) {
+		c.weight = maxweight - c.weight + 1;
+		if (c.weight < 0)
+		{
+			fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
+		}
+		infile << c.weighttostring() << c.clausetostring() << " 0\n";
+		//infile<< toulInput[m][g].toString() << "\n";
+		//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
+	}
+}
+
 void parentswapnegshifts()
 {
 	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
@@ -4791,40 +4827,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			std::string toulout(std::string("toul_out") + tid + ".txt");
 			std::string sol(std::string("sol") + tid);			
 
-			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);			
-			if (!infile) {
-				perror("Toulbars input file failed to open to be written to because: ");
-			}
-
-			infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
-			infile << "c Where p is the weight\n";
-			infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
-			infile << "c nbclauses is the exact number of clauses contained in the file\n";
-			infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
-
-			int nbclauses = (int)toulInput[m].size();
-			int nbc = nbclauses + nbvar * 2;
-			//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
-			//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
-			infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
-
-			for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
-				infile << "1 " << cind << " 0\n";
-				infile << "1 " << -cind << " 0\n";
-			}
-
-			for (const clause& c : toulInput[m]) {
-				c.weight = maxweight - c.weight + 1;
-				if (c.weight < 0)
-				  {
-				    fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
-				  }
-				infile << c.weighttostring() << c.clausetostring() << " 0\n";
-				//infile<< toulInput[m][g].toString() << "\n";
-				//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
-			}
-			infile.close();
-
+			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
 			string str = "toulbar2 " + toulin + " -p=8 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
