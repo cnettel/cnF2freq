@@ -763,7 +763,7 @@ struct clause
 	vector<int> cinds;
 	//vector<individ*> individuals;
 
-	string toString() {
+	string toString() const {
 		string s = boost::lexical_cast<std::string>(weight);
 		//std::stringstream ints;
 		//std::copy(cInds.begin(), cInds.end(), std::ostream_iterator<int>(ints, " "));
@@ -776,7 +776,7 @@ struct clause
 		return s;// note each line ends in a space
 	}
 
-	string clausetostring() {
+	string clausetostring() const {
 		string s = "";
 		for (int i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
@@ -786,7 +786,7 @@ struct clause
 		return s;
 	}
 
-	string weighttostring() {
+	string weighttostring() const {
 		return boost::lexical_cast<std::string>(weight);
 	}
 
@@ -3265,7 +3265,7 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 	}
 }
 
-void calcskewterms(int marker, array<double, TURNBITS>& skewterms)
+void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 {
 	for (int i = 0; i < skewterms.size(); i++)
 	{
@@ -3717,7 +3717,6 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
-template<bool full, typename reporterclass>
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
 {
 	double bestprob = 0;
@@ -3793,12 +3792,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hitnnn)
 {
-
 	vector<bool> allhalf;
 	vector<bool> anyinfo;
 	vector<bool> cleared;
 	vector<int> nudgeme;
-
 
 	anyinfo.resize(chromstarts.size());
 	allhalf.resize(chromstarts.size());
@@ -4028,7 +4025,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
-void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, const vector<clause>& clauses)
+void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, vector<clause>& clauses)
 {
 	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
 	if (!infile) {
@@ -4042,7 +4039,7 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
 
 	int nbclauses = (int) clauses.size();
-	int nbc = nbclauses + nbvar * 2;
+	int nbc = nbclauses + indnumbers.size() * 2;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
@@ -4052,11 +4049,12 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 		infile << "1 " << -cind << " 0\n";
 	}
 
-	for (const clause& c : clauses) {
+	for (clause& c : clauses) {
 		c.weight = maxweight - c.weight + 1;
 		if (c.weight < 0)
 		{
-			fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
+			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
+			abort();
 		}
 		infile << c.weighttostring() << c.clausetostring() << " 0\n";
 		//infile<< toulInput[m][g].toString() << "\n";
@@ -4064,7 +4062,9 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	}
 }
 
-void parentswapnegshifts()
+typedef map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsmtype;
+
+void parentswapnegshifts(nsmtype& nsm)
 {
 	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 	flat_map<individ*, double> bestshift;
@@ -4201,7 +4201,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	iter++;
 
 
-	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
+	nsmtype nsm;
 
 	for (int i = 0; i < INDCOUNT; i++)
 	{
@@ -4815,7 +4815,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
-		int nbvar = indnumbers.size();
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
@@ -4851,11 +4850,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long sumweight = computesumweight(m, tf, toulInput);
-
-			fprintf(stderr, "Marker %d score %lld, %d clauses, %d vars in tf\n", m, sumweight, nbclauses, tf.size());
-			
-			
+			long long sumweight = computesumweight(m, tf, toulInput);						
 
 #pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
@@ -5063,7 +5058,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					updatehaploweights(cno, ind, out, hitnnn);					
 				}
-				parentswapnegshifts();
+				parentswapnegshifts(nsm);
 
 				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (badhit)
