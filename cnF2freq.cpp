@@ -4005,6 +4005,29 @@ void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
 	}
 }
 
+long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput)
+{
+	long long sumweight = 0;
+	for (const clause& c : toulinput[m])
+	{
+		bool viol = true;
+		for (int val : c.cinds)
+		{
+			int ind = val < 0 ? -val : val;
+			if (tf[ind - 1] == (val > 0))
+			{
+				viol = false;
+			}
+		}
+		if (viol)
+		{
+			sumweight += c.weight;
+		}
+	}
+
+	return sumweight;
+}
+
 void parentswapnegshifts()
 {
 	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
@@ -4648,7 +4671,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//Markers stored in q (see line 2844 in original cnF2freq)
 							//such that
 							int mark = -q - 1000;
-							int numbind = 1;
 
 							//Do we have parents and grand parents?
 							//Store their identifying numbers in an array.
@@ -4827,26 +4849,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long sumweight = 0;
-			int vc = 0;
-			for (int g = 0; g < nbclauses; g++) {
-				bool viol = true;
-				for (int val : toulInput[m][g].cinds)
-				{
-					int ind = val < 0 ? -val : val;
-					if (tf[ind - 1] == (val > 0))
-					{
-						viol = false;
-					}
-				}
-				if (viol)
-				  {
-				    sumweight += toulInput[m][g].weight;
-				    vc++;
-				  }
-			}
+			long long sumweight = computesumweight(m, tf, toulInput);
 
-			fprintf(stderr, "Marker %d score %lld, %d/%d clauses, %d vars in tf\n", m, sumweight, vc, nbclauses, tf.size());
+			fprintf(stderr, "Marker %d score %lld, %d clauses, %d vars in tf\n", m, sumweight, nbclauses, tf.size());
 			
 			
 
