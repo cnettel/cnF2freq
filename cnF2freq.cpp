@@ -4813,8 +4813,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				infile << "1 " << -cind << " 0\n";
 			}
 
-			for (int g = 0; g < nbclauses; g++) {
-				clause& c = toulInput[m][g];
+			for (const clause& c : toulInput[m]) {
 				c.weight = maxweight - c.weight + 1;
 				if (c.weight < 0)
 				  {
