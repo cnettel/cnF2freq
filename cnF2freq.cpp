@@ -3717,6 +3717,80 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
+template<bool full, typename reporterclass>
+void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
+{
+	double bestprob = 0;
+	MarkerVal bestmarker = UnknownMarkerVal;
+	double sum = 0;
+
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		sum += probpair.second;
+		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	}
+
+	MarkerVal priorval = UnknownMarkerVal;
+	if (ind->priormarkerdata.size() > j)
+	{
+		priorval = (&ind->priormarkerdata[j].first)[side];
+	}
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		double curprob = 0.5;
+		auto curmarker = (&ind->markerdata[j].first)[side];
+
+		if (curmarker != UnknownMarkerVal)
+		{
+			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
+		}
+
+		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+		{
+			double curprob = in[0];
+			double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+			d += log(1 / curprob - 1); // Entropy term
+
+			if (priorval != UnknownMarkerVal)
+			{
+				double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
+
+				MarkerVal nowval = probpair.first;
+				if (nowval != priorval)
+				{
+					priorprob = 1.0 - priorprob;
+				}
+
+				d += log(priorprob) - log(1 - priorprob);
+			}
+
+			out[0] = d;
+		};
+
+		ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
+	}
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		if (probpair.second > bestprob)
+		{
+			bestmarker = probpair.first;
+			bestprob = probpair.second;
+		}
+		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	}
+
+	if (bestmarker != UnknownMarkerVal || bestprob > 0)
+	{
+		(&ind->markerdata[j].first)[side] = bestmarker;
+		double intended = 1.0 - bestprob;
+		(&ind->markersure[j].first)[side] = intended;
+	}
+	ind->infprobs[j][side].clear();
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4746,75 +4820,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int side = 0; side < 2; side++)
 						{
-							double bestprob = 0;
-							MarkerVal bestmarker = UnknownMarkerVal;
-							double sum = 0;
-
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								sum += probpair.second;
-								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
-							}
-
-							MarkerVal priorval = UnknownMarkerVal;
-							if (ind->priormarkerdata.size() > j)
-							{
-								priorval = (&ind->priormarkerdata[j].first)[side];
-							}							
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								double curprob = 0.5;
-								auto curmarker = (&ind->markerdata[j].first)[side];
-
-								if (curmarker != UnknownMarkerVal)
-								{
-									curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
-								}
-
-								auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
-								{
-									double curprob = in[0];
-									double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
-									d += log(1 / curprob - 1); // Entropy term
-
-									if (priorval != UnknownMarkerVal)
-									{
-										double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
-
-										MarkerVal nowval = probpair.first;
-										if (nowval != priorval)
-										{
-											priorprob = 1.0 - priorprob;
-										}
-
-										d += log(priorprob) - log(1 - priorprob);
-									}
-
-									out[0] = d;
-								};
-
-								ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
-							}
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								if (probpair.second > bestprob)
-								{
-									bestmarker = probpair.first;
-									bestprob = probpair.second;
-								}
-								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
-							}
-
-							if (bestmarker != UnknownMarkerVal || bestprob > 0)
-							{
-								(&ind->markerdata[j].first)[side] = bestmarker;
-								double intended = 1.0 - bestprob;
-								(&ind->markersure[j].first)[side] = intended;
-							}
-							ind->infprobs[j][side].clear();
+							processinfprobs(ind, j, side, hitnnn);
 						}
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
