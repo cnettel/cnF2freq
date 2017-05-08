@@ -79,6 +79,7 @@ float templgeno[8] = { -1, -0.5,
 #include <boost/fusion/include/std_tuple.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/fusion/include/at_c.hpp>
+#include <boost/numeric/odeint.hpp>
 #include <iostream>
 #include <fstream>
 
@@ -86,6 +87,7 @@ float templgeno[8] = { -1, -0.5,
 
 using namespace boost::spirit;
 namespace po = boost::program_options;
+namespace ode = boost::numeric::odeint;
 
 #include <errno.h>
 #include <assert.h>
@@ -761,7 +763,7 @@ struct clause
 	vector<int> cinds;
 	//vector<individ*> individuals;
 
-	string toString() {
+	string toString() const {
 		string s = boost::lexical_cast<std::string>(weight);
 		//std::stringstream ints;
 		//std::copy(cInds.begin(), cInds.end(), std::ostream_iterator<int>(ints, " "));
@@ -774,7 +776,7 @@ struct clause
 		return s;// note each line ends in a space
 	}
 
-	string clausetostring() {
+	string clausetostring() const {
 		string s = "";
 		for (int i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
@@ -784,7 +786,7 @@ struct clause
 		return s;
 	}
 
-	string weighttostring() {
+	string weighttostring() const {
 		return boost::lexical_cast<std::string>(weight);
 	}
 
@@ -3080,7 +3082,7 @@ void resizecaches()
 }
 
 // Global scale factor, 1.0 meaning "use unscaled gradient".
-double scalefactor = 0.002;
+double scalefactor = 0.2;
 
 pair<int, int> fixtrees(int j)
 {
@@ -3260,6 +3262,42 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 
 		colsums[g] -= (acc2 * acc2) / NUMTYPES;
 		rowsums[g] -= (acc1 * acc1) / NUMTYPES;
+	}
+}
+
+void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
+{
+	for (int i = 0; i < skewterms.size(); i++)
+	{
+		individ* ind = reltreeordered[i];
+		if (!ind) continue;
+
+		int truei = i;
+		// A different ordering regime for flag2 values vs. turn values
+		if (i == 0)
+		{
+			truei = TURNBITS - 1;
+		}
+		else
+		{
+			truei >>= 1;
+		}
+
+		double prevval = reltreeordered[i]->haploweight[marker];
+
+		// TODO: OVERRUN AT MARKER + 1 ?
+		for (int k = 0; k < 2; k++)
+		{
+			double relval = fabs(k - ind->relhaplo[marker]);
+			double sum = 0;
+			double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
+			double lo = term;
+			sum += term;
+
+			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
+			sum += term;
+			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+		}
 	}
 }
 
@@ -3628,6 +3666,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 #endif
 
 int oldhitnnn = 0;
+int oldhitnnn2 = 0;
 double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn)
 {
 	double nnn = 3;
@@ -3660,6 +3699,451 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 	}
 
 	return intended;
+}
+
+template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
+{
+  std::array<double, 1> state{orig};
+  ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
+		       [&] (std::array<double, 1>& in,
+			    std::array<double, 1>& out, double time)
+		       {
+			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
+			 else
+			   gradient(in, out, time);
+		       }, state,
+		       0., scalefactor, scalefactor * 0.01);
+
+  return caplogitchange(state[0], orig, epsilon, hitnnn);
+}
+
+void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
+{
+	double bestprob = 0;
+	MarkerVal bestmarker = UnknownMarkerVal;
+	double sum = 0;
+
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		sum += probpair.second;
+		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	}
+
+	MarkerVal priorval = UnknownMarkerVal;
+	if (ind->priormarkerdata.size() > j)
+	{
+		priorval = (&ind->priormarkerdata[j].first)[side];
+	}
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		double curprob = 0.5;
+		auto curmarker = (&ind->markerdata[j].first)[side];
+
+		if (curmarker != UnknownMarkerVal)
+		{
+			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
+		}
+
+		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+		{
+			double curprob = in[0];
+			double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+			d += log(1 / curprob - 1); // Entropy term
+
+			if (priorval != UnknownMarkerVal)
+			{
+				double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
+
+				MarkerVal nowval = probpair.first;
+				if (nowval != priorval)
+				{
+					priorprob = 1.0 - priorprob;
+				}
+
+				d += log(priorprob) - log(1 - priorprob);
+			}
+
+			out[0] = d;
+		};
+
+		ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
+	}
+
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		if (probpair.second > bestprob)
+		{
+			bestmarker = probpair.first;
+			bestprob = probpair.second;
+		}
+		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	}
+
+	if (bestmarker != UnknownMarkerVal || bestprob > 0)
+	{
+		(&ind->markerdata[j].first)[side] = bestmarker;
+		double intended = 1.0 - bestprob;
+		(&ind->markersure[j].first)[side] = intended;
+	}
+	ind->infprobs[j][side].clear();
+}
+
+void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hitnnn)
+{
+	vector<bool> allhalf;
+	vector<bool> anyinfo;
+	vector<bool> cleared;
+	vector<int> nudgeme;
+
+	anyinfo.resize(chromstarts.size());
+	allhalf.resize(chromstarts.size());
+	cleared.resize(chromstarts.size());
+	nudgeme.resize(chromstarts.size());
+	for (int k = 0; k < chromstarts.size(); k++)
+	{
+		anyinfo[k] = false;
+		allhalf[k] = true;
+		cleared[k] = false;
+		nudgeme[k] = -1;
+	}
+
+	cno = 0;
+	double prevval = 0.5;
+	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+	{
+		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
+		anyinfo[cno] = true;
+
+		if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
+		{
+			double b1 = ind->haplobase[j];
+			double b2 = ind->haplocount[j] - ind->haplobase[j];
+			/*if (!allhalf[cno])
+			{
+			ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
+			}*/
+
+			if (!early && fabs(ind->negshift[j]) < 1e-5)
+			{
+				fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
+				//lockhaplos(ind, cno);
+				cleared[cno] = true;
+				ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
+				ind->haplocount[j] = 0;
+			}
+			else
+				allhalf[cno] = false;
+		}
+
+
+		if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
+		{
+
+			double val;
+			if (ind->haplocount[j])
+			{
+				//val = exp(ind->haplobase[j] / ind->haplocount[j]);
+				val = ind->haplobase[j] / ind->haplocount[j];
+				val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
+			}
+			else
+			{
+				val = 1;
+			}
+
+			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
+			double relskewterm = 0;
+			if (RELSKEWS)
+			{
+				for (int d = -1; d < 1; d++)
+				{
+					double otherval;
+					if (d == -1)
+					{
+						if (!j) continue;
+						otherval = ind->haploweight[j - 1];
+					}
+					else
+					{
+						if (j + 1 >= markerposes.size()) continue;
+						otherval = ind->haploweight[j + 1];
+					}
+					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+
+					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+					prevval = prevval / (prevval + 1.0);*/
+				}
+			}
+
+			double scorea = 1.0 - ind->markersure[j].first;
+			double scoreb = 1.0 - ind->markersure[j].second;
+			if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
+
+			double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
+			if (similarity >= 1 - maxdiff || !ind->haplocount[j])
+			{
+				ind->haplobase[j] = 0;
+			}
+			else
+			{
+				double count = ind->haplocount[j];
+				ind->haplobase[j] -= count * ind->haploweight[j];
+				count = count - similarity * count;
+				ind->haplobase[j] += count * ind->haploweight[j];
+				ind->haplobase[j] *= ind->haplocount[j] / count;
+				if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
+				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
+			}
+
+			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+			{
+				out[0] =
+					((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
+						log(1 / in[0] - 1) + // Entropy term
+						relskewterm);
+			};
+
+
+			if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
+			{
+				// Cap the change if the net difference is small/miniscule
+				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+
+				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
+
+
+				/*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
+				{
+				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
+				}*/
+				ind->haploweight[j] = intended;
+
+
+				// Nudging flag currently not respected
+				if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
+				{
+					nudgeme[cno] = j;
+				}
+			}
+
+			/*							if (ind->haploweight[j] != 0.5)
+			{
+			allhalf[cno] = false;
+			}*/
+		}
+	}
+}
+
+void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
+{
+	std::set<int> family;
+	int temp = ind->n;
+	cands[6] = temp;
+	exists[6] = true;
+	family.insert(temp);
+
+
+
+	// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
+
+	//test << "Mark: " << mark << " Individ: " << ind->n;
+
+	if (ind->pars[0]) {
+		temp = ind->pars[0]->n;
+		if (family.insert(temp).second) {//if family member is unique
+			cands[0] = temp;
+			exists[0] = true;
+		}
+		//test << " Parent1: " << temp;
+
+		if (ind->pars[0]->pars[0]) {
+			temp = ind->pars[0]->pars[0]->n;
+			if (family.insert(temp).second) {
+				cands[1] = temp;
+				exists[1] = true;
+			}
+			//test << " Parent1's parent1: " << ind->pars[0]->pars[0]->n;
+		}
+		if (ind->pars[0]->pars[1]) {
+			temp = ind->pars[0]->pars[1]->n;
+			if (family.insert(temp).second) {
+				cands[2] = temp;
+				exists[2] = true;
+			}
+			//test << " Parent1's parent2: " << ind->pars[0]->pars[1]->n;
+		}
+	}
+
+	if (ind->pars[1]) {
+		temp = ind->pars[1]->n;
+		if (family.insert(temp).second) {
+			cands[3] = temp;
+			exists[3] = true;
+		}
+		//test << " Parent2: " << ind->pars[1]->n;
+		if (ind->pars[1]->pars[0]) {
+			temp = ind->pars[1]->pars[0]->n;
+			if (family.insert(temp).second) {
+				cands[4] = temp;
+				exists[4] = true;
+			}
+			//test << " Parent2: " << ind->pars[1]->pars[0]->n;
+		}
+		if (ind->pars[1]->pars[1]) {
+			temp = ind->pars[1]->pars[1]->n;
+			if (family.insert(temp).second) {
+				cands[5] = temp;
+				exists[5] = true;
+			}
+			//test << " Parent2: " << ind->pars[1]->pars[1]->n;
+		}
+	}
+}
+
+long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput)
+{
+	long long sumweight = 0;
+	for (const clause& c : toulinput[m])
+	{
+		bool viol = true;
+		for (int val : c.cinds)
+		{
+			int ind = val < 0 ? -val : val;
+			if (tf[ind - 1] == (val > 0))
+			{
+				viol = false;
+			}
+		}
+		if (viol)
+		{
+			sumweight += c.weight;
+		}
+	}
+
+	return sumweight;
+}
+
+void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, vector<clause>& clauses)
+{
+	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
+	if (!infile) {
+		perror("Toulbars input file failed to open to be written to because: ");
+	}
+
+	infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
+	infile << "c Where p is the weight\n";
+	infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
+	infile << "c nbclauses is the exact number of clauses contained in the file\n";
+	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
+
+	int nbclauses = (int) clauses.size();
+	int nbc = nbclauses + indnumbers.size() * 2;
+	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
+	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
+	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+
+	for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
+		infile << "1 " << cind << " 0\n";
+		infile << "1 " << -cind << " 0\n";
+	}
+
+	for (clause& c : clauses) {
+		c.weight = maxweight - c.weight + 1;
+		if (c.weight < 0)
+		{
+			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
+			abort();
+		}
+		infile << c.weighttostring() << c.clausetostring() << " 0\n";
+		//infile<< toulInput[m][g].toString() << "\n";
+		//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
+	}
+}
+
+typedef map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsmtype;
+
+void parentswapnegshifts(nsmtype& nsm)
+{
+	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
+	flat_map<individ*, double> bestshift;
+	for (auto i = nsm.begin(); i != nsm.end(); i++)
+	{
+		for (auto j = i->second.begin(); j != i->second.end(); j++)
+		{
+			// 1-3 allows shifts, but not genotype switches
+			// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
+			for (int k = 1; k <= 4; k++)
+			{
+				/*		      		      */
+				if (k == 2/* || k == 4*/)
+					allnegshifts.push_back(make_pair(j->second[k] - 1e-5, boost::make_tuple(i->first.first, i->first.second, k, j->first)));
+				/*		      if (k == 4) printf("ANS: %lf %d %d %d %d\n",
+				j->second[k], i->first.first->n, i->first.second->n, k, j->first);*/
+
+				/*		      if (k == 4)
+				allnegshifts.push_back(make_pair(j->second[k] - 1e-5, make_tuple(i->first.first, i->first.first, 1, j->first)));*/
+			}
+		}
+	}
+
+	sort(allnegshifts.begin(), allnegshifts.end());
+
+	for (int k = allnegshifts.size() - 1; k >= 0; k--)
+	{
+		if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first &&
+			bestshift[allnegshifts[k].second.get<1>()] < allnegshifts[k].first)
+		{
+			bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
+			bestshift[allnegshifts[k].second.get<1>()] = allnegshifts[k].first;
+			int c = 0;
+			while (c < chromstarts.size() && (chromstarts[c] <= allnegshifts[k].second.get<3>()))
+			{
+				c++;
+			}
+
+			int phase = allnegshifts[k].second.get<2>();
+			individ* inds[2] = { allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>() };
+			if (rand() > RAND_MAX / 10) continue;
+
+			printf("Inv: %d %d %d %d %lf\n", inds[0]->n, inds[1]->n, phase, allnegshifts[k].second.get<3>(), allnegshifts[k].first);
+			for (int m = allnegshifts[k].second.get<3>() + 1; m < chromstarts[c]; m++)
+			{
+				for (int z = 0; z < 2; z++)
+				{
+					if (phase & 4)
+					{
+						// These days, we are just emulating the shifts
+						if (z == 0 && false)
+						{
+							swap(inds[0]->haploweight[m], inds[1]->haploweight[m]);
+							swap(inds[0]->markerdata[m], inds[1]->markerdata[m]);
+							swap(inds[0]->markersure[m], inds[1]->markersure[m]);
+						}
+
+						for (int k = 0; k < inds[z]->kids.size(); k++)
+						{
+							// ONLY inverting those that share both parents
+							// This used to be that we would invert every child, but avoid inverting those that share both parents
+							// twice, i.e. not inverting them at all
+							if (z && inds[z]->kids[k]->pars[0] == inds[0]) {
+								//printf("I2: %d %d\n", inds[z]->kids[k]->n, m);
+								inds[z]->kids[k]->haploweight[m] = 1.0 - inds[z]->kids[k]->haploweight[m];
+							}
+						}
+					}
+
+					if (phase & (1 << z))
+					{
+						//			      printf("Inv %d at %d, was %lf\n", inds[z]->n, m, inds[z]->haploweight[m]);
+						inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];
+					}
+
+				}
+			}
+		}
+	}
 }
 
 // The actual walking over all chromosomes for all individuals in "dous"
@@ -3717,7 +4201,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	iter++;
 
 
-	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
+	nsmtype nsm;
 
 	for (int i = 0; i < INDCOUNT; i++)
 	{
@@ -4132,47 +4616,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					// Consider doing haplotype reversal from a specific position and all the way down.
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
-						int marker = -q - 1000;
-						
-						const int TURNBITS = TYPEBITS + 1;
-
+						int marker = -q - 1000;					       
 						std::array<double, TURNBITS> skewterms;
-
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							for (int i = 0; i < skewterms.size(); i++)
-							{
-							  individ* ind = reltreeordered[i];
-								if (!ind) continue;
-
-								int truei = i;
-								// A different ordering regime for flag2 values vs. turn values
-								if (i == 0)
-								{
-									truei = TURNBITS - 1;
-								}
-								else
-								{
-									truei >>= 1;
-								}
-
-								double prevval = reltreeordered[i]->haploweight[marker];
-
-								// TODO: OVERRUN AT MARKER + 1 ?
-								for (int k = 0; k < 2; k++)
-								{
-									double relval = fabs(k - ind->relhaplo[marker]);
-									double sum = 0;
-									double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
-									double lo = term;
-									sum += term;
-
-									term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
-									sum += term;
-									skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-								}
-							}
+							calcskewterms(marker, skewterms);
 						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
@@ -4258,7 +4707,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//Markers stored in q (see line 2844 in original cnF2freq)
 							//such that
 							int mark = -q - 1000;
-							int numbind = 1;
 
 							//Do we have parents and grand parents?
 							//Store their identifying numbers in an array.
@@ -4266,75 +4714,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
 							vector<int> cands(7);
 							vector<bool> exists(7, false);
-							std::set<int> family;
-							int temp = dous[j]->n;
-							cands[6] = temp;
-							exists[6] = true;
-							family.insert(temp);
-
-
-
-							// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
-
-							//test << "Mark: " << mark << " Individ: " << dous[j]->n;
-
-							if (dous[j]->pars[0]) {
-								temp = dous[j]->pars[0]->n;
-								if (family.insert(temp).second) {//if family member is unique
-									cands[0] = temp;
-									exists[0] = true;
-									numbind++;
-								}
-								//test << " Parent1: " << temp;
-
-								if (dous[j]->pars[0]->pars[0]) {
-									temp = dous[j]->pars[0]->pars[0]->n;
-									if (family.insert(temp).second) {
-										cands[1] = temp;
-										exists[1] = true;
-										numbind++;
-									}
-									//test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
-								}
-								if (dous[j]->pars[0]->pars[1]) {
-									temp = dous[j]->pars[0]->pars[1]->n;
-									if (family.insert(temp).second) {
-										cands[2] = temp;
-										exists[2] = true;
-										numbind++;
-									}
-									//test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
-								}
-							}
-
-							if (dous[j]->pars[1]) {
-								temp = dous[j]->pars[1]->n;
-								numbind++;
-								if (family.insert(temp).second) {
-									cands[3] = temp;
-									exists[3] = true;
-									numbind++;
-								}
-								//test << " Parent2: " << dous[j]->pars[1]->n;
-								if (dous[j]->pars[1]->pars[0]) {
-									temp = dous[j]->pars[1]->pars[0]->n;
-									if (family.insert(temp).second) {
-										cands[4] = temp;
-										exists[4] = true;
-										numbind++;
-									}
-									//test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
-								}
-								if (dous[j]->pars[1]->pars[1]) {
-									temp = dous[j]->pars[1]->pars[1]->n;
-									if (family.insert(temp).second) {
-										cands[5] = temp;
-										exists[5] = true;
-										numbind++;
-									}
-									//test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
-								}
-							}
+							fillcandsexists(dous[j], cands, exists);
+							
 							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
 
 																											//Use structure clause to store weight and values.
@@ -4434,7 +4815,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
-		int nbvar = indnumbers.size();
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
@@ -4444,42 +4824,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
-			std::string sol(std::string("sol") + tid);
-			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);			
-			if (!infile) {
-				perror("Toulbars input file failed to open to be written to because: ");
-			}
+			std::string sol(std::string("sol") + tid);			
 
-			infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
-			infile << "c Where p is the weight\n";
-			infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
-			infile << "c nbclauses is the exact number of clauses contained in the file\n";
-			infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
-
-			int nbclauses = (int)toulInput[m].size();
-			int nbc = nbclauses + nbvar * 2;
-			//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
-			//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
-			infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
-
-			for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
-				infile << "1 " << cind << " 0\n";
-				infile << "1 " << -cind << " 0\n";
-			}
-
-			for (int g = 0; g < nbclauses; g++) {
-				clause& c = toulInput[m][g];
-				c.weight = maxweight - c.weight + 1;
-				if (c.weight < 0)
-				  {
-				    fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
-				  }
-				infile << c.weighttostring() << c.clausetostring() << " 0\n";
-				//infile<< toulInput[m][g].toString() << "\n";
-				//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
-			}
-			infile.close();
-
+			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
 			string str = "toulbar2 " + toulin + " -p=8 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
@@ -4503,28 +4850,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long sumweight = 0;
-			int vc = 0;
-			for (int g = 0; g < nbclauses; g++) {
-				bool viol = true;
-				for (int val : toulInput[m][g].cinds)
-				{
-					int ind = val < 0 ? -val : val;
-					if (tf[ind - 1] == (val > 0))
-					{
-						viol = false;
-					}
-				}
-				if (viol)
-				  {
-				    sumweight += toulInput[m][g].weight;
-				    vc++;
-				  }
-			}
-
-			fprintf(stderr, "Marker %d score %lld, %d/%d clauses, %d vars in tf\n", m, sumweight, vc, nbclauses, tf.size());
-			
-			
+			long long sumweight = computesumweight(m, tf, toulInput);						
 
 #pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
@@ -4543,11 +4869,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				//cout<< "There is a place where double shifts would be good!"<< endl;//(string) neg <<
 				//}
 			}
-
-
-			//Close file
-			touloutput.close();
-			//output.close();
 		}
 
 		//Data structure to fill: vector<set<negshiftcand> > negshiftcands (0);
@@ -4730,319 +5051,25 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int side = 0; side < 2; side++)
 						{
-							double bestprob = 0;
-							MarkerVal bestmarker = UnknownMarkerVal;
-							double sum = 0;
-
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								sum += probpair.second;
-								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
-							}
-
-							MarkerVal priorval = UnknownMarkerVal;
-							if (ind->priormarkerdata.size() > j)
-							{
-								priorval = (&ind->priormarkerdata[j].first)[side];
-							}							
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								double curprob = 0.5;
-								auto curmarker = (&ind->markerdata[j].first)[side];
-
-								if (curmarker != UnknownMarkerVal)
-								{
-									curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
-								}
-
-								double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
-								d += log( 1 / curprob - 1);
-
-								if (priorval != UnknownMarkerVal)
-								{
-									double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
-
-									MarkerVal nowval = probpair.first;
-									if (nowval != priorval)
-									{
-										priorprob = 1.0 - priorprob;
-									}							
-
-									d += log(priorprob) - log(1 - priorprob);
-								}
-								if (d)
-								{
-									ind->infprobs[j][side][probpair.first] = caplogitchange(curprob + d * scalefactor, curprob, maxdiff / (ind->children + 1), hitnnn);
-								}
-							}
-
-							for (auto probpair : ind->infprobs[j][side])
-							{
-								if (probpair.second > bestprob)
-								{
-									bestmarker = probpair.first;
-									bestprob = probpair.second;
-								}
-								if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
-							}
-
-							if (bestmarker != UnknownMarkerVal || bestprob > 0)
-							{
-								(&ind->markerdata[j].first)[side] = bestmarker;
-								double intended = 1.0 - bestprob;
-								(&ind->markersure[j].first)[side] = intended;
-							}
-							ind->infprobs[j][side].clear();
+							processinfprobs(ind, j, side, hitnnn);
 						}
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
-					{
-						vector<bool> allhalf;
-						vector<bool> anyinfo;
-						vector<bool> cleared;
-						vector<int> nudgeme;
-
-
-						anyinfo.resize(chromstarts.size());
-						allhalf.resize(chromstarts.size());
-						cleared.resize(chromstarts.size());
-						nudgeme.resize(chromstarts.size());
-						for (int k = 0; k < chromstarts.size(); k++)
-						{
-							anyinfo[k] = false;
-							allhalf[k] = true;
-							cleared[k] = false;
-							nudgeme[k] = -1;
-						}
-
-						cno = 0;
-						double prevval = 0.5;
-						for (unsigned int j = 0; j < ind->haplocount.size(); j++)
-						{
-							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
-							anyinfo[cno] = true;
-
-							if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
-							{
-								double b1 = ind->haplobase[j];
-								double b2 = ind->haplocount[j] - ind->haplobase[j];
-								/*if (!allhalf[cno])
-								{
-								ind->haploweight[j] = 0.5 - (0.5 - ind->haploweight[j]) * 0.01;
-								}*/
-
-								if (!early && fabs(ind->negshift[j]) < 1e-5)
-								{
-									fprintf(out, "Clearing: %d %lf %lf %lf\n", ind->n, b1, b2, ind->negshift[j]);
-									//lockhaplos(ind, cno);
-									cleared[cno] = true;
-									ind->haploweight[j] = 0.5 /*- (0.5 - ind->haploweight[j]) * 0.99*/;
-									ind->haplocount[j] = 0;
-								}
-								else
-									allhalf[cno] = false;
-							}
-
-
-							if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
-							{
-							  
-							  double val;
-							  if (ind->haplocount[j])
-							    {
-							      //val = exp(ind->haplobase[j] / ind->haplocount[j]);
-								  val = ind->haplobase[j] / ind->haplocount[j];
-							      val *= (1 - ind->haploweight[j]) / ind->haploweight[j];
-							    }
-							  else
-							    {
-							      val = 1;
-							    }
-
-								double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
-								double relskewterm = 0;
-								if (RELSKEWS)
-								{
-									for (int d = -1; d < 1; d++)
-									{
-										double otherval;
-										if (d == -1)
-										{
-											if (!j) continue;
-											otherval = ind->haploweight[j - 1];
-										}
-										else
-										{
-										  if (j + 1 >= markerposes.size()) continue;
-											otherval = ind->haploweight[j + 1];
-										}
-										relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-
-										/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-										prevval = prevval / (prevval + 1.0);*/
-									}
-								}
-
-								double scorea = 1.0 - ind->markersure[j].first;
-								double scoreb = 1.0 - ind->markersure[j].second;
-								if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
-
-								double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
-								if (similarity >= 1 - maxdiff || !ind->haplocount[j])
-								{
-									ind->haplobase[j] = 0;
-								}
-								else
-								{
-									double count = ind->haplocount[j];
-									ind->haplobase[j] -= count * ind->haploweight[j];
-									count = count - similarity * count;
-									ind->haplobase[j] += count * ind->haploweight[j];
-									ind->haplobase[j] *= ind->haplocount[j] / count;
-									if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
-									if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
-								}
-
-								
-								double intended = ind->haploweight[j] + scalefactor *
-									((ind->haplobase[j] - ind->haploweight[j] * ind->haplocount[j]) / (ind->haploweight[j] - ind->haploweight[j] * ind->haploweight[j]) +
-										log(1/ind->haploweight[j] - 1) + relskewterm);
-
-								if (!early && allhalf[cno] && fabs(intended - 0.5) > 0.1 &&
-									ind->markerdata[j].first != UnknownMarkerVal && ind->markerdata[j].second != UnknownMarkerVal &&
-									cleared[cno])
-								{
-									allhalf[cno] = false;
-									fprintf(out, "Locking: %d %d %lf\n", ind->n, j, ind->negshift[j]);
-									ind->haploweight[j] = (intended < 0.5) ? 0 : 1;
-								}
-								else
-								{
-								  if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
-								    {
-									// Cap the change if the net difference is small/miniscule
-									  intended = caplogitchange(intended, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
-
-									//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
-									
-									
-									  /*										if (!(intended < 0.5) && ind->haploweight[j] < 0.5)
-										{
-											cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
-											}*/
-									  ind->haploweight[j] = intended;
-
-
-										// Nudging flag currently not respected
-										if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
-										{
-											nudgeme[cno] = j;
-										}
-									}
-								}
-
-								/*							if (ind->haploweight[j] != 0.5)
-								{
-								allhalf[cno] = false;
-								}*/
-							}
-						}
-					}
-					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
-					flat_map<individ*, double> bestshift;
-					for (auto i = nsm.begin(); i != nsm.end(); i++)
-					{
-						for (auto j = i->second.begin(); j != i->second.end(); j++)
-						{
-							// 1-3 allows shifts, but not genotype switches
-							// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
-							for (int k = 1; k <= 4; k++)
-							{
-								/*		      		      */
-								if (k == 2/* || k == 4*/)
-									allnegshifts.push_back(make_pair(j->second[k] - 1e-5, boost::make_tuple(i->first.first, i->first.second, k, j->first)));
-								/*		      if (k == 4) printf("ANS: %lf %d %d %d %d\n",
-								j->second[k], i->first.first->n, i->first.second->n, k, j->first);*/
-
-								/*		      if (k == 4)
-								allnegshifts.push_back(make_pair(j->second[k] - 1e-5, make_tuple(i->first.first, i->first.first, 1, j->first)));*/
-							}
-						}
-					}
-
-					sort(allnegshifts.begin(), allnegshifts.end());
-
-					for (int k = allnegshifts.size() - 1; k >= 0; k--)
-					{
-						if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first &&
-							bestshift[allnegshifts[k].second.get<1>()] < allnegshifts[k].first)
-						{
-							bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
-							bestshift[allnegshifts[k].second.get<1>()] = allnegshifts[k].first;
-							int c = 0;
-							while (c < chromstarts.size() && (chromstarts[c] <= allnegshifts[k].second.get<3>()))
-							{
-								c++;
-							}
-
-							int phase = allnegshifts[k].second.get<2>();
-							individ* inds[2] = { allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>() };
-							if (rand() > RAND_MAX / 10) continue;
-
-							printf("Inv: %d %d %d %d %lf\n", inds[0]->n, inds[1]->n, phase, allnegshifts[k].second.get<3>(), allnegshifts[k].first);
-							for (int m = allnegshifts[k].second.get<3>() + 1; m < chromstarts[c]; m++)
-							{
-								for (int z = 0; z < 2; z++)
-								{
-									if (phase & 4)
-									{
-										// These days, we are just emulating the shifts
-										if (z == 0 && false)
-										{
-											swap(inds[0]->haploweight[m], inds[1]->haploweight[m]);
-											swap(inds[0]->markerdata[m], inds[1]->markerdata[m]);
-											swap(inds[0]->markersure[m], inds[1]->markersure[m]);
-										}
-
-										for (int k = 0; k < inds[z]->kids.size(); k++)
-										{
-											// ONLY inverting those that share both parents
-											// This used to be that we would invert every child, but avoid inverting those that share both parents
-											// twice, i.e. not inverting them at all
-											if (z && inds[z]->kids[k]->pars[0] == inds[0]) {
-												//printf("I2: %d %d\n", inds[z]->kids[k]->n, m);
-												inds[z]->kids[k]->haploweight[m] = 1.0 - inds[z]->kids[k]->haploweight[m];
-											}
-										}
-									}
-
-									if (phase & (1 << z))
-									{
-										//			      printf("Inv %d at %d, was %lf\n", inds[z]->n, m, inds[z]->haploweight[m]);
-										inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];
-									}
-
-								}
-							}
-						}
-					}
-
-
-
-
+					updatehaploweights(cno, ind, out, hitnnn);					
 				}
-				bool badhit = hitnnn > oldhitnnn;
+				parentswapnegshifts(nsm);
+
+				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (badhit)
 				  {
 				    scalefactor /= 1.1;
 				  }
 				else
 				  {
-				    scalefactor *= 1.01;
+				    scalefactor *= 1.1;
 				  }
+				oldhitnnn2 = oldhitnnn;
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
@@ -5069,6 +5096,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	generation++;
 }
+
+
 
 // Handle the fuss of trailing \r, \n characters when combining scanf and gets and stuff.
 void clean(char* tlf)
