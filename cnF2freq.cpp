@@ -3669,7 +3669,13 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 {
   std::array<double, 1> state{orig};
   ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
-		       gradient, state,
+		       [&] (std::array<double, 1>& in,
+			    std::array<double, 1>& out, double time)
+		       {
+			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
+			 else
+			   gradient(in, out, time);
+		       }, state,
 		       0., scalefactor, scalefactor * 0.01);
 
   return caplogitchange(state[0], orig, epsilon, hitnnn);
