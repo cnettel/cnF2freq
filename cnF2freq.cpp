@@ -4146,6 +4146,93 @@ void parentswapnegshifts(nsmtype& nsm)
 	}
 }
 
+struct relskewhmm
+{
+	typedef std::array<double, 2> halfstate;
+	typedef std::array<halfstate, 2> state;
+	vector<state> relskewfwbw;
+
+	int firstmarker;
+	const individ* ind;
+
+	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
+	{
+		relskewfwbw.resize(endmarker - firstmarker);
+		halfstate s = { 0.5, 0.5 };
+
+		// FW
+		for (int m = firstmarker; m < endmarker; m++)
+		{			
+			double w = ind->haploweight[m];
+			for (int k = 0; k < 2; k++)
+			{
+				s[k] *= fabs(k - w);
+			}
+			relskewfwbw[0][m - firstmarker] = s;
+
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+
+			double n = ind->relhaplo[m];
+			halfstate nexts;
+			for (int k = 0; k < 2; k++)
+			{
+				nexts[k] = s[k] * n + s[!k] * (1 - n);
+			}
+			s = nexts;
+		}
+
+		// BW
+		s = { 1, 1 };
+		relskewfwbw[1][endmarker - 1 - firstmarker] = s;
+		for (int m = endmarker - 2; m >= firstmarker; m--)
+		{
+			double w = ind->haploweight[m + 1];
+			for (int k = 0; k < 2; k++)
+			{
+				s[k] *= fabs(k - w);
+			}
+
+			halfstate nexts;
+			double n = ind->relhaplo[m];
+			for (int k = 0; k < 2; k++)
+			{
+				nexts[k] = s[k] * n + s[!k] * (1 - n);
+			}
+
+			s = nexts;
+
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+
+			relskewfwbw[1][m - firstmarker] = nexts;			
+		}
+	}
+
+	double getweight(int m)
+	{
+		int realm = m - firstmarker;
+		halfstate s = relskewfwbw[0][m];
+		halfstate bws = relskewfwbw[1][m];
+
+		for (int k = 0; k < 2; k++)
+		{
+			s[k] *= bws[k];
+		}
+
+		double sum = s[0] + s[1];
+		return s[0] / sum;
+	}
+};
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
