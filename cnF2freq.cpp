@@ -4464,7 +4464,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
-			std::string sol(std::string("sol") + tid);
+			std::string sol(std::string("sol") + tid);			
+
 			std::fstream infile(toulin, ios::out | ios::in | ios::trunc);			
 			if (!infile) {
 				perror("Toulbars input file failed to open to be written to because: ");
@@ -4563,11 +4564,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				//cout<< "There is a place where double shifts would be good!"<< endl;//(string) neg <<
 				//}
 			}
-
-
-			//Close file
-			touloutput.close();
-			//output.close();
 		}
 
 		//Data structure to fill: vector<set<negshiftcand> > negshiftcands (0);
