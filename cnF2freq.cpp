@@ -3939,6 +3939,155 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 	}
 }
 
+void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
+{
+	std::set<int> family;
+	int temp = ind->n;
+	cands[6] = temp;
+	exists[6] = true;
+	family.insert(temp);
+
+
+
+	// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
+
+	//test << "Mark: " << mark << " Individ: " << ind->n;
+
+	if (ind->pars[0]) {
+		temp = ind->pars[0]->n;
+		if (family.insert(temp).second) {//if family member is unique
+			cands[0] = temp;
+			exists[0] = true;
+		}
+		//test << " Parent1: " << temp;
+
+		if (ind->pars[0]->pars[0]) {
+			temp = ind->pars[0]->pars[0]->n;
+			if (family.insert(temp).second) {
+				cands[1] = temp;
+				exists[1] = true;
+			}
+			//test << " Parent1's parent1: " << ind->pars[0]->pars[0]->n;
+		}
+		if (ind->pars[0]->pars[1]) {
+			temp = ind->pars[0]->pars[1]->n;
+			if (family.insert(temp).second) {
+				cands[2] = temp;
+				exists[2] = true;
+			}
+			//test << " Parent1's parent2: " << ind->pars[0]->pars[1]->n;
+		}
+	}
+
+	if (ind->pars[1]) {
+		temp = ind->pars[1]->n;
+		numbind++;
+		if (family.insert(temp).second) {
+			cands[3] = temp;
+			exists[3] = true;
+		}
+		//test << " Parent2: " << ind->pars[1]->n;
+		if (ind->pars[1]->pars[0]) {
+			temp = ind->pars[1]->pars[0]->n;
+			if (family.insert(temp).second) {
+				cands[4] = temp;
+				exists[4] = true;
+			}
+			//test << " Parent2: " << ind->pars[1]->pars[0]->n;
+		}
+		if (ind->pars[1]->pars[1]) {
+			temp = ind->pars[1]->pars[1]->n;
+			if (family.insert(temp).second) {
+				cands[5] = temp;
+				exists[5] = true;
+			}
+			//test << " Parent2: " << ind->pars[1]->pars[1]->n;
+		}
+	}
+}
+
+void parentswapnegshifts()
+{
+	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
+	flat_map<individ*, double> bestshift;
+	for (auto i = nsm.begin(); i != nsm.end(); i++)
+	{
+		for (auto j = i->second.begin(); j != i->second.end(); j++)
+		{
+			// 1-3 allows shifts, but not genotype switches
+			// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
+			for (int k = 1; k <= 4; k++)
+			{
+				/*		      		      */
+				if (k == 2/* || k == 4*/)
+					allnegshifts.push_back(make_pair(j->second[k] - 1e-5, boost::make_tuple(i->first.first, i->first.second, k, j->first)));
+				/*		      if (k == 4) printf("ANS: %lf %d %d %d %d\n",
+				j->second[k], i->first.first->n, i->first.second->n, k, j->first);*/
+
+				/*		      if (k == 4)
+				allnegshifts.push_back(make_pair(j->second[k] - 1e-5, make_tuple(i->first.first, i->first.first, 1, j->first)));*/
+			}
+		}
+	}
+
+	sort(allnegshifts.begin(), allnegshifts.end());
+
+	for (int k = allnegshifts.size() - 1; k >= 0; k--)
+	{
+		if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first &&
+			bestshift[allnegshifts[k].second.get<1>()] < allnegshifts[k].first)
+		{
+			bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
+			bestshift[allnegshifts[k].second.get<1>()] = allnegshifts[k].first;
+			int c = 0;
+			while (c < chromstarts.size() && (chromstarts[c] <= allnegshifts[k].second.get<3>()))
+			{
+				c++;
+			}
+
+			int phase = allnegshifts[k].second.get<2>();
+			individ* inds[2] = { allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>() };
+			if (rand() > RAND_MAX / 10) continue;
+
+			printf("Inv: %d %d %d %d %lf\n", inds[0]->n, inds[1]->n, phase, allnegshifts[k].second.get<3>(), allnegshifts[k].first);
+			for (int m = allnegshifts[k].second.get<3>() + 1; m < chromstarts[c]; m++)
+			{
+				for (int z = 0; z < 2; z++)
+				{
+					if (phase & 4)
+					{
+						// These days, we are just emulating the shifts
+						if (z == 0 && false)
+						{
+							swap(inds[0]->haploweight[m], inds[1]->haploweight[m]);
+							swap(inds[0]->markerdata[m], inds[1]->markerdata[m]);
+							swap(inds[0]->markersure[m], inds[1]->markersure[m]);
+						}
+
+						for (int k = 0; k < inds[z]->kids.size(); k++)
+						{
+							// ONLY inverting those that share both parents
+							// This used to be that we would invert every child, but avoid inverting those that share both parents
+							// twice, i.e. not inverting them at all
+							if (z && inds[z]->kids[k]->pars[0] == inds[0]) {
+								//printf("I2: %d %d\n", inds[z]->kids[k]->n, m);
+								inds[z]->kids[k]->haploweight[m] = 1.0 - inds[z]->kids[k]->haploweight[m];
+							}
+						}
+					}
+
+					if (phase & (1 << z))
+					{
+						//			      printf("Inv %d at %d, was %lf\n", inds[z]->n, m, inds[z]->haploweight[m]);
+						inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];
+					}
+
+				}
+			}
+		}
+	}
+}
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4508,75 +4657,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
 							vector<int> cands(7);
 							vector<bool> exists(7, false);
-							std::set<int> family;
-							int temp = dous[j]->n;
-							cands[6] = temp;
-							exists[6] = true;
-							family.insert(temp);
-
-
-
-							// If incest, we preted the person did not sire anyone the second time they show up in the focus tree
-
-							//test << "Mark: " << mark << " Individ: " << dous[j]->n;
-
-							if (dous[j]->pars[0]) {
-								temp = dous[j]->pars[0]->n;
-								if (family.insert(temp).second) {//if family member is unique
-									cands[0] = temp;
-									exists[0] = true;
-									numbind++;
-								}
-								//test << " Parent1: " << temp;
-
-								if (dous[j]->pars[0]->pars[0]) {
-									temp = dous[j]->pars[0]->pars[0]->n;
-									if (family.insert(temp).second) {
-										cands[1] = temp;
-										exists[1] = true;
-										numbind++;
-									}
-									//test << " Parent1's parent1: " << dous[j]->pars[0]->pars[0]->n;
-								}
-								if (dous[j]->pars[0]->pars[1]) {
-									temp = dous[j]->pars[0]->pars[1]->n;
-									if (family.insert(temp).second) {
-										cands[2] = temp;
-										exists[2] = true;
-										numbind++;
-									}
-									//test << " Parent1's parent2: " << dous[j]->pars[0]->pars[1]->n;
-								}
-							}
-
-							if (dous[j]->pars[1]) {
-								temp = dous[j]->pars[1]->n;
-								numbind++;
-								if (family.insert(temp).second) {
-									cands[3] = temp;
-									exists[3] = true;
-									numbind++;
-								}
-								//test << " Parent2: " << dous[j]->pars[1]->n;
-								if (dous[j]->pars[1]->pars[0]) {
-									temp = dous[j]->pars[1]->pars[0]->n;
-									if (family.insert(temp).second) {
-										cands[4] = temp;
-										exists[4] = true;
-										numbind++;
-									}
-									//test << " Parent2: " << dous[j]->pars[1]->pars[0]->n;
-								}
-								if (dous[j]->pars[1]->pars[1]) {
-									temp = dous[j]->pars[1]->pars[1]->n;
-									if (family.insert(temp).second) {
-										cands[5] = temp;
-										exists[5] = true;
-										numbind++;
-									}
-									//test << " Parent2: " << dous[j]->pars[1]->pars[1]->n;
-								}
-							}
+							fillcandsexists(dous[j], cands, exists);
+							
 							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
 
 																											//Use structure clause to store weight and values.
@@ -4973,90 +5055,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
-					updatehaploweights(cno, ind, out, hitnnn);
-					vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
-					flat_map<individ*, double> bestshift;
-					for (auto i = nsm.begin(); i != nsm.end(); i++)
-					{
-						for (auto j = i->second.begin(); j != i->second.end(); j++)
-						{
-							// 1-3 allows shifts, but not genotype switches
-							// 2 only allows shifts for paren 2, e.g. assumption that paren 1 is part of several half sibships
-							for (int k = 1; k <= 4; k++)
-							{
-								/*		      		      */
-								if (k == 2/* || k == 4*/)
-									allnegshifts.push_back(make_pair(j->second[k] - 1e-5, boost::make_tuple(i->first.first, i->first.second, k, j->first)));
-								/*		      if (k == 4) printf("ANS: %lf %d %d %d %d\n",
-								j->second[k], i->first.first->n, i->first.second->n, k, j->first);*/
-
-								/*		      if (k == 4)
-								allnegshifts.push_back(make_pair(j->second[k] - 1e-5, make_tuple(i->first.first, i->first.first, 1, j->first)));*/
-							}
-						}
-					}
-
-					sort(allnegshifts.begin(), allnegshifts.end());
-
-					for (int k = allnegshifts.size() - 1; k >= 0; k--)
-					{
-						if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first &&
-							bestshift[allnegshifts[k].second.get<1>()] < allnegshifts[k].first)
-						{
-							bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
-							bestshift[allnegshifts[k].second.get<1>()] = allnegshifts[k].first;
-							int c = 0;
-							while (c < chromstarts.size() && (chromstarts[c] <= allnegshifts[k].second.get<3>()))
-							{
-								c++;
-							}
-
-							int phase = allnegshifts[k].second.get<2>();
-							individ* inds[2] = { allnegshifts[k].second.get<0>(), allnegshifts[k].second.get<1>() };
-							if (rand() > RAND_MAX / 10) continue;
-
-							printf("Inv: %d %d %d %d %lf\n", inds[0]->n, inds[1]->n, phase, allnegshifts[k].second.get<3>(), allnegshifts[k].first);
-							for (int m = allnegshifts[k].second.get<3>() + 1; m < chromstarts[c]; m++)
-							{
-								for (int z = 0; z < 2; z++)
-								{
-									if (phase & 4)
-									{
-										// These days, we are just emulating the shifts
-										if (z == 0 && false)
-										{
-											swap(inds[0]->haploweight[m], inds[1]->haploweight[m]);
-											swap(inds[0]->markerdata[m], inds[1]->markerdata[m]);
-											swap(inds[0]->markersure[m], inds[1]->markersure[m]);
-										}
-
-										for (int k = 0; k < inds[z]->kids.size(); k++)
-										{
-											// ONLY inverting those that share both parents
-											// This used to be that we would invert every child, but avoid inverting those that share both parents
-											// twice, i.e. not inverting them at all
-											if (z && inds[z]->kids[k]->pars[0] == inds[0]) {
-												//printf("I2: %d %d\n", inds[z]->kids[k]->n, m);
-												inds[z]->kids[k]->haploweight[m] = 1.0 - inds[z]->kids[k]->haploweight[m];
-											}
-										}
-									}
-
-									if (phase & (1 << z))
-									{
-										//			      printf("Inv %d at %d, was %lf\n", inds[z]->n, m, inds[z]->haploweight[m]);
-										inds[z]->haploweight[m] = 1.0 - inds[z]->haploweight[m];
-									}
-
-								}
-							}
-						}
-					}
-
-
-
-
+					updatehaploweights(cno, ind, out, hitnnn);					
 				}
+				parentswapnegshifts();
+
 				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (badhit)
 				  {
