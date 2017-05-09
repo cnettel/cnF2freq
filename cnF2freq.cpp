@@ -3811,7 +3811,7 @@ struct relskewhmm
 			double w = ind->haploweight[m];
 			for (int k = 0; k < 2; k++)
 			{
-				s[k] *= fabs(k - w);
+				s[k] *= fabs(!k - w);
 			}
 			relskewfwbw[0][m - firstmarker] = s;
 
@@ -3839,7 +3839,7 @@ struct relskewhmm
 			double w = ind->haploweight[m + 1];
 			for (int k = 0; k < 2; k++)
 			{
-				s[k] *= fabs(k - w);
+				s[k] *= fabs(!k - w);
 			}
 
 			halfstate nexts;
