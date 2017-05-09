@@ -3809,11 +3809,17 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 		nudgeme[k] = -1;
 	}
 
-	cno = 0;
+	cno = -1;
 	double prevval = 0.5;
+	relskewhmm relskews = nullptr;
+
 	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 	{
-		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
+		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
+		{
+			cno++;
+			if ()
+		}
 		anyinfo[cno] = true;
 
 		if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
