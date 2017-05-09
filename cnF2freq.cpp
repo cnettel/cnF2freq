@@ -3874,7 +3874,7 @@ struct relskewhmm
 		}
 
 		double sum = s[0] + s[1];
-		return s[0] / sum;
+		return s[1] / sum;
 	}
 };
 
