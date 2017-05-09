@@ -65,6 +65,7 @@ float templgeno[8] = { -1, -0.5,
 /*#include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>*/
+#include <memory>
 #include <string>
 
 #include <boost/container/flat_map.hpp>
@@ -3811,14 +3812,14 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 
 	cno = -1;
 	double prevval = 0.5;
-	relskewhmm relskews = nullptr;
+	std::unique_ptr<relskewhmm> relskews;
 
 	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 	{
 		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
 		{
 			cno++;
-			if ()
+			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], dous[j]);
 		}
 		anyinfo[cno] = true;
 
@@ -3861,7 +3862,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 
 			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 			double relskewterm = 0;
-			if (RELSKEWS)
+			if (RELSKEWS && false)
 			{
 				for (int d = -1; d < 1; d++)
 				{
@@ -3882,6 +3883,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					prevval = prevval / (prevval + 1.0);*/
 				}
 			}
+			double relskewprob = relskews->getweight(j);
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -3906,7 +3908,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
-					((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
+					((ind->haplobase[j] + relskewprob - in[0] * (ind->haplocount[j] + 1)) / (in[0] - in[0] * in[0]) +
 						log(1 / in[0] - 1) + // Entropy term
 						relskewterm);
 			};
