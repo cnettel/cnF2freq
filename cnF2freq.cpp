@@ -4738,7 +4738,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								vector<int> claus;
 								int cind;
 								int shiftcount = 0;
-								for (int b = 0; b < 7; b++) {
+								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
 										cind = cands[b];
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
