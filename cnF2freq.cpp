@@ -3805,14 +3805,19 @@ struct relskewhmm
 		relskewfwbw.resize(endmarker - firstmarker);
 		halfstate s = { 0.5, 0.5 };
 
-		// FW
-		for (int m = firstmarker; m < endmarker; m++)
-		{			
+		auto doemissions = [&](int m)
+		{
 			double w = ind->haploweight[m];
 			for (int k = 0; k < 2; k++)
 			{
 				s[k] *= fabs(!k - w);
 			}
+		};
+
+		// FW
+		for (int m = firstmarker; m < endmarker; m++)
+		{			
+			doemissions(m);
 			relskewfwbw[0][m - firstmarker] = s;
 
 			double sum = s[0] + s[1];
@@ -3836,11 +3841,7 @@ struct relskewhmm
 		relskewfwbw[1][endmarker - 1 - firstmarker] = s;
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
-			double w = ind->haploweight[m + 1];
-			for (int k = 0; k < 2; k++)
-			{
-				s[k] *= fabs(!k - w);
-			}
+			doemissions(m + 1);
 
 			halfstate nexts;
 			double n = ind->relhaplo[m];
@@ -3993,10 +3994,14 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
+			relskewprob = max(relskewprob, (double) maxdiff);
+			relskewprob = min(relskewprob, (double) 1 - maxdiff);
+
+			relskewterm = log(relskewprob) - log(1 - relskewprob);
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
-					((ind->haplobase[j] + relskewprob - in[0] * (ind->haplocount[j] + 1)) / (in[0] - in[0] * in[0]) +
+					((ind->haplobase[j] + in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
 						log(1 / in[0] - 1) + // Entropy term
 						relskewterm);
 			};
