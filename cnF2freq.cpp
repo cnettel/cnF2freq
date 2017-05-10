@@ -65,6 +65,7 @@ float templgeno[8] = { -1, -0.5,
 /*#include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>*/
+#include <memory>
 #include <string>
 
 #include <boost/container/flat_map.hpp>
@@ -763,7 +764,7 @@ struct clause
 	vector<int> cinds;
 	//vector<individ*> individuals;
 
-	string toString() {
+	string toString() const {
 		string s = boost::lexical_cast<std::string>(weight);
 		//std::stringstream ints;
 		//std::copy(cInds.begin(), cInds.end(), std::ostream_iterator<int>(ints, " "));
@@ -776,7 +777,7 @@ struct clause
 		return s;// note each line ends in a space
 	}
 
-	string clausetostring() {
+	string clausetostring() const {
 		string s = "";
 		for (int i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
@@ -786,7 +787,7 @@ struct clause
 		return s;
 	}
 
-	string weighttostring() {
+	string weighttostring() const {
 		return boost::lexical_cast<std::string>(weight);
 	}
 
@@ -3081,7 +3082,7 @@ void resizecaches()
 	}
 }
 
-// Global scale factor, 1.0 meaning "use EM estimate".
+// Global scale factor, 1.0 meaning "use unscaled gradient".
 double scalefactor = 0.2;
 
 pair<int, int> fixtrees(int j)
@@ -3265,7 +3266,7 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 	}
 }
 
-void calcskewterms(int marker, array<double, TURNBITS>& skewterms)
+void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 {
 	for (int i = 0; i < skewterms.size(); i++)
 	{
@@ -3717,7 +3718,6 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
-template<bool full, typename reporterclass>
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
 {
 	double bestprob = 0;
@@ -3791,14 +3791,100 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	ind->infprobs[j][side].clear();
 }
 
+struct relskewhmm
+{
+	typedef std::array<double, 2> halfstate;
+	typedef std::array<halfstate, 2> state;
+	vector<state> relskewfwbw;
+
+	const int firstmarker;
+	const individ* ind;
+
+	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
+	{
+		relskewfwbw.resize(endmarker - firstmarker);
+		halfstate s = { 0.5, 0.5 };
+
+		// FW
+		for (int m = firstmarker; m < endmarker; m++)
+		{			
+			double w = ind->haploweight[m];
+			for (int k = 0; k < 2; k++)
+			{
+				s[k] *= fabs(!k - w);
+			}
+			relskewfwbw[m - firstmarker][0] = s;
+
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+
+			double n = ind->relhaplo[m];
+			halfstate nexts;
+			for (int k = 0; k < 2; k++)
+			{
+				nexts[k] = s[k] * n + s[!k] * (1 - n);
+			}
+			s = nexts;
+		}
+
+		// BW
+		s = { 1, 1 };
+		relskewfwbw[endmarker - 1 - firstmarker][1] = s;
+		for (int m = endmarker - 2; m >= firstmarker; m--)
+		{
+			double w = ind->haploweight[m + 1];
+			for (int k = 0; k < 2; k++)
+			{
+				s[k] *= fabs(!k - w);
+			}
+
+			halfstate nexts;
+			double n = ind->relhaplo[m];
+			for (int k = 0; k < 2; k++)
+			{
+				nexts[k] = s[k] * n + s[!k] * (1 - n);
+			}
+
+			s = nexts;
+
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+
+			relskewfwbw[m - firstmarker][1] = s;			
+		}
+	}
+
+	double getweight(int m)
+	{
+		int realm = m - firstmarker;
+		halfstate s = relskewfwbw[realm][0];
+		const halfstate& bws = relskewfwbw[realm][1];
+
+		for (int k = 0; k < 2; k++)
+		{
+			s[k] *= bws[k];
+		}
+
+		double sum = s[0] + s[1];
+		return s[1] / sum;
+	}
+};
+
+
 void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hitnnn)
 {
-
 	vector<bool> allhalf;
 	vector<bool> anyinfo;
 	vector<bool> cleared;
 	vector<int> nudgeme;
-
 
 	anyinfo.resize(chromstarts.size());
 	allhalf.resize(chromstarts.size());
@@ -3812,11 +3898,17 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 		nudgeme[k] = -1;
 	}
 
-	cno = 0;
+	cno = -1;
 	double prevval = 0.5;
+	std::unique_ptr<relskewhmm> relskews;
+
 	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
 	{
-		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
+		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
+		{
+			cno++;
+			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], dous[j]);
+		}
 		anyinfo[cno] = true;
 
 		if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
@@ -3858,7 +3950,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 
 			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 			double relskewterm = 0;
-			if (RELSKEWS)
+			if (RELSKEWS && false)
 			{
 				for (int d = -1; d < 1; d++)
 				{
@@ -3879,6 +3971,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					prevval = prevval / (prevval + 1.0);*/
 				}
 			}
+			double relskewprob = relskews->getweight(j);
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -3903,7 +3996,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
-					((ind->haplobase[j] - in[0] * ind->haplocount[j]) / (in[0] - in[0] * in[0]) +
+					((ind->haplobase[j] + relskewprob - in[0] * (ind->haplocount[j] + 1)) / (in[0] - in[0] * in[0]) +
 						log(1 / in[0] - 1) + // Entropy term
 						relskewterm);
 			};
@@ -4028,7 +4121,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
-void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, const vector<clause>& clauses)
+void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, vector<clause>& clauses)
 {
 	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
 	if (!infile) {
@@ -4042,7 +4135,7 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
 
 	int nbclauses = (int) clauses.size();
-	int nbc = nbclauses + nbvar * 2;
+	int nbc = nbclauses + indnumbers.size() * 2;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
@@ -4052,11 +4145,12 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 		infile << "1 " << -cind << " 0\n";
 	}
 
-	for (const clause& c : clauses) {
+	for (clause& c : clauses) {
 		c.weight = maxweight - c.weight + 1;
 		if (c.weight < 0)
 		{
-			fprintf(stderr, "Negative weight marker %d, clause %d, weight %lld, maxweight %lld\n", m, g, c.weight, maxweight);
+			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
+			abort();
 		}
 		infile << c.weighttostring() << c.clausetostring() << " 0\n";
 		//infile<< toulInput[m][g].toString() << "\n";
@@ -4064,7 +4158,9 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	}
 }
 
-void parentswapnegshifts()
+typedef map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsmtype;
+
+void parentswapnegshifts(nsmtype& nsm)
 {
 	vector<pair<double, boost::tuple<individ*, individ*, int, int> > > allnegshifts;
 	flat_map<individ*, double> bestshift;
@@ -4146,6 +4242,7 @@ void parentswapnegshifts()
 	}
 }
 
+
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
 // A full scan is thus not the iteration that takes the most time, but the scan that goes over the full genome grid, not only
@@ -4201,7 +4298,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	iter++;
 
 
-	map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsm;
+	nsmtype nsm;
 
 	for (int i = 0; i < INDCOUNT; i++)
 	{
@@ -4815,7 +4912,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
-		int nbvar = indnumbers.size();
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
@@ -4851,11 +4947,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long sumweight = computesumweight(m, tf, toulInput);
-
-			fprintf(stderr, "Marker %d score %lld, %d clauses, %d vars in tf\n", m, sumweight, nbclauses, tf.size());
-			
-			
+			long long sumweight = computesumweight(m, tf, toulInput);						
 
 #pragma omp critical(negshifts)
 			if (minsumweight > sumweight) {
@@ -5063,7 +5155,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					updatehaploweights(cno, ind, out, hitnnn);					
 				}
-				parentswapnegshifts();
+				parentswapnegshifts(nsm);
 
 				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (badhit)
