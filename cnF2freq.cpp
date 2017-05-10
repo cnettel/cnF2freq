@@ -3972,6 +3972,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				}
 			}
 			double relskewprob = relskews->getweight(j);
+			if (ind->n == 434) fprintf(stderr, "relskewprob %d %d %lf\n", ind->n, j, relskewprob);
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
