@@ -3797,7 +3797,7 @@ struct relskewhmm
 	typedef std::array<halfstate, 2> state;
 	vector<state> relskewfwbw;
 
-	int firstmarker;
+	const int firstmarker;
 	const individ* ind;
 
 	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
@@ -3805,7 +3805,7 @@ struct relskewhmm
 		relskewfwbw.resize(endmarker - firstmarker);
 		halfstate s = { 0.5, 0.5 };
 
-		auto doemissions = [&](int m)
+		const auto doemissions = [&s, &ind](int m)
 		{
 			double w = ind->haploweight[m];
 			for (int k = 0; k < 2; k++)
@@ -3813,32 +3813,40 @@ struct relskewhmm
 				s[k] *= fabs(!k - w);
 			}
 		};
-
-		// FW
-		for (int m = firstmarker; m < endmarker; m++)
-		{			
-			doemissions(m);
-			relskewfwbw[0][m - firstmarker] = s;
-
-			double sum = s[0] + s[1];
-			if (sum < 1e-10)
-			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
-			}
-
+		const auto dotransitions = [&s, &ind](int m)
+		{
 			double n = ind->relhaplo[m];
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
 				nexts[k] = s[k] * n + s[!k] * (1 - n);
 			}
+
 			s = nexts;
+		};
+		const auto renormalizes = [&s]
+		{
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+		};
+
+		// FW
+		for (int m = firstmarker; m < endmarker; m++)
+		{			
+			doemissions(m);
+			relskewfwbw[m - firstmarker][0] = s;
+
+			renormalizes();
+			dotransitions(m);
 		}
 
 		// BW
 		s = { 1, 1 };
-		relskewfwbw[1][endmarker - 1 - firstmarker] = s;
+		relskewfwbw[endmarker - 1 - firstmarker][1] = s;
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
@@ -3852,22 +3860,17 @@ struct relskewhmm
 
 			s = nexts;
 
-			double sum = s[0] + s[1];
-			if (sum < 1e-10)
-			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
-			}
+			renormalizes();
 
-			relskewfwbw[1][m - firstmarker] = nexts;			
+			relskewfwbw[m - firstmarker][1] = s;			
 		}
 	}
 
 	double getweight(int m)
 	{
 		int realm = m - firstmarker;
-		halfstate s = relskewfwbw[0][m];
-		halfstate bws = relskewfwbw[1][m];
+		halfstate s = relskewfwbw[realm][0];
+		const halfstate& bws = relskewfwbw[realm][1];
 
 		for (int k = 0; k < 2; k++)
 		{
@@ -3875,7 +3878,7 @@ struct relskewhmm
 		}
 
 		double sum = s[0] + s[1];
-		return s[0] / sum;
+		return s[1] / sum;
 	}
 };
 
