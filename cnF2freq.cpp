@@ -3805,30 +3805,43 @@ struct relskewhmm
 		relskewfwbw.resize(endmarker - firstmarker);
 		halfstate s = { 0.5, 0.5 };
 
-		// FW
-		for (int m = firstmarker; m < endmarker; m++)
-		{			
+		const auto doemissions = [&s, &ind](int m)
+		{
 			double w = ind->haploweight[m];
 			for (int k = 0; k < 2; k++)
 			{
 				s[k] *= fabs(!k - w);
 			}
-			relskewfwbw[m - firstmarker][0] = s;
-
-			double sum = s[0] + s[1];
-			if (sum < 1e-10)
-			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
-			}
-
+		};
+		const auto dotransitions = [&s, &ind](int m)
+		{
 			double n = ind->relhaplo[m];
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
 				nexts[k] = s[k] * n + s[!k] * (1 - n);
 			}
+
 			s = nexts;
+		};
+		const auto renormalizes = [&s]
+		{
+			double sum = s[0] + s[1];
+			if (sum < 1e-10)
+			{
+				s[0] *= 1e10;
+				s[1] *= 1e10;
+			}
+		};
+
+		// FW
+		for (int m = firstmarker; m < endmarker; m++)
+		{			
+			doemissions(m);
+			relskewfwbw[m - firstmarker][0] = s;
+
+			renormalizes();
+			dotransitions(m);
 		}
 
 		// BW
@@ -3836,11 +3849,7 @@ struct relskewhmm
 		relskewfwbw[endmarker - 1 - firstmarker][1] = s;
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
-			double w = ind->haploweight[m + 1];
-			for (int k = 0; k < 2; k++)
-			{
-				s[k] *= fabs(!k - w);
-			}
+			doemissions(m + 1);
 
 			halfstate nexts;
 			double n = ind->relhaplo[m];
@@ -3851,12 +3860,7 @@ struct relskewhmm
 
 			s = nexts;
 
-			double sum = s[0] + s[1];
-			if (sum < 1e-10)
-			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
-			}
+			renormalizes();
 
 			relskewfwbw[m - firstmarker][1] = s;			
 		}
@@ -3972,6 +3976,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				}
 			}
 			double relskewprob = relskews->getweight(j);
+			if (ind->n == 434) fprintf(stderr, "relskewprob %d %d %lf\n", ind->n, j, relskewprob);
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -3993,10 +3998,14 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
+			relskewprob = max(relskewprob, (double) maxdiff);
+			relskewprob = min(relskewprob, (double) 1 - maxdiff);
+
+			relskewterm = log(relskewprob) - log(1 - relskewprob);
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
-					((ind->haplobase[j] + relskewprob - in[0] * (ind->haplocount[j] + 1)) / (in[0] - in[0] * in[0]) +
+					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
 						log(1 / in[0] - 1) + // Entropy term
 						relskewterm);
 			};
