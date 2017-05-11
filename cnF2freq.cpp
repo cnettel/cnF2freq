@@ -3954,7 +3954,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 
 			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 			double relskewterm = 0;
-			if (RELSKEWS && false)
+			if (RELSKEWS)
 			{
 				for (int d = -1; d < 1; d++)
 				{
@@ -3962,12 +3962,12 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					if (d == -1)
 					{
 						if (!j) continue;
-						otherval = ind->haploweight[j - 1];
+						otherval = relskews->getweight(j - 1);
 					}
 					else
 					{
 						if (j + 1 >= markerposes.size()) continue;
-						otherval = ind->haploweight[j + 1];
+						otherval = relskews->getweight(j + 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
@@ -3975,8 +3975,6 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					prevval = prevval / (prevval + 1.0);*/
 				}
 			}
-			double relskewprob = relskews->getweight(j);
-			if (ind->n == 434) fprintf(stderr, "relskewprob %d %d %lf\n", ind->n, j, relskewprob);
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -3998,10 +3996,6 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
-			relskewprob = max(relskewprob, (double) maxdiff);
-			relskewprob = min(relskewprob, (double) 1 - maxdiff);
-
-			relskewterm = log(relskewprob) - log(1 - relskewprob);
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
