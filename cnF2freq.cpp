@@ -4005,7 +4005,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
-					((ind->haplobase[j] + in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
+					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
 						log(1 / in[0] - 1) + // Entropy term
 						relskewterm);
 			};
