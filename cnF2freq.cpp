@@ -3083,7 +3083,7 @@ void resizecaches()
 }
 
 // Global scale factor, 1.0 meaning "use unscaled gradient".
-double scalefactor = 0.2;
+double scalefactor = 0.013;
 
 pair<int, int> fixtrees(int j)
 {
@@ -4472,7 +4472,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				factor += log(realfactor);
 				printf("%lf %d\n", factor, shiftend);
 				fflush(stdout);
-				if (_isnan(factor) || factor < MINFACTOR) continue;
+				if (std::_isnan(factor) || factor < MINFACTOR) continue;
 
 				// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
 				for (int q = qstart; q != qend; q += qd)
@@ -5169,6 +5169,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  {
 				    scalefactor *= 1.1;
 				  }
+				scalefactor *= 0.99;
 				oldhitnnn2 = oldhitnnn;
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
