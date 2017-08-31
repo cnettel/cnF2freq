@@ -3093,6 +3093,8 @@ pair<int, int> fixtrees(int j)
 	reltree.clear();
 	relmap.clear();
 	relmapshift.clear();
+	reltreeordered.clear();
+
 	reltree.push_back(dous[j]);
 	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
 	relmap[dous[j]] = 1;
@@ -3165,16 +3167,23 @@ pair<int, int> fixtrees(int j)
 		shiftignore ^= (NUMSHIFTS - 1);
 	}
 
-	reltreeordered = reltree;
+	//reltreeordered = reltree;
 	sort(reltree.begin(), reltree.end());
 	reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
 
 	return make_pair(shiftignore, flag2ignore);
 }
 
-void moveinfprobs(int i, int k, int marker)
+void moveinfprobs(int i, int k, int marker, double norm)
 {
 	// TODO: Sanitize for zero, inf, nan.
+	// Compensate for duplicates
+	norm *= 2;
+	for (individ* ind : reltreeordered)
+	{
+		if (ind == reltree[k]) norm /= 2;
+	}
+
 	for (int side = 0; side < 2; side++)
 	{
 		MarkerVal priorval = UnknownMarkerVal;
@@ -4010,7 +4019,6 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				// Cap the change if the net difference is small/miniscule
 				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
 				//				fprintf(stderr, "HAPLOS: %d %d %lf %lf %lf %lf\n", ind->n, j, intended, ind->haplobase[j], ind->haplocount[j], ind->haploweight[j]);
-	
 
 				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 
@@ -4895,13 +4903,20 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// Contribute haplotype data, but truncate it, i.e. a 50/50 contribution for either interpretation is not added.
 						// Instead, we have a cap later on at the maximum change at any iteration.
 						// critical section outside the loop to maintain symmetry in floating point ops
+						double sum = 0;
+						for (double v : infprobs[reltreeordered[0]->n][0])
+						{
+							sum += v;
+						}
+						sum = 1 / sum;
+
 #pragma omp critical(update)
 						{
 #pragma ivdep
 							for (int k = 0; k < (int)reltree.size(); k++)
 							{
 								int i = reltree[k]->n;
-								moveinfprobs(i, k, marker);
+								moveinfprobs(i, k, marker, sum);
 								movehaplos(i, k, marker);
 							}
 						}
