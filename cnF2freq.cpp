@@ -4904,9 +4904,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// Instead, we have a cap later on at the maximum change at any iteration.
 						// critical section outside the loop to maintain symmetry in floating point ops
 						double sum = 0;
-						for (double v : infprobs[reltreeordered[0]->n][0])
+						for (auto p : infprobs[reltreeordered[0]->n][0])
 						{
-							sum += v;
+							sum += p.second;
 						}
 						sum = 1 / sum;
 
