@@ -3097,6 +3097,7 @@ pair<int, int> fixtrees(int j)
 
 	reltree.push_back(dous[j]);
 	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
+	reltreeordered[0] = dous[j];
 	relmap[dous[j]] = 1;
 	relmapshift[dous[j]] = 1;
 
@@ -3290,7 +3291,7 @@ void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 		}
 		else
 		{
-			truei >>= 1;
+			truei -= 1;
 		}
 
 		double prevval = reltreeordered[i]->haploweight[marker];
