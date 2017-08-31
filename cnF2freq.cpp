@@ -3728,7 +3728,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	for (auto probpair : ind->infprobs[j][side])
 	{
 		sum += probpair.second;
-		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	MarkerVal priorval = UnknownMarkerVal;
@@ -3779,7 +3779,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		if ((ind->n == 433 && j >= 4086 && j <= 4087)) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	if (bestmarker != UnknownMarkerVal || bestprob > 0)
@@ -4009,6 +4009,8 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			{
 				// Cap the change if the net difference is small/miniscule
 				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+				//				fprintf(stderr, "HAPLOS: %d %d %lf %lf %lf %lf\n", ind->n, j, intended, ind->haplobase[j], ind->haplocount[j], ind->haploweight[j]);
+	
 
 				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
 
@@ -4017,6 +4019,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				{
 				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 				}*/
+				if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
 				ind->haploweight[j] = intended;
 
 
@@ -4920,7 +4923,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-		  if (m % 10) continue;
+		  //		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
