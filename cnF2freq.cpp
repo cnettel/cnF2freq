@@ -3794,7 +3794,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	// We might have stats for empty inds, but those stats are incomplete
 	// Putting them in will make the ind non-empty, breaking assumptions
-	if (!ind->empty && bestmarker != UnknownMarkerVal || bestprob > 0)
+	if (!ind->empty && (bestmarker != UnknownMarkerVal || bestprob > 0))
 	{
 		(&ind->markerdata[j].first)[side] = bestmarker;
 		double intended = 1.0 - bestprob;
