@@ -3738,7 +3738,6 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	for (auto probpair : ind->infprobs[j][side])
 	{
 		sum += probpair.second;
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	MarkerVal priorval = UnknownMarkerVal;
@@ -3749,6 +3748,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
+		if (ind->n == 4) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 		double curprob = 0.5;
 		auto curmarker = (&ind->markerdata[j].first)[side];
 
@@ -3789,10 +3789,12 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (ind->n == 4) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
-	if (bestmarker != UnknownMarkerVal || bestprob > 0)
+	// We might have stats for empty inds, but those stats are incomplete
+	// Putting them in will make the ind non-empty, breaking assumptions
+	if (!ind->empty && bestmarker != UnknownMarkerVal || bestprob > 0)
 	{
 		(&ind->markerdata[j].first)[side] = bestmarker;
 		double intended = 1.0 - bestprob;
@@ -3990,13 +3992,17 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			double scoreb = 1.0 - ind->markersure[j].second;
 			if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
 
-			double similarity = scorea * scoreb + (1 - scorea) * (1 - scoreb);
-			if (similarity >= 1 - maxdiff || !ind->haplocount[j])
+			double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
+												   (scoreb * scoreb + (1-scoreb) * (1-scoreb)));
+
+			if (!ind->haplocount[j])
 			{
 				ind->haplobase[j] = 0;
 			}
 			else
 			{
+			  if (similarity >= 1 - maxdiff) similarity = 1 - maxdiff;
+
 				double count = ind->haplocount[j];
 				ind->haplobase[j] -= count * ind->haploweight[j];
 				count = count - similarity * count;
@@ -4010,8 +4016,8 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-						log(1 / in[0] - 1) + // Entropy term
-						relskewterm);
+					 (1 - 0 * similarity) * (log(1 / in[0] - 1) + // Entropy term
+							     relskewterm));
 			};
 
 
@@ -4028,7 +4034,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 				{
 				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 				}*/
-				if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
+				//if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
 				ind->haploweight[j] = intended;
 
 
@@ -5179,7 +5185,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				parentswapnegshifts(nsm);
 
-				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99;
+				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99 + 1;
 				if (badhit)
 				  {
 				    scalefactor /= 1.1;
