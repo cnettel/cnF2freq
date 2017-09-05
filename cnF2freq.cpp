@@ -3748,7 +3748,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
-		if (ind->n == 4) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 		double curprob = 0.5;
 		auto curmarker = (&ind->markerdata[j].first)[side];
 
@@ -3789,7 +3789,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		if (ind->n == 4) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	// We might have stats for empty inds, but those stats are incomplete
@@ -3995,7 +3995,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 			double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
 												   (scoreb * scoreb + (1-scoreb) * (1-scoreb)));
 
-			if (!ind->haplocount[j])
+			if (!ind->haplocount[j] || scorea == scoreb)
 			{
 				ind->haplobase[j] = 0;
 			}
