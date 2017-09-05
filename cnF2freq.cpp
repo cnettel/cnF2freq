@@ -757,6 +757,7 @@ template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double sta
 
 const int HAPLOS = 1;
 const int GENOS = 2;
+const int HOMOZYGOUS = 4;
 
 struct clause
 {
@@ -834,6 +835,7 @@ struct individ
 	vector<unsigned int> lockstart;
 
 	vector<std::array<flat_map<MarkerVal, double>, 2> > infprobs;
+	vector<std::array<double, 2>> homozyg;
 
 	vector<int> genotypegrid;
 
@@ -1145,8 +1147,8 @@ struct individ
 				// Track to the parent generation, creating evaluation objects first
 				// These do a lookup in a special hash for combinations known to be 0, to avoid unnecessary calls
 				// Both are checked before either branch of the pedigree is actually traced.
-				recursetrackpossible<update, zeropropagate> subtrack1 =
-					recursetrackpossible<update, zeropropagate>(this, tb, markerval, mainsecondval, marker,
+				auto subtrack1 =
+					recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, markerval, mainsecondval, marker,
 						upflag,
 						upflag2,
 						upshift,
@@ -1159,12 +1161,32 @@ struct individ
 				if (subtrack1.prelok && (!zeropropagate || rootgen) && !(update & GENOS))
 				{
 					double secsecondval = 0;
-					if (themarkersure[!realf2n])
+					MarkerVal secmark = themarker[!realf2n];
+
+					if (!(update & HOMOZYGOUS))
 					{
-						baseval *= (1 - themarkersure[!realf2n]);
-						secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
+						if (themarkersure[!realf2n])
+						{
+							baseval *= (1 - themarkersure[!realf2n]);
+							secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
+						}
 					}
-					baseval *= recursetrackpossible<update, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
+					else
+					{
+						if (markerval != secmark)
+						{
+							secmark = markerval;
+							baseval *= themarkersure[!realf2n];
+							secsecondval = 0;
+						}
+						else
+						{
+							baseval *= (1 - themarkersure[!realf2n]);
+							secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
+						}
+					}
+
+					baseval *= recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
 						marker,
 						upflag,
 						upflag2,
@@ -2132,6 +2154,7 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		ind->negshift.resize(markerposes.size());
 
 		ind->infprobs.resize(markerposes.size());
+		ind->homozyg.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
 
 		if (RELSKEWS)
@@ -3745,6 +3768,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	{
 		priorval = (&ind->priormarkerdata[j].first)[side];
 	}
+	for (int i = 0; i < 2; i++)
+	{
+		if (ind->n == 3) fprint(stdout, "PROBHZYG  : %d %d %d %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+		ind->homozyg[j][i] = 0;
+	}
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
@@ -4600,15 +4628,24 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double outmapval = dous[j]->trackpossible<false, true>(tb, UnknownMarkerVal, 0, marker, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, &mapval));
 									double sidevals[2][2] = { 0 };
 									double sidevalsums[2] = { 0 };
+									double homozyg[2] = { 0 };
 
 									if (DOINFPROBS)
-									for (int side = 0; side < 2; side++)
 									{
+										for (int side = 0; side < 2; side++)
+										{
+											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+											{
+												double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+												sidevals[side][markerval.value() - 1] += sideval;
+												sidevalsums[side] += sideval;
+											}
+										}
+
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
-											sidevals[side][markerval.value() - 1] += sideval;
-											sidevalsums[side] += sideval;
+											double sideval = dous[j]->trackpossible<HOMOZYGOUS, false>(tb, markerval, 0, marker, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											homozyg[markerval.value() - 1] += sideval;
 										}
 									}
 //									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
@@ -4628,17 +4665,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									//reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING)
 									{
-										dous[j]->updatehaplo(tb, -q - 1000, g, flag2, val);
+										dous[j]->updatehaplo(tb, marker, g, flag2, val);
 
 										if (DOINFPROBS)
-										for (int side = 0; side < 2; side++)
 										{
-											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+											for (int side = 0; side < 2; side++)
 											{
-												//std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ":" << markerval.value() << ", fl2" << flag2 << ", sfm " << *(tb.shiftflagmode) << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
-												double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
-												dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
+												for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+												{
+													//std::cout << "EXTREME VETTING IND " << dous[j]->n << " MARKER " << marker << ":" << markerval.value() << ", fl2" << flag2 << ", sfm " << *(tb.shiftflagmode) << ", VAL: " << val << " SIDEVAL " << sidevals[side][markerval.value() - 1] << ", SIDEVALSUM " << sidevals[side][markerval.value() - 1] << std::endl;
+													double updateval = val * sidevals[side][markerval.value() - 1] / sidevalsums[side];
+													dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
+												}
 											}
+											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+												dous[j]->homozyg[marker][markerval.value() - 1] += homozyg[markerval.value() - 1] / sidevalsums[side];
 										}
 									}
 								}
