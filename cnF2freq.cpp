@@ -1175,8 +1175,11 @@ struct individ
 					{
 						if (markerval != secmark)
 						{
-							secmark = markerval;
+						  if (secmark != UnknownMarkerVal)
+						    {
 							baseval *= themarkersure[!realf2n];
+						    }
+							secmark = markerval;
 							secsecondval = 0;
 						}
 						else
@@ -1186,7 +1189,7 @@ struct individ
 						}
 					}
 
-					baseval *= recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, themarker[!realf2n], secsecondval,
+					baseval *= recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, secmark, secsecondval,
 						marker,
 						upflag,
 						upflag2,
@@ -5438,7 +5441,10 @@ void readalphadata(FILE* in)
 					break;
 				}
 				ime->markerdata[x] = marker;
-				ime->markersure[x] = make_pair(0.02, 0.02);
+				if (marker.first != UnknownMarkerVal)
+				  {
+				    ime->markersure[x] = make_pair(0.02, 0.02);
+				  }
 			}
 			else
 			{
