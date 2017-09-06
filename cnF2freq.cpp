@@ -4955,11 +4955,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// Instead, we have a cap later on at the maximum change at any iteration.
 						// critical section outside the loop to maintain symmetry in floating point ops
 						double sum = 0;
-						for (auto p : infprobs[reltreeordered[0]->n][0])
+						for (auto p : infprobs[dous[j]->n][0])
 						{
 							sum += p.second;
 						}
 						sum = 1 / sum;
+
+						for (int i = 0; i < 2; i++)
+						{
+							dous[j]->homozyg[marker][i] *= sum;
+						}
 
 #pragma omp critical(update)
 						{
