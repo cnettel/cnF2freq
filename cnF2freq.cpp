@@ -1077,7 +1077,9 @@ struct individ
 			{
 				double effectivesecondval = (inmarkerval == UnknownMarkerVal && markerval != UnknownMarkerVal) ? 1 : secondval;				
 				baseval = 1.0 - themarkersure[f2n];
-				if (themarkersure[f2n] && effectivesecondval) mainsecondval = ((themarker[f2n] == UnknownMarkerVal ? 1 : themarkersure[f2n]) * effectivesecondval);
+
+				double effectivemarkersure = (themarker[f2n] == UnknownMarkerVal ? 1 : themarkersure[f2n]);
+				mainsecondval = effectivemarkersure * effectivesecondval;
 			}
 			 
 			// Include it all in one big thing, or 
