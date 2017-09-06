@@ -4681,8 +4681,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 													dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
 												}
 											}
+											
+											double hzs = 0;
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+											{
 												dous[j]->homozyg[marker][markerval.value() - 1] += val * homozyg[markerval.value() - 1] / sidevalsums[0];
+												hzs += homozyg[markerval.value() - 1];
+											}
+											if (hzs > sidevalsums[0]) fprintf(stdout, "HZS MISMATCH %d %d %d %d %lf %lf %lf\n", marker, g * 2, flag2, *(tb.shiftflagmode), hzs, sidevalsums[0], sidevalsums[1]);
 										}
 									}
 								}
