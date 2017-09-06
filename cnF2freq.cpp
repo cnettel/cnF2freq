@@ -1182,7 +1182,7 @@ struct individ
 						else
 						{
 							baseval *= (1 - themarkersure[!realf2n]);
-							secsecondval = themarkersure[!realf2n] / (1 - themarkersure[!realf2n]);
+							secsecondval = 0;
 						}
 					}
 
@@ -3770,7 +3770,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	}
 	for (int i = 0; i < 2; i++)
 	{
-		if (ind->n == 3) fprint(stdout, "PROBHZYG  : %d %d %d %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 		ind->homozyg[j][i] = 0;
 	}
 
@@ -4679,7 +4679,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												}
 											}
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
-												dous[j]->homozyg[marker][markerval.value() - 1] += homozyg[markerval.value() - 1] / sidevalsums[side];
+												dous[j]->homozyg[marker][markerval.value() - 1] += val * homozyg[markerval.value() - 1] / sidevalsums[0];
 										}
 									}
 								}
