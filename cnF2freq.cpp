@@ -3801,6 +3801,8 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			hzygcorred += hzygval / otherside;
 		}
 
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
 			double curprob = in[0];
