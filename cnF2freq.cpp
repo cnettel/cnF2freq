@@ -3776,7 +3776,6 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
-		ind->homozyg[j][i] = 0;
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3847,6 +3846,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		(&ind->markersure[j].first)[side] = intended;
 	}
 	ind->infprobs[j][side].clear();
+	if (side == 1)
+	{
+		ind->homozyg[j].assign(0);
+	}
 }
 
 struct relskewhmm
