@@ -3793,7 +3793,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		double hzygcorred = probpair.second;
 		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
 		{
-			double otherside = (&ind->markersure[j].first)[!side]
+			double otherside = fabs(((&ind->markerdata[j].first)[!side] == probpair.first ? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
+			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
+			hzygcorred -= hzygval;
+			hzygcorred += hzygval / otherside;
 		}
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
