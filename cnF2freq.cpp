@@ -1090,7 +1090,7 @@ struct individ
 			}
 			else
 			{
-				mainsecondval /= baseval;
+				if (mainsecondval) mainsecondval /= baseval;
 			}
 
 			if (!baseval) continue;
@@ -1179,7 +1179,7 @@ struct individ
 						{
 						  if (secmark != UnknownMarkerVal)
 						    {
-							baseval *= themarkersure[!realf2n];
+								baseval *= themarkersure[!realf2n];
 						    }
 							secmark = markerval;
 							secsecondval = 0;
@@ -3790,10 +3790,16 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
 		}
 
+		double hzygcorred = probpair.second;
+		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
+		{
+			double otherside = (&ind->markersure[j].first)[!side]
+		}
+
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
 			double curprob = in[0];
-			double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
 			d += log(1 / curprob - 1); // Entropy term
 
 			if (priorval != UnknownMarkerVal)
