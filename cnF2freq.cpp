@@ -3760,7 +3760,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
-	double sum = 0;
+	double sum = 0, hzsum = 0;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3773,9 +3773,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	{
 		priorval = (&ind->priormarkerdata[j].first)[side];
 	}
+	
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+		hzsum = ind->homozyg[j][i];
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3796,7 +3798,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
 				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
 			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
-			hzygcorred -= hzygval;
+			hzygcorred -= hzsum;
 			hzygcorred += hzygval / otherside;
 		}
 
@@ -3848,7 +3850,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	ind->infprobs[j][side].clear();
 	if (side == 1)
 	{
-		ind->homozyg[j].assign(0);
+	  for (int i = 0; i < 2; i++)
+	    {
+	      ind->homozyg[j][i] = 0;
+	    }
 	}
 }
 
