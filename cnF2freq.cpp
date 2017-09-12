@@ -4833,12 +4833,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (g & (flag2ignore >> 1)) continue;
 
-							double skewfactor = 1;
+							double skewterm = 0;
 							for (int i = 0; i < TURNBITS; i++)
 							{
 								if (g & (1 << i))
 								{
-									skewfactor *= exp(skewterms[i]);
+									skewterm += exp(skewterms[i]);
 								}
 							}
 							aroundturner turn(g);
@@ -4855,7 +4855,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor + skewterm);
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
