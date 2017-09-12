@@ -1090,7 +1090,7 @@ struct individ
 			}
 			else
 			{
-				mainsecondval /= baseval;
+				if (mainsecondval) mainsecondval /= baseval;
 			}
 
 			if (!baseval) continue;
@@ -1179,7 +1179,7 @@ struct individ
 						{
 						  if (secmark != UnknownMarkerVal)
 						    {
-							baseval *= themarkersure[!realf2n];
+								baseval *= themarkersure[!realf2n];
 						    }
 							secmark = markerval;
 							secsecondval = 0;
@@ -3776,7 +3776,6 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
-		ind->homozyg[j][i] = 0;
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3790,10 +3789,23 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
 		}
 
+		double hzygcorred = probpair.second;
+		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
+		{
+			MarkerVal copymv = probpair.first;
+			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
+				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
+			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
+			hzygcorred -= hzygval;
+			hzygcorred += hzygval / otherside;
+		}
+
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
 			double curprob = in[0];
-			double d = (probpair.second - sum * curprob) / (curprob - curprob * curprob);
+			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
 			d += log(1 / curprob - 1); // Entropy term
 
 			if (priorval != UnknownMarkerVal)
@@ -3834,6 +3846,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		(&ind->markersure[j].first)[side] = intended;
 	}
 	ind->infprobs[j][side].clear();
+	if (side == 1)
+	{
+		ind->homozyg[j].assign(0);
+	}
 }
 
 struct relskewhmm
