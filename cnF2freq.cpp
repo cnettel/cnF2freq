@@ -4838,7 +4838,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 								if (g & (1 << i))
 								{
-									skewterm += exp(skewterms[i]);
+									skewterm += skewterms[i];
 								}
 							}
 							aroundturner turn(g);
