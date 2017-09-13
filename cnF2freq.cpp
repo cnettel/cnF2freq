@@ -3903,12 +3903,12 @@ struct relskewhmm
 			dotransitions(m);
 		}
 
-		// BW
+		// BW, but not really, emissions included everywhere
 		s = { 1, 1 };
-		relskewfwbw[endmarker - 1 - firstmarker][1] = s;
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
+			relskewfwbw[m - firstmarker + 1][1] = s;
 
 			halfstate nexts;
 			double n = ind->relhaplo[m];
@@ -3919,22 +3919,20 @@ struct relskewhmm
 
 			s = nexts;
 
-			renormalizes();
-
-			relskewfwbw[m - firstmarker][1] = s;			
+			renormalizes();			
 		}
 	}
 
-	double getweight(int m)
+	double getweight(int m, int dir)
 	{
 		int realm = m - firstmarker;
-		halfstate s = relskewfwbw[realm][0];
-		const halfstate& bws = relskewfwbw[realm][1];
+		halfstate s = relskewfwbw[realm][dir];
+		/*const halfstate& bws = relskewfwbw[realm][1];
 
 		for (int k = 0; k < 2; k++)
 		{
 			s[k] *= bws[k];
-		}
+		}*/
 
 		double sum = s[0] + s[1];
 		return s[1] / sum;
@@ -4021,12 +4019,12 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					if (d == -1)
 					{
 						if (!j) continue;
-						otherval = relskews->getweight(j - 1);
+						otherval = relskews->getweight(j - 1, 0);
 					}
 					else
 					{
 						if (j + 1 >= markerposes.size()) continue;
-						otherval = relskews->getweight(j + 1);
+						otherval = relskews->getweight(j + 1, 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
