@@ -1075,9 +1075,11 @@ struct individ
 			}
 			else
 			{
-				double effectivesecondval = (inmarkerval == UnknownMarkerVal) ? 1 : secondval;				
+				double effectivesecondval = (inmarkerval == UnknownMarkerVal && markerval != UnknownMarkerVal) ? 1 : secondval;				
 				baseval = 1.0 - themarkersure[f2n];
-				if (themarkersure[f2n] && effectivesecondval) mainsecondval = (themarkersure[f2n] * effectivesecondval);
+
+				double effectivemarkersure = (themarker[f2n] == UnknownMarkerVal ? 1 : themarkersure[f2n]);
+				mainsecondval = effectivemarkersure * effectivesecondval;
 			}
 			 
 			// Include it all in one big thing, or 
@@ -3758,7 +3760,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
-	double sum = 0;
+	double sum = 0, hzsum = 0;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3771,9 +3773,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	{
 		priorval = (&ind->priormarkerdata[j].first)[side];
 	}
+	
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+		hzsum = ind->homozyg[j][i];
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3846,7 +3850,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	ind->infprobs[j][side].clear();
 	if (side == 1)
 	{
-		ind->homozyg[j].assign(0);
+	  for (int i = 0; i < 2; i++)
+	    {
+	      ind->homozyg[j][i] = 0;
+	    }
 	}
 }
 
@@ -4824,12 +4831,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (g & (flag2ignore >> 1)) continue;
 
-							double skewfactor = 1;
+							double skewterm = 0;
 							for (int i = 0; i < TURNBITS; i++)
 							{
 								if (g & (1 << i))
 								{
-									skewfactor *= exp(skewterms[i]);
+									skewterm += exp(skewterms[i]);
 								}
 							}
 							aroundturner turn(g);
@@ -4846,7 +4853,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor + skewterm);
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
@@ -5014,7 +5021,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-		  //		  if (m % 10) continue;
+ 		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
