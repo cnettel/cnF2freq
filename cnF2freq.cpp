@@ -3306,6 +3306,10 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 
 void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 {
+  for (auto& i : skewterms)
+    {
+      i = 0;
+    }
 	for (int i = 0; i < skewterms.size(); i++)
 	{
 		individ* ind = reltreeordered[i];
@@ -3335,6 +3339,7 @@ void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 
 			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
 			sum += term;
+			if (sum < maxdiff) sum = maxdiff;
 			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
 		}
 	}
@@ -4828,7 +4833,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 								if (g & (1 << i))
 								{
-									skewterm += exp(skewterms[i]);
+									skewterm += skewterms[i];
 								}
 							}
 							aroundturner turn(g);
@@ -4845,7 +4850,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor + skewterm);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor - skewterm);
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
