@@ -3895,8 +3895,8 @@ struct relskewhmm
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
+				s[0] *= 1e20;
+				s[1] *= 1e20;
 			}
 		};
 
@@ -3917,15 +3917,7 @@ struct relskewhmm
 			doemissions(m + 1);
 			relskewfwbw[m - firstmarker + 1][1] = s;
 
-			halfstate nexts;
-			double n = ind->relhaplo[m];
-			for (int k = 0; k < 2; k++)
-			{
-				nexts[k] = s[k] * n + s[!k] * (1 - n);
-			}
-
-			s = nexts;
-
+			dotransitions(m);
 			renormalizes();			
 		}
 	}
