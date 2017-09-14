@@ -1075,9 +1075,11 @@ struct individ
 			}
 			else
 			{
-				double effectivesecondval = (inmarkerval == UnknownMarkerVal) ? 1 : secondval;				
+				double effectivesecondval = (inmarkerval == UnknownMarkerVal && markerval != UnknownMarkerVal) ? 1 : secondval;				
 				baseval = 1.0 - themarkersure[f2n];
-				if (themarkersure[f2n] && effectivesecondval) mainsecondval = (themarkersure[f2n] * effectivesecondval);
+
+				double effectivemarkersure = (themarker[f2n] == UnknownMarkerVal ? 1 : themarkersure[f2n]);
+				mainsecondval = effectivemarkersure * effectivesecondval;
 			}
 			 
 			// Include it all in one big thing, or 
@@ -3304,6 +3306,10 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 
 void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 {
+  for (auto& i : skewterms)
+    {
+      i = 0;
+    }
 	for (int i = 0; i < skewterms.size(); i++)
 	{
 		individ* ind = reltreeordered[i];
@@ -3333,6 +3339,7 @@ void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 
 			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
 			sum += term;
+			if (sum < maxdiff) sum = maxdiff;
 			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
 		}
 	}
@@ -3758,7 +3765,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
-	double sum = 0;
+	double sum = 0, hzsum = 0;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3771,10 +3778,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	{
 		priorval = (&ind->priormarkerdata[j].first)[side];
 	}
+	
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
-		ind->homozyg[j][i] = 0;
+		hzsum = ind->homozyg[j][i];
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3798,6 +3806,8 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			hzygcorred -= hzygval;
 			hzygcorred += hzygval / otherside;
 		}
+
+		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
@@ -3843,6 +3853,13 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		(&ind->markersure[j].first)[side] = intended;
 	}
 	ind->infprobs[j][side].clear();
+	if (side == 1)
+	{
+	  for (int i = 0; i < 2; i++)
+	    {
+	      ind->homozyg[j][i] = 0;
+	    }
+	}
 }
 
 struct relskewhmm
@@ -3883,8 +3900,8 @@ struct relskewhmm
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
-				s[0] *= 1e10;
-				s[1] *= 1e10;
+				s[0] *= 1e20;
+				s[1] *= 1e20;
 			}
 		};
 
@@ -3898,38 +3915,28 @@ struct relskewhmm
 			dotransitions(m);
 		}
 
-		// BW
+		// BW, but not really, emissions included everywhere
 		s = { 1, 1 };
-		relskewfwbw[endmarker - 1 - firstmarker][1] = s;
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
+			relskewfwbw[m - firstmarker + 1][1] = s;
 
-			halfstate nexts;
-			double n = ind->relhaplo[m];
-			for (int k = 0; k < 2; k++)
-			{
-				nexts[k] = s[k] * n + s[!k] * (1 - n);
-			}
-
-			s = nexts;
-
-			renormalizes();
-
-			relskewfwbw[m - firstmarker][1] = s;			
+			dotransitions(m);
+			renormalizes();			
 		}
 	}
 
-	double getweight(int m)
+	double getweight(int m, int dir)
 	{
 		int realm = m - firstmarker;
-		halfstate s = relskewfwbw[realm][0];
-		const halfstate& bws = relskewfwbw[realm][1];
+		halfstate s = relskewfwbw[realm][dir];
+		/*const halfstate& bws = relskewfwbw[realm][1];
 
 		for (int k = 0; k < 2; k++)
 		{
 			s[k] *= bws[k];
-		}
+		}*/
 
 		double sum = s[0] + s[1];
 		return s[1] / sum;
@@ -4016,12 +4023,12 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 					if (d == -1)
 					{
 						if (!j) continue;
-						otherval = relskews->getweight(j - 1);
+						otherval = relskews->getweight(j - 1, 0);
 					}
 					else
 					{
 						if (j + 1 >= markerposes.size()) continue;
-						otherval = relskews->getweight(j + 1);
+						otherval = relskews->getweight(j + 1, 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 
@@ -4821,12 +4828,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (g & (flag2ignore >> 1)) continue;
 
-							double skewfactor = 1;
+							double skewterm = 0;
 							for (int i = 0; i < TURNBITS; i++)
 							{
 								if (g & (1 << i))
 								{
-									skewfactor *= exp(skewterms[i]);
+									skewterm += skewterms[i];
 								}
 							}
 							aroundturner turn(g);
@@ -4843,7 +4850,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor - skewterm);
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
@@ -5011,7 +5018,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
 		for (int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-		  //		  if (m % 10) continue;
+ 		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(std::string("toul_out") + tid + ".txt");
