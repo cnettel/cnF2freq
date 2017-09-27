@@ -1726,7 +1726,6 @@ struct individ
 			int stepsize = 1;
 
 			bool willquickend = /*(turner.canquickend() && canquickend(startmark, stopdata))*/ stopdata.okstep(startmark + 1, endmark);
-			int genotype = stopdata.getgenotype(startmark);
 
 			if (willquickend)
 			{
@@ -3264,7 +3263,6 @@ void movehaplos(int i, int k, int marker)
 			double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 
-			double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
 			{
 			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
@@ -3712,8 +3710,6 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 	double limd1 = -1 - (nnn - 1.0) * orig;
 	double limd2 = (nnn - 1.0) * orig - nnn;
-
-	double lim = min(limn / limd1, limn / limd2);
 
 	intended = min((double)intended, 1.0 - epsilon);
 	intended = max((double)intended, epsilon);
@@ -4336,7 +4332,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	static int iter = 0;
 	iter++;
-
 
 	nsmtype nsm;
 
@@ -5140,7 +5135,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-10;
-					bool prevlow = false;
 
 					for (int p = chromstarts[c]; p < (int)chromstarts[c + 1]; p++)
 					{
@@ -5781,7 +5775,6 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 	}
 
 	int lastchrom = -1;
-	double lastpos = -1;
 	double basepos = 0;
 
 	// Walk over SNPs to create map info
@@ -5803,7 +5796,6 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 
 		markerposes.push_back(pos - basepos);
 		mapIndices.push_back(index);
-		lastpos = pos;
 		lastchrom = chrom;
 		hapmonomorphs.push_back(get<2>(snp) == get<3>(snp));
 	}
