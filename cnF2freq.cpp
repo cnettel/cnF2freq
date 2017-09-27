@@ -2381,13 +2381,13 @@ void readqtlmas14()
 		ind->lastinved.resize(chromstarts.size());
 		ind->lockstart.resize(chromstarts.size());
 
-		for (int i = 0; i < chromstarts.size(); i++)
+		for (size_t i = 0; i < chromstarts.size(); i++)
 		{
 			ind->lastinved[i] = -1;
 			ind->lockstart[i] = 0;
 		}
 
-		for (int i = 0; i < markerposes.size(); i++)
+		for (size_t i = 0; i < markerposes.size(); i++)
 		{
 			ind->haploweight[i] = 0.5;
 		}
@@ -2404,7 +2404,7 @@ void readqtlmas14()
 			break;
 		}
 
-		for (int i = 0; i < /*markerposes.size() - 2*/ 10031; i++)
+		for (unsigned int i = 0; i < /*markerposes.size() - 2*/ 10031; i++)
 		{
 			int a, b;
 			fscanf(ingeno, "%d %d", &a, &b);
@@ -2610,7 +2610,7 @@ void readhaploweights(FILE* in)
 		individ* ind = getind(indn, true);
 		double num1, num2;
 		int a, b;
-		for (int i = chromstarts[0]; i < chromstarts[1]; i++)
+		for (unsigned int i = chromstarts[0]; i < chromstarts[1]; i++)
 		{
 			fscanf(in, "%lf %d %d %lf", &num1, &a, &b, &num2);
 			ind->haploweight[i] = num1;
@@ -2705,7 +2705,7 @@ void readhaploweights(FILE* in)
 
 					fprintf(indgrid, " %d", ind->genotypegrid[i]);
 				}
-				for (int marker = 0; marker < chromstarts[1]; marker++)
+				for (unsigned int marker = 0; marker < chromstarts[1]; marker++)
 				{
 					fprintf(indmarkers, " %d %d", ind->markerdata[marker].first.value(), ind->markerdata[marker].second.value());
 				}
@@ -3096,7 +3096,7 @@ void resizecaches()
 	// Some heaps are not properly synchronized. Putting a critical section here makes the operations not safe,
 	// but *safer*.
 #pragma omp critical(uglynewhack)
-	for (int t = 0; t < NUMSHIFTS; t++)
+	for (unsigned int t = 0; t < NUMSHIFTS; t++)
 	{
 #if !DOFB 
 		factors[t].resize(markerposes.size());
@@ -3944,7 +3944,7 @@ struct relskewhmm
 };
 
 
-void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hitnnn)
+void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 {
 	vector<bool> allhalf;
 	vector<bool> anyinfo;
@@ -3955,7 +3955,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 	allhalf.resize(chromstarts.size());
 	cleared.resize(chromstarts.size());
 	nudgeme.resize(chromstarts.size());
-	for (int k = 0; k < chromstarts.size(); k++)
+	for (size_t k = 0; k < chromstarts.size(); k++)
 	{
 		anyinfo[k] = false;
 		allhalf[k] = true;
@@ -3963,13 +3963,13 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 		nudgeme[k] = -1;
 	}
 
-	cno = -1;
+	unsigned int cno = (unsigned int) -1;
 	double prevval = 0.5;
 	std::unique_ptr<relskewhmm> relskews;
 
 	for (size_t j = 0; j < ind->haplocount.size(); j++)
 	{
-		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
+		while (cno + 1 < (int) chromstarts.size() && j >= chromstarts[cno + 1])
 		{
 			cno++;
 			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], dous[j]);
@@ -5254,7 +5254,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
-					updatehaploweights(cno, ind, out, hitnnn);					
+					updatehaploweights(ind, out, hitnnn);					
 				}
 				parentswapnegshifts(nsm);
 
