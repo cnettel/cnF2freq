@@ -2651,7 +2651,7 @@ void readhaploweights(FILE* in)
 
 				if (gen)
 				{
-					for (int marker = 0; marker < chromstarts[1]; marker++)
+					for (unsigned int marker = 0; marker < chromstarts[1]; marker++)
 					{
 						if (myrand(2))
 						{
@@ -3969,7 +3969,7 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 
 	for (size_t j = 0; j < ind->haplocount.size(); j++)
 	{
-		while (cno + 1 < (int) chromstarts.size() && j >= chromstarts[cno + 1])
+		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
 		{
 			cno++;
 			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], dous[j]);
@@ -5673,7 +5673,7 @@ void domerlinind(FILE* pedfile, individ* ind)
 	}
 
 	fprintf(pedfile, "%d\t%d\t%d\t%d\t%d", family, ind->n, pn[0], pn[1], ind->sex + 1);
-	for (int k = 0; k < chromstarts[1]; k++)
+	for (unsigned int k = 0; k < chromstarts[1]; k++)
 	{
 		fprintf(pedfile, "\t%d\t%d", ind->markerdata[k].first.value(), ind->markerdata[k].second.value());
 	}
