@@ -3265,13 +3265,6 @@ void movehaplos(int i, int k, int marker)
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 
 			double intended = (b1 - b2) / min(reltree[k]->haploweight[marker], 1 - reltree[k]->haploweight[marker]);
-			//intended -= reltree[k]->haploweight[marker];
-
-			bool neg = intended < 0;
-
-			//intended /= sqrt(fabs(intended) + 1.0);
-			// if (neg) intended = -intended;
-
 			{
 			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
@@ -3334,7 +3327,6 @@ void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
 			double relval = fabs(k - ind->relhaplo[marker]);
 			double sum = 0;
 			double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
-			double lo = term;
 			sum += term;
 
 			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
@@ -3765,7 +3757,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
-	double sum = 0, hzsum = 0;
+	double sum = 0;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3782,7 +3774,6 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
-		hzsum = ind->homozyg[j][i];
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3964,7 +3955,6 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 	}
 
 	unsigned int cno = (unsigned int) -1;
-	double prevval = 0.5;
 	std::unique_ptr<relskewhmm> relskews;
 
 	for (size_t j = 0; j < ind->haplocount.size(); j++)
@@ -4013,7 +4003,6 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 				val = 1;
 			}
 
-			double baseterm = log(ind->haploweight[j] / (1 - ind->haploweight[j]));
 			double relskewterm = 0;
 			if (RELSKEWS)
 			{
@@ -4332,25 +4321,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	vector<vector<std::array<float, 2> > > realgeno;
 
 	realgeno.resize(dous.size());
-
-	for (int a = 1; a <= 20; a++)
-	{
-		individ* ind2 = getind(a);
-		/*	    ind2->semishift.resize(5000);
-		for (int q = 0; q < 5000; q++)
-		{
-		for (int z = 0; z < 40; z++)
-		{
-		for (int p = 0; p < 2; p++)
-		{
-		for (int r = 0; r < 2; r++)
-		{
-		ind2->semishift[q][p * 2 + r][z] = (z == (a - 1) * 2 + p);
-		}
-		}
-		}
-		*/
-	}
 
 	for (size_t j = 0; j < dous.size(); j++)
 	{
@@ -4784,8 +4754,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							for (int t = 0; t < 4; t++)
 							{
-								int tbase = (t >> 1) << 1;
-
 								double dval = (mwval[t] / acc3 - infosum[t / 2]) /*/ summw*/
 									* fabs(((t & 1) ? 0.0 : 1.0) - recprob[t / 2])
 									/** (-1 + (t & 1) * 2)*/;
@@ -5314,10 +5282,8 @@ void readhaplodata(int innum)
 	char tlf[255];
 	sprintf(tlf, "qtlmas14haplo_%d", innum);
 	FILE* in = fopen(tlf, "r");
-	bool inind = false;
 	bool inact = false;
 	individ* ind = 0;
-	int mcc = 0;
 	int mnum;
 
 	while (fgets(tlf, 255, in))
@@ -6191,7 +6157,6 @@ void compareimputedoutput(istream& filteredOutput)
 void readhaplodata(FILE* in, int swap)
 {
 	char tlf[255];
-	bool inind = false;
 	bool inact = false;
 	individ* ind = 0;
 	int mnum = 0;
@@ -6522,7 +6487,6 @@ int main(int argc, char* argv[])
 		deserialize(deserializationFile);
 		std::cout << "deserialize finished." << std::endl;
 	}
-	int chromnum;
 
 	if (samplefilename != "" && outputhapfilename != "")
 	  {
