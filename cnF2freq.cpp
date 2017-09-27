@@ -1703,7 +1703,7 @@ struct individ
 
 		while (stopdata.okstep(startmark, newstart + 1))
 		{
-			int stepsize;
+			unsigned int stepsize;
 			for (stepsize = 1; stepsize < (endmark - newstart + allowfull) &&
 				stopdata.okstep(newstart, newstart + stepsize); stepsize *= 2)
 			{
@@ -4885,11 +4885,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								std::bitset<16> bits(g);
 								vector<int> claus;
-								int cind;
 								int shiftcount = 0;
 								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
-										cind = cands[b];
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
 										if (bits[b]) {
 											claus.push_back(-cands[b]);
