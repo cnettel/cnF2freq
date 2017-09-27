@@ -223,7 +223,7 @@ public:
 		MWTYPE result;
 		result.resize(l.size());
 
-		for (int i = 0; i < l.size(); i++)
+		for (size_t i = 0; i < l.size(); i++)
 		{
 			for (int j = 0; j < 5; j++)
 			{
@@ -243,7 +243,7 @@ public:
 		vector<T> result;
 		result.resize(l.size());
 
-		for (int i = 0; i < l.size(); i++)
+		for (size_t i = 0; i < l.size(); i++)
 		{
 			result[i] = l[i] + r[i];
 		}
@@ -769,7 +769,7 @@ struct clause
 		string s = boost::lexical_cast<std::string>(weight);
 		//std::stringstream ints;
 		//std::copy(cInds.begin(), cInds.end(), std::ostream_iterator<int>(ints, " "));
-		for (int i = 0; i < cinds.size(); i++) {
+		for (size_t i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
 				s = s + " " + boost::lexical_cast<std::string>(cinds[i]);
 			}
@@ -780,7 +780,7 @@ struct clause
 
 	string clausetostring() const {
 		string s = "";
-		for (int i = 0; i < cinds.size(); i++) {
+		for (size_t i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
 				s = s + " " + boost::lexical_cast<std::string>(cinds[i]);
 			}
@@ -874,11 +874,11 @@ struct individ
 		if (pars[0] && pars[0]->arerelated(b, stack, gens + 1)) return true;
 		if (pars[1] && pars[1]->arerelated(b, stack, gens + 1)) return true;
 
-		for (int i = 0; i < kids.size(); i++)
+		for (individ* i : kids.size())
 		{
-			for (int j = 0; j < b->kids.size(); j++)
+			for (individ* j : b->kids())
 			{
-				if (b->kids[j] == kids[i]) return true;
+				if (i == j) return true;
 			}
 		}
 		//stack.pop_back();
@@ -2167,7 +2167,7 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 			ind->relhaplo.resize(markerposes.size());
 		}
 
-		for (int x = 0; x < markerposes.size(); x++)
+		for (size_t x = 0; x < markerposes.size(); x++)
 		{
 			ind->markerdata[x] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 			ind->haplobase[x] = 0;
@@ -2185,7 +2185,7 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		ind->lastinved.resize(chromstarts.size());
 		ind->lockstart.resize(chromstarts.size());
 
-		for (int i = 0; i < chromstarts.size(); i++)
+		for (size_t i = 0; i < chromstarts.size(); i++)
 		{
 			ind->lastinved[i] = -1;
 			ind->lockstart[i] = 0;
@@ -2577,12 +2577,12 @@ void readmarkerdata(FILE* in)
 		ind->haploweight.resize(markerposes.size());
 		ind->negshift.resize(markerposes.size());
 
-		for (unsigned int i = 0; i < markerposes.size(); i++)
+		for (size_t i = 0; i < markerposes.size(); i++)
 		{
 			ind->haploweight[i] = 0.5;
 		}
 
-		for (unsigned int i = 0; i < markertranslation.size(); i++)
+		for (size_t i = 0; i < markertranslation.size(); i++)
 		{
 			int a, b;
 			if (fscanf(in, "%d %d", &a, &b) != 2)
@@ -2836,7 +2836,7 @@ void postmarkerdata()
 			{
 				generation++;
 
-				for (int g = 0; g < ind->markerdata.size(); g++)
+				for (size_t g = 0; g < ind->markerdata.size(); g++)
 				{
 					ind->fixparents(g, latephase);
 				}
@@ -2852,7 +2852,7 @@ void postmarkerdata()
 			// Only run for sex 2, tailored to half sibships
 			if (!ind->sex) continue;
 
-			for (int g = 0; g < (int)ind->markervals.size(); g++)
+			for (size_t g = 0; g < ind->markervals.size(); g++)
 			{
 				//				if (g == 1) continue;
 
@@ -2913,7 +2913,7 @@ void postmarkerdata()
 
 			}
 
-			for (int g = 0; g < (int)ind->markervals.size(); g++)
+			for (size_t g = 0; g < ind->markervals.size(); g++)
 			{
 				if (ind->markerdata[g].first == sexmarkerval) {
 					ind->markerdata[g] = make_pair(ind->markerdata[g].second, ind->markerdata[g].first);
@@ -2948,7 +2948,7 @@ void postmarkerdata()
 			// Lock the haplotype (in an arbitrary manner) for the first marker in each linkage groupfl
 			// Propagation would be more efficient if we locked the mid-position (which should really be determined in cM)
 			// Doing so would be much more opaque, though...
-			for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
+			for (size_t i = 0; i < chromstarts.size() - 1; i++)
 			{
 				//if (!ind->pars[0] && !ind->pars[1])
 					lockhaplos(ind, i);
@@ -3310,7 +3310,7 @@ void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
     {
       i = 0;
     }
-	for (int i = 0; i < skewterms.size(); i++)
+	for (size_t i = 0; i < skewterms.size(); i++)
 	{
 		individ* ind = reltreeordered[i];
 		if (!ind) continue;
@@ -3967,7 +3967,7 @@ void updatehaploweights(int cno, individ * ind, FILE * out, std::atomic_int& hit
 	double prevval = 0.5;
 	std::unique_ptr<relskewhmm> relskews;
 
-	for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+	for (size_t j = 0; j < ind->haplocount.size(); j++)
 	{
 		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
 		{
@@ -4288,7 +4288,7 @@ void parentswapnegshifts(nsmtype& nsm)
 							swap(inds[0]->markersure[m], inds[1]->markersure[m]);
 						}
 
-						for (int k = 0; k < inds[z]->kids.size(); k++)
+						for (size_t k = 0; k < inds[z]->kids.size(); k++)
 						{
 							// ONLY inverting those that share both parents
 							// This used to be that we would invert every child, but avoid inverting those that share both parents
@@ -4352,7 +4352,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		*/
 	}
 
-	for (unsigned int j = 0; j < dous.size(); j++)
+	for (size_t j = 0; j < dous.size(); j++)
 	{
 		if (dous[j]->markerdata.size())
 		{
@@ -4378,7 +4378,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		ind->kids.clear();
 		if (!ind || !ind->haplocount.size()) continue;
 
-		for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+		for (size_t j = 0; j < ind->haplocount.size(); j++)
 		{
 			ind->haplocount[j] = 0.0f;
 			ind->haplobase[j] = 0.0f;
@@ -4394,7 +4394,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	}
 
-	for (int j = 0; j < (int)dous.size(); j++)
+	for (size_t j = 0; j < dous.size(); j++)
 	{
 
 		for (int i = 0; i < 2; i++)
@@ -4417,7 +4417,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	vector<vector<clause>> toulInput;
 	toulInput.resize(markerposes.size()); //EBBA
 
-	for (unsigned int i = 0; i < chromstarts.size() - 1; i++)
+	for (size_t i = 0; i < chromstarts.size() - 1; i++)
 	{
 		//printf("Chromosome %d\n", i + 1);
 
@@ -4430,7 +4430,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		long long maxweight = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
-		for (int j = 0; j < (int)dous.size(); j++)
+		for (size_t j = 0; j < dous.size(); j++)
 		{
 #ifdef F2MPI
 			if (j % world.size() != world.rank()) continue;
@@ -4469,7 +4469,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				std::tie(shiftignore, flag2ignore) = fixtrees(j);
 
 				bool skipsome = false;
-				for (int u = 0; u < reltree.size() && !skipsome; u++)
+				for (size_t u = 0; u < reltree.size() && !skipsome; u++)
 				{
 					for (int p = 0; p < 2; p++)
 					{
@@ -4993,7 +4993,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp critical(update)
 						{
 #pragma ivdep
-							for (int k = 0; k < (int)reltree.size(); k++)
+							for (size_t k = 0; k < reltree.size(); k++)
 							{
 								int i = reltree[k]->n;
 								moveinfprobs(i, k, marker, sum);
@@ -5056,7 +5056,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				minsumweight = sumweight;
 				//vector<int> neg;
 				bestcands.clear();
-				for (int g = 0; g<tf.size(); g++) {
+				for (size_t g = 0; g<tf.size(); g++) {
 					if (tf[g]) {
 					  bestcands.emplace(getind(g + 1), sumweight, m);
 						//neg.push_back(inds[g]);
@@ -5080,7 +5080,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		bestcands.clear(); // uneccesary, just for clarity
 						   //End of Ebbas code
 
-		for (unsigned int j = 0; j < outqueue.size(); j++)
+		for (size_t j = 0; j < outqueue.size(); j++)
 		{
 			outqueue[j].push_back(0);
 			if (out && printalot) fprintf(out, "%s:%d\n", dous[j]->name.c_str(), i + 1);
@@ -5168,7 +5168,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				// Perform the inversions indicated by the negshift data, at most a single one per individual
 				// and chromosome, maybe 0.
-				if (false) for (int c = 0; c < (int)chromstarts.size() - 1; c++)
+				if (false) for (size_t c = 0; c < chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-10;
@@ -5243,7 +5243,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					int cno = 0;
 					if (DOINFPROBS)
-					for (unsigned int j = 0; j < ind->haplocount.size(); j++)
+					for (size_t j = 0; j < ind->haplocount.size(); j++)
 					{
 						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 
@@ -5272,7 +5272,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
-				for (int c = 0; c < (int) chromstarts.size() - 1; c++)
+				for (size_t c = 0; c < (int) chromstarts.size() - 1; c++)
 				  {
 				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 
@@ -5431,7 +5431,7 @@ void readalphaped(FILE* in)
 void readalphadata(FILE* in)
 {
 	individ* haplo = getind("haplo");
-	for (int x = 0; x < markerposes.size(); x++)
+	for (size_t x = 0; x < markerposes.size(); x++)
 	{
 		haplo->markerdata[x] = make_pair(sexmarkerval, sexmarkerval);
 		haplo->markersure[x] = make_pair(0, 0);
@@ -5444,7 +5444,7 @@ void readalphadata(FILE* in)
 		bool doublehaplo = (ime->pars[1] == getind("haplo"));
 		ime->empty = false;
 		int data;
-		for (int x = 0; x < markerposes.size(); x++)
+		for (size_t x = 0; x < markerposes.size(); x++)
 		{
 			char datastr[255];
 			fscanf(in, "%s", datastr);
@@ -5647,7 +5647,7 @@ void readmerlinped(FILE* pedfile)
 		}
 
 		int a, b;
-		for (int k = 0; k < markerposes.size(); k++)
+		for (size_t k = 0; k < markerposes.size(); k++)
 		{
 			ind->haploweight[k] = 0.5;
 			fscanf(pedfile, "%d %d", &a, &b);
@@ -5870,7 +5870,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 
 	auto dohaploweight = [] (individ* ind) { return (ind->gen < 2); };
 
-	for (int i = 0; i < snpData.size(); i++)
+	for (size_t i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<4>(snpData[i]);
 		for (int j = 0; j < sampleInds.size(); j++)
@@ -5896,9 +5896,9 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 
 	const double padding = 0.01;
 	double unit = 1.0 / (hapsFile.size() + padding);
-	for (int j = 0; j < sampleInds.size(); j++)
+	for (size_t j = 0; j < sampleInds.size(); j++)
 	  {
-	    for (int i = 0; i < snpData.size(); i++)
+	    for (size_t i = 0; i < snpData.size(); i++)
 	      {
 		if (RELSKEWS)
 		  {
@@ -5908,7 +5908,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 	      }
 	  }
 
-	for (int k = 1; k < hapsFile.size(); k++)
+	for (size_t k = 1; k < hapsFile.size(); k++)
 	{
 		vector<int> phases;
 		vector<int> origPhases;
@@ -5919,10 +5919,10 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 		*hapsFile[k] >> std::noskipws;
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
-		for (int i = 0; i < snpData.size(); i++)
+		for (size_t i = 0; i < snpData.size(); i++)
 		{
 			const vector<int>& markers = get<4>(snpData[i]);
-			for (int j = 0; j < sampleInds.size(); j++)
+			for (size_t j = 0; j < sampleInds.size(); j++)
 			{
 				int oldPhase = phases[j];
 				int matchNum;
@@ -5968,7 +5968,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 		}
 	}
 
-	for (int j = 0; j < sampleInds.size(); j++)
+	for (size_t j = 0; j < sampleInds.size(); j++)
 	{
 		sampleInds[j]->priormarkerdata = sampleInds[j]->markerdata;
 		sampleInds[j]->priormarkersure = sampleInds[j]->markersure;
@@ -6064,10 +6064,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		cout << ind->name << " " << indArray[indArray.size()-1] << std::endl;
 	}
 
-	for (int i = 0; i < markerposes.size(); i++)
+	for (size_t i = 0; i < markerposes.size(); i++)
 	{
 		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
-		for (int j = 0; j < dous.size(); j++)
+		for (size_t j = 0; j < dous.size(); j++)
 		{
 		  /*if (!(
 			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
@@ -6349,7 +6349,7 @@ void deserialize(istream& stream)
 			{
 				int oldphase = 0;
 				int switches = 0;
-				for (int i = 0; i < markerposes.size(); i++)
+				for (size_t i = 0; i < markerposes.size(); i++)
 				{
 					std::getline(stream, line);
 					std::tuple<double, int, int, double, double, double> output;
