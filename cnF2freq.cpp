@@ -874,9 +874,9 @@ struct individ
 		if (pars[0] && pars[0]->arerelated(b, stack, gens + 1)) return true;
 		if (pars[1] && pars[1]->arerelated(b, stack, gens + 1)) return true;
 
-		for (individ* i : kids.size())
+		for (individ* i : kids)
 		{
-			for (individ* j : b->kids())
+			for (individ* j : b->kids)
 			{
 				if (i == j) return true;
 			}
@@ -4263,7 +4263,7 @@ void parentswapnegshifts(nsmtype& nsm)
 		{
 			bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
 			bestshift[allnegshifts[k].second.get<1>()] = allnegshifts[k].first;
-			int c = 0;
+			unsigned int c = 0;
 			while (c < chromstarts.size() && (chromstarts[c] <= allnegshifts[k].second.get<3>()))
 			{
 				c++;
@@ -5100,7 +5100,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			&& !full)
 		{
 			markerweight = markerweight2;
-			for (int q = chromstarts[i]; q < chromstarts[i + 1] - 2; q++)
+			for (unsigned int q = chromstarts[i]; q < chromstarts[i + 1] - 2; q++)
 			{
 				double dist = markerposes[q + 1] - markerposes[q];
 				if (dist > 0)
@@ -5640,7 +5640,7 @@ void readmerlinped(FILE* pedfile)
 		ind->lastinved.resize(chromstarts.size());
 		ind->lockstart.resize(chromstarts.size());
 
-		for (int i = 0; i < chromstarts.size(); i++)
+		for (size_t i = 0; i < chromstarts.size(); i++)
 		{
 			ind->lastinved[i] = -1;
 			ind->lockstart[i] = 0;
@@ -5873,7 +5873,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<4>(snpData[i]);
-		for (int j = 0; j < sampleInds.size(); j++)
+		for (size_t j = 0; j < sampleInds.size(); j++)
 		{
 		  float sureVal = 0;
 		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
@@ -6148,7 +6148,7 @@ void compareimputedoutput(istream& filteredOutput)
 			filteredOutput >> name;
 			while (name == "--");
 			  
-			for (int i = 0; i < chromstarts[1]; i++)
+			for (unsigned int i = 0; i < chromstarts[1]; i++)
 			{
 				double val[3];
 				int maxval = 0;
