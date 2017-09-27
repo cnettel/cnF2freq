@@ -4817,7 +4817,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int g = 0; g < NUMTURNS; g++)
 						{
-							for (int s = 0; s < NUMSHIFTS; s++)
+							for (unsigned int s = 0; s < NUMSHIFTS; s++)
 							{
 								rawvals[g][s] = -1;
 								rawervals[g][s] = -1;
@@ -5241,7 +5241,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					fprintf(out, "SKEWNESS PASS: %d\n", i);
 					fflush(out);
 
-					int cno = 0;
+					unsigned int cno = 0;
 					if (DOINFPROBS)
 					for (size_t j = 0; j < ind->haplocount.size(); j++)
 					{
@@ -5272,7 +5272,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
-				for (size_t c = 0; c < (int) chromstarts.size() - 1; c++)
+				for (size_t c = 0; c < chromstarts.size() - 1; c++)
 				  {
 				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 
