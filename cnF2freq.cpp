@@ -2956,7 +2956,7 @@ void postmarkerdata()
 	}
 }
 
-typedef boost::tuple<individ*, double, int> negshiftcand;
+typedef boost::tuple<individ*, double, unsigned int> negshiftcand;
 struct inferiorrelated
 {
 	negshiftcand ourtuple;
@@ -4604,8 +4604,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									// shift mode not included, this is the "real" f2n, indicating what value
 									// in the marker pair is used, not the strand phase (strand phase is flag2 xored
 									// with the other stuff)
-									int f2n = ((flag2 /*^ shiftflagmode*/)& 1);
-
 
 									val = exp(val);
 									int marker = -q - 1000;
