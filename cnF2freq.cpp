@@ -1,5 +1,5 @@
 // cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
-// 2008-2016
+// 2008-2017
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
 // algorithm. This reduces mamoery requirements and speeds up imputation. A lot. Still
@@ -3736,7 +3736,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
   std::array<double, 1> state{orig};
-  ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
+  ode::integrate_const(ode::controlled_runge_kutta<ode::runge_kutta4< std::array<double, 1> > >(),
 		       [&] (std::array<double, 1>& in,
 			    std::array<double, 1>& out, double time)
 		       {
