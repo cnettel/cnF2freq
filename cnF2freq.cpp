@@ -3736,7 +3736,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
   std::array<double, 1> state{orig};
-  ode::integrate_const(ode::controlled_runge_kutta<ode::runge_kutta4< std::array<double, 1> > >(),
+  ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
 		       [&] (std::array<double, 1>& in,
 			    std::array<double, 1>& out, double time)
 		       {
