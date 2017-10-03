@@ -99,7 +99,7 @@ namespace ode = boost::numeric::odeint;
 #include <bitset>
 #include <map>
 #include <float.h>
-#include <numeric> // use these libraries
+#include <numeric>
 #include <type_traits>
 
 // Will be in C++17...
@@ -119,6 +119,7 @@ using namespace boost;
 using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
+
 #define flat_map boost::container::flat_map
 
 
@@ -301,6 +302,8 @@ int upflagit(int flag, int parnum, int genwidth)
 }
 
 struct individ;
+
+std::string tmppath{ "." };
 
 int generation = 1;
 int shiftflagmode;
@@ -4979,9 +4982,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
  		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
-			std::string toulin(std::string("toul_in") + tid + ".wcnf");
-			std::string toulout(std::string("toul_out") + tid + ".txt");
-			std::string sol(std::string("sol") + tid);			
+			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
+			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
+			std::string sol(tmppath + "/" + std::string("sol") + tid);			
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
@@ -6387,6 +6390,7 @@ int main(int argc, char* argv[])
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
 		("output", po::value<string>(&outputfilename), "Output file name")
+		("tmppath", po::value<string>(&tmppath), "Directory for toulbar temp files")
 		("capmarker", po::value<int>()->notifier([&](int cap)
 	{
 		markerposes.resize(cap);
