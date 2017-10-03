@@ -3782,24 +3782,24 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		{
 			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
 		}
-
+		
 		double hzygcorred = probpair.second;
 		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
-		{
-			MarkerVal copymv = probpair.first;
-			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
-				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
-			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
-			hzygcorred -= hzygval;
-			hzygcorred += hzygval / otherside;
-		}
-
+		  {
+		    MarkerVal copymv = probpair.first;
+		    double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
+					     ? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
+		    double hzygval = ind->homozyg[j][probpair.first.value() - 1];
+		    hzygcorred -= hzygval / probpair.second;
+		    hzygcorred += hzygval / otherside;
+		  }
 		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
-			double curprob = in[0];
-			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+		  double curprob = in[0];
+		  double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+
 			d += log(1 / curprob - 1); // Entropy term
 
 			if (priorval != UnknownMarkerVal)
