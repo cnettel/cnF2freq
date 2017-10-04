@@ -3686,7 +3686,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 				}*/
 
 				ind->markerdata[j] = make_pair(bestvals[0], bestvals[1]);
-				ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
+ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
 			}
 		}
 		for (int a = 0; a < 2; a++)
@@ -3718,14 +3718,14 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 	if (diff > limn / limd1)
 	{
-	  if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn/limd1, intended, orig);
+		if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn / limd1, intended, orig);
 		intended = orig + limn / limd1;
 		hitnnn++;
 	}
 
 	if (diff < -limn / limd2)
 	{
-	  if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn/limd2, intended, orig);
+		if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn / limd2, intended, orig);
 		intended = orig - limn / limd2;
 		hitnnn++;
 	}
@@ -3735,18 +3735,18 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
-  std::array<double, 1> state{orig};
-  ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
-		       [&] (std::array<double, 1>& in,
-			    std::array<double, 1>& out, double time)
-		       {
-			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
-			 else
-			   gradient(in, out, time);
-		       }, state,
-		       0., scalefactor, scalefactor * 0.01);
+	std::array<double, 1> state{ orig };
+	ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
+		[&](std::array<double, 1>& in,
+			std::array<double, 1>& out, double time)
+	{
+		if (in[0] < 1e-9 || in[0] > 1 - 1e-9) out[0] = 0;
+		else
+			gradient(in, out, time);
+	}, state,
+		0., scalefactor, scalefactor * 0.01);
 
-  return caplogitchange(state[0], orig, epsilon, hitnnn);
+	return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
@@ -3766,11 +3766,29 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	{
 		priorval = (&ind->priormarkerdata[j].first)[side];
 	}
-	
+
 	for (int i = 0; i < 2; i++)
 	{
 		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 	}
+
+	double hzygcorrsum = 0;
+	for (auto probpair : ind->infprobs[j][side])
+	{
+		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
+		{
+			double hzygcorrterm = 0;
+			MarkerVal copymv = probpair.first;
+			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
+				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
+			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
+			hzygcorrterm -= hzygval / probpair.second;
+			hzygcorrterm += hzygval / otherside;
+
+			hzygcorrsum += hzygcorrterm * (probpair.first.value() == 1  ? 1 : -1);
+		}
+	}
+
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
@@ -3781,19 +3799,13 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		if (curmarker != UnknownMarkerVal)
 		{
 			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
-		}
+		}		
 
 		double hzygcorred = probpair.second;
 		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
 		{
-			MarkerVal copymv = probpair.first;
-			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
-				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
-			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
-			hzygcorred -= hzygval;
-			hzygcorred += hzygval / otherside;
+			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
 		}
-
 		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
