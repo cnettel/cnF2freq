@@ -4980,7 +4980,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 #pragma omp parallel for schedule(dynamic,1)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
-		  // 		  if (m % 10) continue;
+ 		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
