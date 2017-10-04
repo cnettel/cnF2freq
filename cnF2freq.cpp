@@ -1,5 +1,5 @@
 // cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
-// 2008-2016
+// 2008-2017
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
 // algorithm. This reduces mamoery requirements and speeds up imputation. A lot. Still
@@ -99,7 +99,7 @@ namespace ode = boost::numeric::odeint;
 #include <bitset>
 #include <map>
 #include <float.h>
-#include <numeric> // use these libraries
+#include <numeric>
 #include <type_traits>
 
 // Will be in C++17...
@@ -119,6 +119,7 @@ using namespace boost;
 using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
+
 #define flat_map boost::container::flat_map
 
 
@@ -301,6 +302,8 @@ int upflagit(int flag, int parnum, int genwidth)
 }
 
 struct individ;
+
+std::string tmppath{ "." };
 
 int generation = 1;
 int shiftflagmode;
@@ -3735,6 +3738,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
+<<<<<<< HEAD
 	std::array<double, 1> state{ orig };
 	ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
 		[&](std::array<double, 1>& in,
@@ -3747,6 +3751,20 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		0., scalefactor, scalefactor * 0.01);
 
 	return caplogitchange(state[0], orig, epsilon, hitnnn);
+=======
+  std::array<double, 1> state{orig};
+  ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
+		       [&] (std::array<double, 1>& in,
+			    std::array<double, 1>& out, double time)
+		       {
+			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
+			 else
+			   gradient(in, out, time);
+		       }, state,
+		       0., scalefactor, scalefactor * 0.01);
+
+  return caplogitchange(state[0], orig, epsilon, hitnnn);
+>>>>>>> 735aa8962d44fe466c3ed28997626e6e53a88be3
 }
 
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
@@ -3810,8 +3828,9 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
-			double curprob = in[0];
-			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+		  double curprob = in[0];
+		  double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+
 			d += log(1 / curprob - 1); // Entropy term
 
 			if (priorval != UnknownMarkerVal)
@@ -4991,9 +5010,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
  		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
-			std::string toulin(std::string("toul_in") + tid + ".wcnf");
-			std::string toulout(std::string("toul_out") + tid + ".txt");
-			std::string sol(std::string("sol") + tid);			
+			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
+			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
+			std::string sol(tmppath + "/" + std::string("sol") + tid);			
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
@@ -6399,6 +6418,7 @@ int main(int argc, char* argv[])
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
 		("output", po::value<string>(&outputfilename), "Output file name")
+		("tmppath", po::value<string>(&tmppath), "Directory for toulbar temp files")
 		("capmarker", po::value<int>()->notifier([&](int cap)
 	{
 		markerposes.resize(cap);
