@@ -3738,20 +3738,6 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
-<<<<<<< HEAD
-	std::array<double, 1> state{ orig };
-	ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
-		[&](std::array<double, 1>& in,
-			std::array<double, 1>& out, double time)
-	{
-		if (in[0] < 1e-9 || in[0] > 1 - 1e-9) out[0] = 0;
-		else
-			gradient(in, out, time);
-	}, state,
-		0., scalefactor, scalefactor * 0.01);
-
-	return caplogitchange(state[0], orig, epsilon, hitnnn);
-=======
   std::array<double, 1> state{orig};
   ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
 		       [&] (std::array<double, 1>& in,
@@ -3764,7 +3750,6 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		       0., scalefactor, scalefactor * 0.01);
 
   return caplogitchange(state[0], orig, epsilon, hitnnn);
->>>>>>> 735aa8962d44fe466c3ed28997626e6e53a88be3
 }
 
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
