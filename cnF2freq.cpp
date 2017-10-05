@@ -994,7 +994,7 @@ struct individ
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
 
-		const bool attopnow = (genwidth == HAPLOTYPING) || founder;
+		const bool attopnow = !(update & HOMOZYGOUS) && ((genwidth == HAPLOTYPING) || founder);
 
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
@@ -3772,7 +3772,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (int i = 0; i < 2; i++)
 	{
-		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+	  /*if (ind->n == 587)*/ fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 	}
 
 	double hzygcorrsum = 0;
@@ -3785,7 +3785,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
 				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
 			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
-			hzygcorrterm -= hzygval / probpair.second;
+			hzygcorrterm -= hzygval / probpair.second * sum;
 			hzygcorrterm += hzygval / otherside;
 
 			hzygcorrsum += hzygcorrterm * (probpair.first.value() == 1  ? 1 : -1);
@@ -3809,7 +3809,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		{
 			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
 		}
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+		/*if (ind->n == 587)*/ fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
@@ -3844,7 +3844,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		/*if (ind->n == 3)*/ fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	// We might have stats for empty inds, but those stats are incomplete
@@ -6508,6 +6508,9 @@ int main(int argc, char* argv[])
 	{
 		out = fopen(outputfilename.c_str(), "w");
 	}
+	dous.resize(2);
+	dous[0] = getind(587);
+	dous[1] = getind(593);
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
