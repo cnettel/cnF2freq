@@ -3757,6 +3757,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
 	double sum = 0;
+	bool doprint = ind->n == 587;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3772,7 +3773,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (int i = 0; i < 2; i++)
 	{
-	  /*if (ind->n == 587)*/ fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+	  if (doprint) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 	}
 
 	double hzygcorrsum = 0;
@@ -3795,7 +3796,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	  if (doprint) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 		double curprob = 0.5;
 		auto curmarker = (&ind->markerdata[j].first)[side];
 
@@ -3809,7 +3810,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		{
 			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
 		}
-		/*if (ind->n == 587)*/ fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
@@ -3844,7 +3845,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		/*if (ind->n == 3)*/ fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (doprint) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	// We might have stats for empty inds, but those stats are incomplete
@@ -6508,9 +6509,6 @@ int main(int argc, char* argv[])
 	{
 		out = fopen(outputfilename.c_str(), "w");
 	}
-	dous.resize(2);
-	dous[0] = getind(587);
-	dous[1] = getind(593);
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
