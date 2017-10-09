@@ -5208,8 +5208,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 
 				}
-			}
 #endif
+			}
 
 #ifdef F2MPI
 			if (!world.rank())
