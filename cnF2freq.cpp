@@ -4396,8 +4396,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	// Create a vector where each element corresponds to a marker and
 	//contains a referense to a vector containing all the clauses for said marker
 	//EBBA also: Here starts the parallels, investigate names
+#if DOTOULBAR
 	vector<vector<clause>> toulInput;
 	toulInput.resize(markerposes.size()); //EBBA
+#endif
 
 	for (size_t i = 0; i < chromstarts.size() - 1; i++)
 	{
@@ -4859,6 +4861,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (!sumnegval[t]) sumnegval[t] = 1;
 						}
 
+#if DOTOULBAR
 						// Changed for EBBA's degree project
 						// Reminder: NUMTURNS is a bitflag with relevant individuals that should be changed
 						// remaining individuals should not be changed (= negative numbers)
@@ -4943,6 +4946,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 							}
 						}
+#else
+						updatenegshifts(validg, shifts, shiftend, shiftignore, rawvals, j, marker);
+#endif
 					}
 
 					reporter.report(outqueue[j]);
@@ -4989,9 +4995,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
+#if DOTOULBAR
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+
 #pragma omp parallel for schedule(dynamic,1)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
  		  if (m % 10) continue;
@@ -5054,7 +5062,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 		negshiftcands[i] = bestcands;
 		bestcands.clear(); // uneccesary, just for clarity
-						   //End of Ebbas code
+						   //End of Ebba's code
+#endif
 
 		for (size_t j = 0; j < outqueue.size(); j++)
 		{
@@ -5142,9 +5151,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				if (/*ind->pars[0] || ind->pars[1] || */!ind->haplocount.size()) continue;
 
+#if !DOTOULBAR				
 				// Perform the inversions indicated by the negshift data, at most a single one per individual
 				// and chromosome, maybe 0.
-				if (false) for (size_t c = 0; c < chromstarts.size() - 1; c++)
+				for (size_t c = 0; c < chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-10;
@@ -5199,6 +5209,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				}
 			}
+#endif
 
 #ifdef F2MPI
 			if (!world.rank())

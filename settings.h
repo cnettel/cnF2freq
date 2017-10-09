@@ -1,6 +1,7 @@
 // Do forward-backward, value 1
 // Do original cnF2freq tree evaluation, value 0
 #define DOFB 1
+#define DOTOULBAR 1
 const int SELFBITS = 2;
 
 const int INDCOUNT = 1000000;
