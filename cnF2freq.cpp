@@ -4207,15 +4207,10 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
 
 	int nbclauses = (int) clauses.size();
-	int nbc = nbclauses + indnumbers.size() * 2;
+	int nbc = nbclauses;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
-
-	for (auto cind : indnumbers) {//add clauses to get output variables sorted by size.
-		infile << "1 " << cind << " 0\n";
-		infile << "1 " << -cind << " 0\n";
-	}
 
 	for (clause& c : clauses) {
 		c.weight = maxweight - c.weight + 1;
