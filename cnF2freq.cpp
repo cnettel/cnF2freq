@@ -4803,6 +4803,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (g & (flag2ignore >> 1)) continue;
 
+#if !DOTOULBAR
+							int c = 0;
+							for (int p = 0; p < TYPEBITS + 1; p++)
+							  {
+							    if (g & (1 << p)) c++;
+							  }
+
+							if (c > 1) continue;
+#endif
+
 							double skewterm = 0;
 							for (int i = 0; i < TURNBITS; i++)
 							{
