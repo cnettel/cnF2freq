@@ -994,7 +994,7 @@ struct individ
 		bool selfingNOW = false;
 		bool relskewingNOW = false;
 
-		const bool attopnow = (genwidth == HAPLOTYPING) || founder;
+		const bool attopnow = !(update & HOMOZYGOUS) && ((genwidth == HAPLOTYPING) || founder);
 
 		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
 
@@ -3738,20 +3738,6 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
 {
-<<<<<<< HEAD
-	std::array<double, 1> state{ orig };
-	ode::integrate_const(ode::runge_kutta4< std::array<double, 1> >(),
-		[&](std::array<double, 1>& in,
-			std::array<double, 1>& out, double time)
-	{
-		if (in[0] < 1e-9 || in[0] > 1 - 1e-9) out[0] = 0;
-		else
-			gradient(in, out, time);
-	}, state,
-		0., scalefactor, scalefactor * 0.01);
-
-	return caplogitchange(state[0], orig, epsilon, hitnnn);
-=======
   std::array<double, 1> state{orig};
   ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
 		       [&] (std::array<double, 1>& in,
@@ -3764,7 +3750,6 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		       0., scalefactor, scalefactor * 0.01);
 
   return caplogitchange(state[0], orig, epsilon, hitnnn);
->>>>>>> 735aa8962d44fe466c3ed28997626e6e53a88be3
 }
 
 void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
@@ -3772,6 +3757,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
 	double sum = 0;
+	bool doprint = ind->n == 587;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3787,7 +3773,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (int i = 0; i < 2; i++)
 	{
-		if (ind->n == 3) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+	  if (doprint) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 	}
 
 	double hzygcorrsum = 0;
@@ -3800,7 +3786,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			double otherside = fabs((!markermiss<false>(copymv, (&ind->markerdata[j].first)[!side])
 				? 1.0 : 0.0) - (&ind->markersure[j].first)[!side]);
 			double hzygval = ind->homozyg[j][probpair.first.value() - 1];
-			hzygcorrterm -= hzygval / probpair.second;
+			hzygcorrterm -= hzygval / probpair.second * sum;
 			hzygcorrterm += hzygval / otherside;
 
 			hzygcorrsum += hzygcorrterm * (probpair.first.value() == 1  ? 1 : -1);
@@ -3810,7 +3796,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+	  if (doprint) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 		double curprob = 0.5;
 		auto curmarker = (&ind->markerdata[j].first)[side];
 
@@ -3824,7 +3810,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 		{
 			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
 		}
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
@@ -3859,7 +3845,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
 		}
-		if (ind->n == 3) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (doprint) fprintf(stdout, "PROBPAIR B: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 	}
 
 	// We might have stats for empty inds, but those stats are incomplete
@@ -4410,8 +4396,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	// Create a vector where each element corresponds to a marker and
 	//contains a referense to a vector containing all the clauses for said marker
 	//EBBA also: Here starts the parallels, investigate names
+#if DOTOULBAR
 	vector<vector<clause>> toulInput;
 	toulInput.resize(markerposes.size()); //EBBA
+#endif
 
 	for (size_t i = 0; i < chromstarts.size() - 1; i++)
 	{
@@ -4873,6 +4861,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							if (!sumnegval[t]) sumnegval[t] = 1;
 						}
 
+#if DOTOULBAR
 						// Changed for EBBA's degree project
 						// Reminder: NUMTURNS is a bitflag with relevant individuals that should be changed
 						// remaining individuals should not be changed (= negative numbers)
@@ -4957,6 +4946,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 							}
 						}
+#else
+						updatenegshifts(validg, shifts, shiftend, shiftignore, rawvals, j, marker);
+#endif
 					}
 
 					reporter.report(outqueue[j]);
@@ -5000,9 +4992,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Then run toulbar and save best solution in relevant negshift vectors
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
+#if DOTOULBAR
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+
 #pragma omp parallel for schedule(dynamic,1)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
  		  if (m % 10) continue;
@@ -5065,7 +5059,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 		negshiftcands[i] = bestcands;
 		bestcands.clear(); // uneccesary, just for clarity
-						   //End of Ebbas code
+						   //End of Ebba's code
+#endif
 
 		for (size_t j = 0; j < outqueue.size(); j++)
 		{
@@ -5153,9 +5148,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				if (/*ind->pars[0] || ind->pars[1] || */!ind->haplocount.size()) continue;
 
+#if !DOTOULBAR				
 				// Perform the inversions indicated by the negshift data, at most a single one per individual
 				// and chromosome, maybe 0.
-				if (false) for (size_t c = 0; c < chromstarts.size() - 1; c++)
+				for (size_t c = 0; c < chromstarts.size() - 1; c++)
 				{
 					int minstart = chromstarts[c + 1];
 					double minval = -1e-10;
@@ -5209,6 +5205,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 
 				}
+#endif
 			}
 
 #ifdef F2MPI
