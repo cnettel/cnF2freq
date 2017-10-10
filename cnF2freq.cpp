@@ -4038,12 +4038,12 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 					double otherval;
 					if (d == -1)
 					{
-						if (!j) continue;
+						if (j == chromstarts[cno]) continue;
 						otherval = relskews->getweight(j - 1, 0);
 					}
 					else
 					{
-						if (j + 1 >= markerposes.size()) continue;
+						if (j + 1 >= chromstarts[cno + 1]) continue;
 						otherval = relskews->getweight(j + 1, 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
@@ -4965,9 +4965,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					{
 						int marker = -q - 1000;
 
-						// Contribute haplotype data, but truncate it, i.e. a 50/50 contribution for either interpretation is not added.
-						// Instead, we have a cap later on at the maximum change at any iteration.
-						// critical section outside the loop to maintain symmetry in floating point ops
 						double sum = 0;
 						for (auto p : infprobs[dous[j]->n][0])
 						{
