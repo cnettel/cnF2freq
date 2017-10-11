@@ -3299,46 +3299,6 @@ void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], doubl
 	}
 }
 
-void calcskewterms(int marker, std::array<double, TURNBITS>& skewterms)
-{
-  for (auto& i : skewterms)
-    {
-      i = 0;
-    }
-	for (size_t i = 0; i < skewterms.size(); i++)
-	{
-		individ* ind = reltreeordered[i];
-		if (!ind) continue;
-
-		int truei = i;
-		// A different ordering regime for flag2 values vs. turn values
-		if (i == 0)
-		{
-			truei = TURNBITS - 1;
-		}
-		else
-		{
-			truei -= 1;
-		}
-
-		double prevval = reltreeordered[i]->haploweight[marker];
-
-		// TODO: OVERRUN AT MARKER + 1 ?
-		for (int k = 0; k < 2; k++)
-		{
-			double relval = fabs(k - ind->relhaplo[marker]);
-			double sum = 0;
-			double term = ind->haploweight[marker + 1] * (prevval * relval + (1 - prevval) * (1 - relval));
-			sum += term;
-
-			term = (1 - ind->haploweight[marker + 1]) * ((1 - prevval) * relval + prevval * (1 - relval));
-			sum += term;
-			if (sum < maxdiff) sum = maxdiff;
-			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-		}
-	}
-}
-
 void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int shiftignore, const double rawvals[NUMTURNS][NUMSHIFTS], int j, int marker)
 {
 	for (int g = 0; g < NUMTURNS; g++)
@@ -3948,6 +3908,50 @@ struct relskewhmm
 	}
 };
 
+std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
+{
+	std::array<double, TURNBITS> skewterms;
+
+	for (auto& i : skewterms)
+	{
+		i = 0;
+	}
+	for (size_t i = 0; i < skewterms.size(); i++)
+	{
+		individ* ind = reltreeordered[i];
+		if (!ind) continue;
+
+		int truei = i;
+		// A different ordering regime for flag2 values vs. turn values
+		if (i == 0)
+		{
+			truei = TURNBITS - 1;
+		}
+		else
+		{
+			truei -= 1;
+		}
+
+		double prevval = relskews->getweight(marker, 0);
+		double nextval = relskews->getweight(marker + 1, 1);
+
+		// TODO: OVERRUN AT MARKER + 1 ?
+		for (int k = 0; k < 2; k++)
+		{
+			double relval = fabs(k - ind->relhaplo[marker]);
+			double sum = 0;
+			double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
+			sum += term;
+
+			term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
+			sum += term;
+			if (sum < maxdiff) sum = maxdiff;
+			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+		}
+	}
+
+	return skewterms;
+}
 
 void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 {
@@ -4452,7 +4456,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shiftignore;
 				int flag2ignore;
 
-				std::tie(shiftignore, flag2ignore) = fixtrees(j);
+				std::tie(shiftignore, flag2ignore) = fixtrees(j);		
+				for (individ* indr : reltreeordered)
+				{
+					if (indr != nullptr)
+					{
+						relskews.emplace(chromstarts[i], chromstarts[i + 1], dous[j]);
+					}
+					else
+					{
+						relskews.emplace();
+					}
+				}
 
 				bool skipsome = false;
 				for (size_t u = 0; u < reltree.size() && !skipsome; u++)
@@ -4480,6 +4495,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					/*shifts =s 0;
 					shiftend = 1;*/
 				}
+
+				vector<relskewhmm> relskews;
 
 				if (dous[j]->gen < 2) shiftend = min(2, shiftend);
 
@@ -4789,7 +4806,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							calcskewterms(marker, skewterms);
+							skewterms = relskews->calcskewterms(marker);
 						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
