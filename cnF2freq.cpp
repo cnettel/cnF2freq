@@ -201,6 +201,7 @@ const MarkerVal sexmarkerval = 9 * MarkerValue;
 
 const float maxdiff = 0.000005;
 
+#define DOTOULBAR 1
 #include "settings.h"
 
 bool early = false;
@@ -4104,7 +4105,7 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 	}
 }
 
-void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
+void fillcandsexists(individ* ind, vector<int>& cands, vector<bool>& exists)
 {
 	std::set<int> family;
 	int temp = ind->n;
@@ -4173,6 +4174,7 @@ void fillcandsexists(individ* ind,  vector<int>& cands, vector<bool>& exists)
 long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput)
 {
 	long long sumweight = 0;
+	int numviol = 0;
 	for (const clause& c : toulinput[m])
 	{
 		bool viol = true;
@@ -4186,10 +4188,15 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		}
 		if (viol)
 		{
+			numviol++;
 			sumweight += c.weight;
 		}
 	}
 
+	if (numviol != toulinput[m].size()))
+	{
+		fprintf(stderr, "Wrong number of violated clauses %d/%d at %d\n", numviol, toulinput[m].size(), m);
+	}
 	return sumweight;
 }
 
