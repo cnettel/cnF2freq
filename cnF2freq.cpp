@@ -4193,7 +4193,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		}
 	}
 
-	if (numviol != toulinput[m].size()))
+	if (numviol != toulinput[m].size())
 	{
 		fprintf(stderr, "Wrong number of violated clauses %d/%d at %d\n", numviol, toulinput[m].size(), m);
 	}
@@ -4843,6 +4843,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
 									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor - skewterm);
+								if (shiftflagmode != oldshift)
+								  {
+								    cerr << "Flag " << g << " mode " << oldshift << " to " << shiftflagmode << "\n";
+								  }
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
@@ -5011,7 +5015,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 #pragma omp parallel for schedule(dynamic,1)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
- 		  if (m % 10) continue;
+ 		  if (m % 100000) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
