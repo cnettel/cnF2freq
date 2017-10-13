@@ -3836,6 +3836,8 @@ struct relskewhmm
 	const int firstmarker;
 	const individ* ind;
 
+  relskewhmm() : firstmarker(-1), ind(nullptr) {}
+
 	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
 	{
 		relskewfwbw.resize(endmarker - firstmarker);
@@ -3916,7 +3918,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 	{
 		i = 0;
 	}
-	for (size_t i = 0; i < skewterms.size(); i++)
+	for (size_t i = 0; i < skewterms.size() && i < 1; i++)
 	{
 		individ* ind = reltreeordered[i];
 		if (!ind) continue;
@@ -3932,11 +3934,11 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
-		double prevval = relskews->getweight(marker, 0);
-		double nextval = relskews->getweight(marker + 1, 1);
+		double prevval = relskews[i].getweight(marker, 0);
+		double nextval = relskews[i].getweight(marker + 1, 1);
 
 		// TODO: OVERRUN AT MARKER + 1 ?
-		for (int k = 0; k < 2; k++)
+		/*for (int k = 0; k < 2; k++)
 		{
 			double relval = fabs(k - ind->relhaplo[marker]);
 			double sum = 0;
@@ -3947,7 +3949,9 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			sum += term;
 			if (sum < maxdiff) sum = maxdiff;
 			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-		}
+			}*/
+		// Skewterm implicitly negative, hence surprising sign
+		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
 	}
 
 	return skewterms;
@@ -4197,7 +4201,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		}
 	}
 
-	if (numviol != toulinput[m].size())
+	if (numviol != dous.size())
 	{
 		fprintf(stderr, "Wrong number of violated clauses %d/%d at %d\n", numviol, toulinput[m].size(), m);
 	}
@@ -4456,16 +4460,17 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shiftignore;
 				int flag2ignore;
 
+				vector<relskewhmm> relskews;
 				std::tie(shiftignore, flag2ignore) = fixtrees(j);		
 				for (individ* indr : reltreeordered)
 				{
 					if (indr != nullptr)
 					{
-						relskews.emplace(chromstarts[i], chromstarts[i + 1], dous[j]);
+						relskews.emplace_back(chromstarts[i], chromstarts[i + 1], dous[j]);
 					}
 					else
 					{
-						relskews.emplace();
+						relskews.emplace_back();
 					}
 				}
 
@@ -4496,7 +4501,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					shiftend = 1;*/
 				}
 
-				vector<relskewhmm> relskews;
 
 				if (dous[j]->gen < 2) shiftend = min(2, shiftend);
 
@@ -4806,7 +4810,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						if (RELSKEWS && !RELSKEWSTATES)
 						{
-							skewterms = relskews->calcskewterms(marker);
+						  skewterms = calcskewterms(marker, &relskews[0]);
 						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
@@ -4860,10 +4864,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
 									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor - skewterm);
-								if (shiftflagmode != oldshift)
-								  {
-								    cerr << "Flag " << g << " mode " << oldshift << " to " << shiftflagmode << "\n";
-								  }
+
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
@@ -5032,7 +5033,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 #pragma omp parallel for schedule(dynamic,1)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
- 		  if (m % 100000) continue;
+		  //		  continue;
+ 		  if (m % 10) continue;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
