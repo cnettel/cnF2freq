@@ -42,7 +42,7 @@ float templgeno[8] = { -1, -0.5,
 	0,  0.5,
 	1, -0.5 };
 
-
+const long long WEIGHT_DISCRETIZER = 1000000000;
 
 // _MSC_VER is here to be interpreted as any compiler providing TR1 C++ headers
 //#ifdef _MSC_VER
@@ -3713,7 +3713,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   return caplogitchange(state[0], orig, epsilon, hitnnn);
 }
 
-void processinfprobs(individ * ind, const unsigned int j, const int side, std::atomic_int &hitnnn)
+void processinfprobs(individ * ind, const unsigned int j, const int side, int iter, std::atomic_int &hitnnn)
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
@@ -3796,7 +3796,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, std::a
 			out[0] = d;
 		};
 
-		ind->infprobs[j][side][probpair.first] = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
+		double intended = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
+		if (iter <= 3)
+		  {
+		  ind->infprobs[j][side][probpair.first] = intended;
+		  }
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3957,7 +3961,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 	return skewterms;
 }
 
-void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
+void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hitnnn)
 {
 	vector<bool> allhalf;
 	vector<bool> anyinfo;
@@ -4054,6 +4058,8 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 
 			double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
 												   (scoreb * scoreb + (1-scoreb) * (1-scoreb)));
+			if (false)
+			  {
 
 			if (!ind->haplocount[j] || scorea == scoreb)
 			{
@@ -4072,6 +4078,7 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 				if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
+			  }
 
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
@@ -4096,7 +4103,7 @@ void updatehaploweights(individ * ind, FILE * out, std::atomic_int& hitnnn)
 				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 				}*/
 				//if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
-				ind->haploweight[j] = intended;
+				if (iter <= 3) ind->haploweight[j] = intended;
 
 
 				// Nudging flag currently not respected
@@ -4952,7 +4959,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//}
 									}
 								}
-								double w = 1e-100;
+								double w = 0;
 
 								for (int s = shifts; s < shiftend; s++) {
 									if (s & shiftignore || rawvals[g][s] <= 0) continue;
@@ -4961,7 +4968,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w *= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
-								w = log(w) * 1000000000;
+								if (w && isfinite(w))
+								  {
+								    w = log(w) * WEIGHT_DISCRETIZER;
+								  }
+								else
+								  {
+								    w = -5000;
+								    w *= WEIGHT_DISCRETIZER;
+								  }
 								c.weight = w;
 								c.weight -= g;
 								c.cinds = claus;
@@ -5087,6 +5102,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 
 		//Data structure to fill: vector<set<negshiftcand> > negshiftcands (0);
+		cout << "Benefit: " << double(minsumweight - (maxweight + 1) * (long long)dous.size()) / WEIGHT_DISCRETIZER << ", max: " << maxweight << " sum: " << minsumweight << "\n";
 		if (bestcands.size() == 1) {
 			cout << "Only one individual is switching!" << endl;
 		}
@@ -5268,12 +5284,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						for (int side = 0; side < 2; side++)
 						{
-							processinfprobs(ind, j, side, hitnnn);
+						  processinfprobs(ind, j, side, iter, hitnnn);
 						}
 						// oldinfprobslogic(ind, j, iter, cno, out);
 					}
 
-					updatehaploweights(ind, out, hitnnn);					
+					updatehaploweights(ind, out, iter, hitnnn);					
 				}
 				parentswapnegshifts(nsm);
 
@@ -6553,6 +6569,12 @@ int main(int argc, char* argv[])
 	{
 		out = fopen(outputfilename.c_str(), "w");
 	}
+
+	individ* ind = getind(89);
+	for (auto& hw : ind->haploweight)
+	  {
+	    hw = 1 - hw;
+	  }
 
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
