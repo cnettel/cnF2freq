@@ -3797,10 +3797,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 		};
 
 		double intended = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
-		if (iter <= 3)
-		  {
-		  ind->infprobs[j][side][probpair.first] = intended;
-		  }
+		ind->infprobs[j][side][probpair.first] = intended;
 	}
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3817,9 +3814,12 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 	// Putting them in will make the ind non-empty, breaking assumptions
 	if (!ind->empty && (bestmarker != UnknownMarkerVal || bestprob > 0))
 	{
+	  if (iter <= 3)
+	    {
 		(&ind->markerdata[j].first)[side] = bestmarker;
 		double intended = 1.0 - bestprob;
 		(&ind->markersure[j].first)[side] = intended;
+	    }
 	}
 	ind->infprobs[j][side].clear();
 	if (side == 1)
@@ -5891,6 +5891,8 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 		me->sex = 0;
 		me->pars[0] = getind(filterExisting(sampleNames, get<1>(sample)));
 		me->pars[1] = getind(filterExisting(sampleNames, get<2>(sample)));
+
+		printf("%x %x\n", me->pars[0], me->pars[1]);
 
 		// Hack the generation to make non-founders full citizens
 		me->gen = 2 * (me->pars[0] || me->pars[1]);
