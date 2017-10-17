@@ -1734,7 +1734,7 @@ struct individ
 			if (willquickend)
 			{
 				// If we are doing a quick end
-				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				factor += realanalyze<4 | 2, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 				
 				// We might have turned, this value might not exist
 				initfwbw(tb, origstart, endmark);
@@ -1772,6 +1772,7 @@ struct individ
 			{
 				std::cerr << "Incomplete at " << startmark << std::endl;
 				factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				abort();
 			}
 
 			startmark += stepsize;
@@ -1937,16 +1938,6 @@ struct individ
 				f2use = flag2;
 			}
 
-#if DOFB
-			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
-			{
-				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
-			}
-#endif
-
 			if (genotype != -2)
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for
@@ -1959,6 +1950,16 @@ struct individ
 				// a -2 genotype does not only mean that all genotypes are allowed, but indeed that the marker data at this marker
 				// is ignored!
 			}
+
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
 
 			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers,
 			// and the simple case of no fixated position.
