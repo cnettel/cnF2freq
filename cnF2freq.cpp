@@ -3815,7 +3815,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 	// Putting them in will make the ind non-empty, breaking assumptions
 	if (!ind->empty && (bestmarker != UnknownMarkerVal || bestprob > 0))
 	{
-	  if (iter <= 3)
+	  //if (iter <= 3)
 	    {
 		(&ind->markerdata[j].first)[side] = bestmarker;
 		double intended = 1.0 - bestprob;
@@ -4104,7 +4104,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 				cout << "CROSSOVER " << ind->name << " " << ind->n << " " << j << " " << intended << " " << ind->haploweight[j] << " " << limn << " " << limd1 << std::endl;
 				}*/
 				//if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
-				if (iter <= 3) ind->haploweight[j] = intended;
+				/*if (iter <= 3)*/ ind->haploweight[j] = intended;
 
 
 				// Nudging flag currently not respected
