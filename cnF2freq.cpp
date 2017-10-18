@@ -1734,7 +1734,7 @@ struct individ
 			if (willquickend)
 			{
 				// If we are doing a quick end
-				factor += realanalyze<4 | 2, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 				
 				// We might have turned, this value might not exist
 				initfwbw(tb, origstart, endmark);
@@ -1938,6 +1938,33 @@ struct individ
 				f2use = flag2;
 			}
 
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				copy(probs.begin(), probs.end(),
+					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+			}
+#endif
+
+			auto filtergenos = [&]
+			{
+				if (genotype >= 0)
+				{
+					for (int i = 0; i < NUMTYPES; i++)
+					{
+						probs[i] = probs[i] * (i == genotype);
+					}
+				}
+			}
+
+			// Speed up if our turner allows it, this makes the following adjustprobs cheaper
+			if (tofind && startpos == endpos && turner.canquickend())
+			{
+				filtergenos();
+			}
+
 			if (genotype != -2)
 			{
 				// If we are at the very first position, and the specific flag was set, include the emission probabilities for
@@ -1951,16 +1978,6 @@ struct individ
 				// is ignored!
 			}
 
-#if DOFB
-			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
-			{
-				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
-			}
-#endif
-
 			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers,
 			// and the simple case of no fixated position.
 			for (int iter = 0; iter <= (int)tofind; iter++)
@@ -1970,13 +1987,7 @@ struct individ
 				if (iter)
 				{
 					turner(probs);
-					if (genotype >= 0)
-					{
-						for (int i = 0; i < NUMTYPES; i++)
-						{
-							probs[i] = probs[i] * (i == genotype);
-						}
-					}
+					filtergenos();
 
 					// Were we asked to stop at this very state, in the middle of things?
 					if (updateend & 4) return factor;
@@ -2118,7 +2129,6 @@ struct individ
 
 		if (updateend & 1)
 		{
-			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
 #if DOFB
 			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
@@ -2128,6 +2138,7 @@ struct individ
 				fwbwfactors[*tb.shiftflagmode][lastmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
 			}
 #endif
+			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
 		}
 
 		return factor;
