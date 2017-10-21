@@ -3278,7 +3278,7 @@ void movehaplos(int i, int k, int marker)
 		{
 			double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
-			if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
+			//if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
 			{
 			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
@@ -4058,7 +4058,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 						otherval = relskews->getweight(j + 1, 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-					if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
+					//if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
 
 					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 					prevval = prevval / (prevval + 1.0);*/
