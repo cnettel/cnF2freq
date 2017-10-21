@@ -4254,7 +4254,6 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
-		c.weight = maxweight - c.weight + 1;
 		if (c.weight < 0)
 		{
 			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
@@ -5064,15 +5063,35 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+		bool donext = false;
 
-#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1) private(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
 		  //		  continue;
- 		  if (m % 10) continue;
+ 		  if (m % 10 && !donext) continue;
+		  donext = false;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
 			std::string sol(tmppath + "/" + std::string("sol") + tid);			
+
+			long long fakegain = 0;
+			for (clause& c : clauses)
+			{
+				if (c.weight > 0)
+				{
+					fakegain += c.weight;
+				}
+				c.weight = maxweight - c.weight + 1;
+			}
+
+			fakegain = ((long long)dous.size()) * (maxweight + 1) - fakegain;
+			#pragma omp critical(negshifts)
+			if (minsumweight < fakegain)
+			{
+				donext = true;
+				continue;
+			}
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
