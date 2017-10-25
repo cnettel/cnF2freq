@@ -1957,7 +1957,7 @@ struct individ
 						probs[i] = probs[i] * (i == genotype);
 					}
 				}
-			}
+			};
 
 			// Speed up if our turner allows it, this makes the following adjustprobs cheaper
 			if (tofind && startpos == endpos && turner.canquickend())
@@ -3278,7 +3278,7 @@ void movehaplos(int i, int k, int marker)
 		{
 			double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
-
+			//if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
 			{
 			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
@@ -4000,7 +4000,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
 		{
 			cno++;
-			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], dous[j]);
+			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], ind);
 		}
 		anyinfo[cno] = true;
 
@@ -4058,6 +4058,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 						otherval = relskews->getweight(j + 1, 1);
 					}
 					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+					//if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
 
 					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 					prevval = prevval / (prevval + 1.0);*/
@@ -4068,14 +4069,20 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 			double scoreb = 1.0 - ind->markersure[j].second;
 			if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
 
-			double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
-												   (scoreb * scoreb + (1-scoreb) * (1-scoreb)));
-			if (false)
+			/*double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
+			  (scoreb * scoreb + (1-scoreb) * (1-scoreb)));*/
+			double sims[2];
+			for (int k = 0; k < 2; k++)
 			  {
+			    sims[k] = fabs(k - scorea) / fabs(k - scoreb);
+			    if (sims[k] > 1) sims[k] = 1 / sims[k];
+			  }
+			double similarity = min(sims[0], sims[1]);
 
 			if (!ind->haplocount[j] || scorea == scoreb)
 			{
-				ind->haplobase[j] = 0;
+				ind->haplobase[j] = ind->haploweight[j] >= 0.5;
+				ind->haplocount[j] = min(1.0, (double) ind->haplocount[j]);
 			}
 			else
 			{
@@ -4085,18 +4092,17 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 				ind->haplobase[j] -= count * ind->haploweight[j];
 				count = count - similarity * count;
 				ind->haplobase[j] += count * ind->haploweight[j];
-				ind->haplocount[j] = count; // OR use following line:
-				//ind->haplobase[j] *= ind->haplocount[j] / count;
+				//ind->haplocount[j] = count; // OR use following line:
+				ind->haplobase[j] *= ind->haplocount[j] / count;
 				if (ind->haplobase[j] < 0) ind->haplobase[j] = 0;
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
-			  }
 
 			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					 (1 - 0 * similarity) * (log(1 / in[0] - 1) + // Entropy term
+					 (1 - 0 * similarity) * 1 * (log(1 / in[0] - 1) + // Entropy term
 							     relskewterm));
 			};
 
@@ -4252,7 +4258,6 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
-		c.weight = maxweight - c.weight + 1;
 		if (c.weight < 0)
 		{
 			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
@@ -5072,15 +5077,35 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #if DOTOULBAR
 		std::set<canddata> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
+		bool donext = false;
 
-#pragma omp parallel for schedule(dynamic,1)
+#pragma omp parallel for schedule(dynamic,1) private(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
 		  //		  continue;
- 		  if (m % 10) continue;
+ 		  if (m % 10 && !donext) continue;
+		  donext = false;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
 			std::string sol(tmppath + "/" + std::string("sol") + tid);			
+
+			long long fakegain = 0;
+			for (clause& c : clauses)
+			{
+				if (c.weight > 0)
+				{
+					fakegain += c.weight;
+				}
+				c.weight = maxweight - c.weight + 1;
+			}
+
+			fakegain = ((long long)dous.size()) * (maxweight + 1) - fakegain;
+			#pragma omp critical(negshifts)
+			if (minsumweight < fakegain)
+			{
+				donext = true;
+				continue;
+			}
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
