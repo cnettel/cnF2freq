@@ -5063,20 +5063,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		long long minsumweight = std::numeric_limits<long long>::max();
 		std::set<negshiftcand> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
-		bool donext = false;
+		int donext = 0;
 
-#pragma omp parallel for schedule(dynamic,1) private(donext)
-		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1]; m++) {
+#pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
+		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
 		  //		  continue;
- 		  if (m % 10 && !donext) continue;
-		  donext = false;
+ 		  if (!(m % 10)) donext++;
+		  if (!donext) continue;
+		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
 			std::string sol(tmppath + "/" + std::string("sol") + tid);			
 
 			long long fakegain = 0;
-			for (clause& c : clauses)
+			for (clause& c : toulInput[m])
 			{
 				if (c.weight > 0)
 				{
@@ -5086,10 +5087,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			fakegain = ((long long)dous.size()) * (maxweight + 1) - fakegain;
-			#pragma omp critical(negshifts)
-			if (minsumweight < fakegain)
+			bool skippable;
+
+#pragma omp critical(negshifts)
+			skippable = minsumweight < fakegain;
+
+			if (skippable)
 			{
-				donext = true;
+			  donext++;
 				continue;
 			}
 
