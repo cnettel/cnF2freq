@@ -4205,7 +4205,7 @@ void fillcandsexists(individ* ind, vector<int>& cands, vector<bool>& exists)
 	}
 }
 
-long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput)
+long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, set<int>& cover)
 {
 	long long sumweight = 0;
 	int numviol = 0;
@@ -4224,6 +4224,10 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		{
 			numviol++;
 			sumweight += c.weight;
+			for (int val : c.cinds)
+			{
+				cover.insert(val);
+			}
 		}
 	}
 
@@ -4266,6 +4270,17 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 }
 
 typedef map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsmtype;
+
+struct canddata
+{
+	long long score;
+	set<int> cover;
+	set<negshiftcand> cands;
+};
+
+auto operator < (const canddata &a, const canddata &b) {
+	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
+}
 
 void parentswapnegshifts(nsmtype& nsm)
 {
@@ -5060,8 +5075,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		//Remember: typedef boost::tuple<individ*, double, int> negshiftcand;
 
 #if DOTOULBAR
-		long long minsumweight = std::numeric_limits<long long>::max();
-		std::set<negshiftcand> bestcands;
+		std::set<canddata> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 		int donext = 0;
 
@@ -5122,38 +5136,92 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			long long sumweight = computesumweight(m, tf, toulInput);						
+			set<int> cover;
+			long long sumweight = computesumweight(m, tf, toulInput, cover);	
 
+			canddata data;
+			data.score = sumweight - (maxweight + 1) * (long long)dous.size();
+			data.cover = std::move(cover);
+			for (size_t g = 0; g<tf.size(); g++) {
+				if (tf[g])
+				{
+					data.cands.emplace(getind(g + 1), sumweight, m);
+				}
+			}
+
+			if (cover.size())
 #pragma omp critical(negshifts)
-			if (minsumweight > sumweight) {
-				//vector containing all individuals numbers who should be shifted
-				minsumweight = sumweight;
-				//vector<int> neg;
-				bestcands.clear();
-				for (size_t g = 0; g<tf.size(); g++) {
-					if (tf[g]) {
-					  bestcands.emplace(getind(g + 1), sumweight, m);
-						//neg.push_back(inds[g]);
+			{
+				set<decltype(bestcands)::iterator> toremove;
+				bool addme = true;
+				for (canddata& elem : bestcands)
+				{
+					if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end())
+					{
+						if (data.score <= elem.score)
+						{
+							// Stupid to search for ourselves...
+							toremove.insert(bestcands.find(elem));
+						}
+					}
+					else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+					{
+						if (elem.score <= data.score)
+						{
+							addme = false;
+						}
+					}
+				}
+				for (auto i : toremove)
+				{
+					bestcands.erase(i);
+				}
+
+				if (addme)
+				{
+					bestcands.insert(std::move(data));
+				}
+
+				while (bestcands.size() > 100)
+				{
+					bestcands.erase(--bestcands.end());
+				}
+			}			
+		}
+		
+		for (auto i = bestcands.rbegin(); i != bestcands.rend(); i++)
+		{
+			for (auto j = bestcands.begin(); *j < *i; j++)
+			{
+				auto jj = j->cover.begin();
+				bool covered = false;
+				for (auto ind : i->cover)
+				{
+					while (jj != j->cover.end() && *jj < ind)
+					{
+						jj++;
+					}
+					if (jj == j->cover.end()) break;
+
+					if (*jj = ind)
+					{
+						covered = true;
+						break;
 					}
 				}
 
-				//if(neg.size()>1){
-				//cout<< "There is a place where double shifts would be good!"<< endl;//(string) neg <<
-				//}
+				if (!covered)
+				{
+					bestcands.emplace(i->score + j->score, std::set_union(i->cover, j->cover), std::set_union(i->cands, j->cands));
+					// The greedy part
+					break;
+				}
 			}
 		}
-
-		//Data structure to fill: vector<set<negshiftcand> > negshiftcands (0);
-		cout << "Benefit: " << double(minsumweight - (maxweight + 1) * (long long)dous.size()) / WEIGHT_DISCRETIZER << ", max: " << maxweight << " sum: " << minsumweight << "\n";
-		if (bestcands.size() == 1) {
-			cout << "Only one individual is switching!" << endl;
-		}
-		else if (bestcands.size()>1) {
-			cout << "A switch!" << bestcands.size() << "individuals are changing!" << endl; //For Ebbas degree projects results
-		}
-		negshiftcands[i] = bestcands;
-		bestcands.clear(); // uneccesary, just for clarity
-						   //End of Ebba's code
+		if (bestcands.size())
+			negshiftcands[i] = bestcands.begin()->cands;
+		else
+			negshiftcands[i].clear();
 #endif
 
 		for (size_t j = 0; j < outqueue.size(); j++)
