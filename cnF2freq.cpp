@@ -4212,9 +4212,14 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	for (const clause& c : toulinput[m])
 	{
 		bool viol = true;
+		bool anyswitch = false;
 		for (int val : c.cinds)
 		{
 			int ind = val < 0 ? -val : val;
+			if (val < 0)
+			  {
+			    anyswitch = true;
+			  }
 			if (tf[ind - 1] == (val > 0))
 			{
 				viol = false;
@@ -4224,7 +4229,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		{
 			numviol++;
 			sumweight += c.weight;
-			for (int val : c.cinds)
+			if (anyswitch) for (int val : c.cinds)
 			{
 				cover.insert(val);
 			}
@@ -4278,7 +4283,7 @@ struct canddata
 	set<negshiftcand> cands;
 };
 
-auto operator < (const canddata &a, const canddata &b) {
+auto operator < (const canddata &a, const canddata &b) noexcept {
 	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
 }
 
@@ -5100,11 +5105,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				c.weight = maxweight - c.weight + 1;
 			}
 
-			fakegain = ((long long)dous.size()) * (maxweight + 1) - fakegain;
+			fakegain = -fakegain;
 			bool skippable;
 
 #pragma omp critical(negshifts)
-			skippable = minsumweight < fakegain;
+			skippable = bestcands.size() && bestcands.begin()->score < fakegain;
 
 			if (skippable)
 			{
@@ -5149,36 +5154,36 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 			}
 
-			if (cover.size())
+			if (data.cover.size())
 #pragma omp critical(negshifts)
 			{
-				set<decltype(bestcands)::iterator> toremove;
+				vector<decltype(bestcands)::iterator> toremove;
 				bool addme = true;
-				for (canddata& elem : bestcands)
+				for (const canddata& elem : bestcands)
 				{
-					if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end())
+				  if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
 					{
 						if (data.score <= elem.score)
 						{
 							// Stupid to search for ourselves...
-							toremove.insert(bestcands.find(elem));
+							toremove.push_back(bestcands.find(elem));
 						}
 					}
-					else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+				  else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
 					{
-						if (elem.score <= data.score)
+					  if (elem.score <= data.score)
 						{
 							addme = false;
 						}
 					}
 				}
-				for (auto i : toremove)
-				{
-					bestcands.erase(i);
-				}
 
 				if (addme)
 				{
+				  for (auto i : toremove)
+				    {
+				      bestcands.erase(i);
+				    }
 					bestcands.insert(std::move(data));
 				}
 
@@ -5203,7 +5208,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 					if (jj == j->cover.end()) break;
 
-					if (*jj = ind)
+					if (*jj == ind)
 					{
 						covered = true;
 						break;
@@ -5212,7 +5217,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				if (!covered)
 				{
-					bestcands.emplace(i->score + j->score, std::set_union(i->cover, j->cover), std::set_union(i->cands, j->cands));
+				  canddata newcand{i->score + j->score, i->cover, i->cands};
+				  newcand.cover.insert(j->cover.begin(), j->cover.end());
+				  newcand.cands.insert(j->cands.begin(), j->cands.end());
+				  bestcands.insert(std::move(newcand));
 					// The greedy part
 					break;
 				}
