@@ -3861,7 +3861,7 @@ struct relskewhmm
 
 		const auto doemissions = [&s, &ind](int m)
 		{
-			double w = ind->haploweight[m];
+			double w = ind->haplobase[m] / ind->haplocount[m];
 			for (int k = 0; k < 2; k++)
 			{
 				s[k] *= fabs(!k - w);
@@ -4851,12 +4851,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
 					{
 						int marker = -q - 1000;					       
-						std::array<double, TURNBITS> skewterms;
-
-						if (RELSKEWS && !RELSKEWSTATES)
-						{
-						  skewterms = calcskewterms(marker, &relskews[0]);
-						}
 						
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
@@ -4908,7 +4902,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor - skewterm);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
 
 								shiftflagmode = oldshift;
 
@@ -5072,6 +5066,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 			fprintf(stderr, "LAST: %d %s\n", dous[j]->n, dous[j]->name.c_str());
 			fflush(stderr);
+
+			std::array<double, TURNBITS> skewterms;
+
+			if (RELSKEWS && !RELSKEWSTATES)
+			{
+				skewterms = calcskewterms(marker, &relskews[0]);
+			}
 		}
 
 		//Print all information to seperate files EBBA
