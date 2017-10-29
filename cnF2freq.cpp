@@ -5082,12 +5082,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #if DOTOULBAR
 		std::set<canddata> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
-		int donext = 0;
+		int donext = 1;
 
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
 		  //		  continue;
- 		  if (!(m % 10)) donext++;
+ 		  if ((m % 10) == (iter % 10)) donext++;
 		  if (!donext) continue;
 		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
