@@ -3922,7 +3922,7 @@ struct relskewhmm
 		}*/
 
 		double sum = s[0] + s[1];
-		return s[1] / sum;
+		return s[0] / sum;
 	}
 };
 
@@ -4505,19 +4505,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				int shiftignore;
 				int flag2ignore;
 
-				vector<relskewhmm> relskews;
-				std::tie(shiftignore, flag2ignore) = fixtrees(j);		
-				for (individ* indr : reltreeordered)
-				{
-					if (indr != nullptr)
-					{
-						relskews.emplace_back(chromstarts[i], chromstarts[i + 1], dous[j]);
-					}
-					else
-					{
-						relskews.emplace_back();
-					}
-				}
+				std::tie(shiftignore, flag2ignore) = fixtrees(j);						
 
 				bool skipsome = false;
 				for (size_t u = 0; u < reltree.size() && !skipsome; u++)
@@ -5067,11 +5055,46 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			fprintf(stderr, "LAST: %d %s\n", dous[j]->n, dous[j]->name.c_str());
 			fflush(stderr);
 
-			std::array<double, TURNBITS> skewterms;
-
 			if (RELSKEWS && !RELSKEWSTATES)
 			{
-				skewterms = calcskewterms(marker, &relskews[0]);
+				vector<relskewhmm> relskews;
+				for (individ* indr : reltreeordered)
+				{
+					if (indr != nullptr)
+					{
+						relskews.emplace_back(chromstarts[i], chromstarts[i + 1], dous[j]);
+					}
+					else
+					{
+						relskews.emplace_back();
+					}
+				}
+
+
+				std::array<double, TURNBITS> skewterms;
+#pragma omp critical(negshifts)
+				for (int marker = chromstarts[i]; marker < chromstarts[i + 1]; marker++)
+				{
+					skewterms = calcskewterms(marker, &relskews[0]);
+					for (clause& c : toulInput[marker])
+					{
+						bool me = false;
+						int count = 0;
+						for (int val : c.cinds)
+						{
+							if (val == -dous[j]->n) me = true;
+							if (val < 0) count++;
+						}
+						if (count == 1 && me)
+						{
+							c.weight -= skewterms[1];
+							if (c.weight > maxweight) {
+								maxweight = c.weight;
+							}
+							break;
+						}
+					}
+				}
 			}
 		}
 
