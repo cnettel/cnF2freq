@@ -68,6 +68,7 @@ const long long WEIGHT_DISCRETIZER = 1000000000;
 #include <memory>
 #include <string>
 
+#include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
@@ -86,6 +87,7 @@ const long long WEIGHT_DISCRETIZER = 1000000000;
 
 #include <vector>
 
+using namespace boost::iostreams;
 using namespace boost::spirit;
 namespace po = boost::program_options;
 namespace ode = boost::numeric::odeint;
@@ -5857,50 +5859,46 @@ void domerlinind(FILE* pedfile, individ* ind)
 	fprintf(pedfile, "\n");
 }
 
-template<class RuleType, class AttrType> void parseToEndWithError(istream& file, const RuleType& rule, AttrType& target)
+template<class RuleType, class AttrType> void parseToEndWithError(mapped_file_source& file, const RuleType& rule, AttrType& target)
 {
-	auto parseriter = boost::spirit::istream_iterator(file);
-	boost::spirit::istream_iterator end;
-
-	bool res = phrase_parse(parseriter, end, rule, x3::space - x3::eol, target);
+	bool res = phrase_parse(file.begin(), file.end(), rule, x3::space - x3::eol, target);
 
 	if (!res)
 	{
 	  std::string val;
-	  file >> val;
+	  //file >> val;
 		throw logic_error("Parsing failed. " + (std::string) __func__ + " " + val);
 	}
-
-	if (!file.eof())
+	
+	// TODO
+	/*if (!file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
-	}
+	}*/
 }
 
-template<class RuleType> void parseToEndWithError(istream& file, const RuleType& rule)
+template<class RuleType> void parseToEndWithError(mapped_file_source& file, const RuleType& rule)
 {
-	auto parseriter = boost::spirit::istream_iterator(file);
-	boost::spirit::istream_iterator end;
-
-	bool res = phrase_parse(parseriter, end, rule, x3::space - x3::eol);
+	bool res = phrase_parse(file.begin(), file.end(), rule, x3::space - x3::eol);
 
 	if (!res)
 	{
 	  std::string val;
-	  while (!file.eof())
+	  /*while (!file.eof())
 	    {
 	      file >> val;
 	      std::cout << val;
 	    }
-	  std::cout << std::endl;
+	  std::cout << std::endl;*/
 		throw logic_error("Parsing failed. " + (std::string) __func__ + " # " + val);
 
 	}
 
-	if (!file.eof())
+	// TODO
+	/*if (!file.eof())
 	{
 		throw logic_error("Not reaching end of file in parser. " + (std::string) __func__);
-	}
+	}*/
 }
 
 #ifdef READHAPSSAMPLE
@@ -5929,9 +5927,8 @@ struct samplereader
 {
 	sampletype samples;
 
-	void read(istream& sampleFile)
+	void read(mapped_file_source& sampleFile)
 	{
-		sampleFile >> std::noskipws;
 		using namespace x3;
 
 		auto sampleHeader = omit[
@@ -5944,7 +5941,7 @@ struct samplereader
 			parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
 			std::cout << samples.size() << " samples read." << std::endl;
 		}
-		catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+		catch (expectation_failure<mapped_file_source::iterator> const& x)
 		{
 			std::cerr << "expected: " << x.which();
 			std::cerr << "got: \"" << x.where() << '"' << std::endl;
@@ -5954,12 +5951,9 @@ struct samplereader
 	}
 };
 
-void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hapsFile)
+void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<mapped_file_source*>& hapsFile)
 {
 	using namespace x3;
-
-	bimFile >> std::noskipws;
-	*hapsFile[0] >> std::noskipws;
 	
 	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
@@ -5982,7 +5976,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 		parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 	}
-	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+	catch (expectation_failure<mapped_file_source::iterator> const& x)
 	{
 		std::cerr << "expected: " << x.which();
 		std::cerr << "got: \"" << x.where() << '"' << std::endl;
@@ -6092,7 +6086,6 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 		origPhases.resize(sampleInds.size());
 		snpData.clear();
 
-		*hapsFile[k] >> std::noskipws;
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 		for (size_t i = 0; i < snpData.size(); i++)
@@ -6151,7 +6144,7 @@ void readhaps(const sampletype& samples, istream& bimFile, vector<istream*>& hap
 	}
 }
 
-void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newhapfile)
+void createhapfile(const sampletype& samples, mapped_file_source& oldhapfile, ostream& newhapfile)
 {
 	vector<individ*> sampleInds;
 	for (auto sample : samples)
@@ -6168,7 +6161,7 @@ void createhapfile(const sampletype& samples, istream& oldhapfile, ostream& newh
 		parseToEndWithError(oldhapfile, hapsLineIgnoreGenotypes % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 	}
-	catch (expectation_failure<boost::spirit::istream_iterator> const& x)
+	catch (expectation_failure<mapped_file_source::iterator> const& x)
 	{
 		std::cerr << "expected: " << x.which();
 		std::cerr << "got: \"" << x.where() << '"' << std::endl;
@@ -6653,22 +6646,22 @@ int main(int argc, char* argv[])
 
 	// TODO: Make sets of required params.
 	samplereader samples;
-	vector<istream*> hapFiles;
+	vector<mapped_file_source*> hapFiles;
 	if (samplefilename != "")
 	{
-	  std::ifstream sampleFile(samplefilename);
-	  samples.read(sampleFile);
+		mapped_file_source sampleFile(samplefilename);
+		samples.read(sampleFile);
 
-	  std::ifstream bimFile(inOptions["bimfile"].as<string>());
-	  vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+		mapped_file_source bimFile(inOptions["bimfile"].as<string>());
+		vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
 
-	  for (string filename : hapsfileOption)
-	    {
-	      hapFiles.push_back(new ifstream(filename));
-	    }
-	  
-	  readhaps(samples.samples, bimFile, hapFiles);
-	  std::cout << "readhapssample finished." << std::endl;
+		for (string filename : hapsfileOption)
+		{
+			hapFiles.push_back(new mapped_file_source(filename));
+		}
+
+		readhaps(samples.samples, bimFile, hapFiles);
+		std::cout << "readhapssample finished." << std::endl;
 	}
 
 	bool docompare = (impoutput != "");
@@ -6706,8 +6699,6 @@ int main(int argc, char* argv[])
 
 	if (samplefilename != "" && outputhapfilename != "")
 	  {
-	    // Note that C++98 had strange EOF behavior (?)
-	    hapFiles[0]->seekg(0);
 	    std::ofstream outputhapfile(outputhapfilename);
 	    createhapfile(samples.samples, *hapFiles[0], outputhapfile);
 	    
