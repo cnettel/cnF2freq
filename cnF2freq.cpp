@@ -3861,8 +3861,11 @@ struct relskewhmm
 
 		const auto doemissions = [&s, &ind](int m)
 		{
-			double w = ind->haplobase[m] / ind->haplocount[m];
-			for (int k = 0; k < 2; k++)
+		  double w;
+		  if (ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
+		  else
+		    w = ind->haploweight[m];
+		  for (int k = 0; k < 2; k++)
 			{
 				s[k] *= fabs(!k - w);
 			}
@@ -3922,7 +3925,7 @@ struct relskewhmm
 		}*/
 
 		double sum = s[0] + s[1];
-		return s[0] / sum;
+		return s[1] / sum;
 	}
 };
 
@@ -4873,7 +4876,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 								if (g & (1 << i))
 								{
-									skewterm += skewterms[i];
+								  //									skewterm += skewterms[i];
 								}
 							}
 							aroundturner turn(g);
@@ -5020,7 +5023,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 					}
 
-					reporter.report(outqueue[j]);
+					//reporter.report(outqueue[j]);
 
 					if (!full)
 					{
@@ -5079,11 +5082,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					for (clause& c : toulInput[marker])
 					{
 						bool me = false;
-						int count = 0;
 						for (int val : c.cinds)
 						{
 							if (val == -dous[j]->n) me = true;
-							if (val < 0) count++;
 						}
 						if (count == 1 && me)
 						{
@@ -6253,6 +6254,11 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			pair<MarkerVal, MarkerVal> marker;
 
 			bool isachange = false;
+			/*			if (rand() / (RAND_MAX / 10) == 0)
+			  {
+			    cout << "Masking out " << i << "at " << j << "\n";
+			    thisval = 1;
+			    }*/
 			switch (thisval)
 			{
 			case 0:
@@ -6299,12 +6305,12 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
 				cout << "Increasing prior uncertainty individual " << dous[j]->n << ", marker " << i << std::endl;
 			}
-			if (dous[j]->priormarkerdata[i].first != UnknownMarkerVal)
+			/*			if (dous[j]->priormarkerdata[i].first != UnknownMarkerVal)
 			  {
 			    dous[j]->priormarkersure[i] = make_pair(
 								    max(1e-3, dous[j]->priormarkersure[i].first),
 								    max(1e-3, dous[j]->priormarkersure[i].second));			  
-			  }
+								    }*/
 		}
 	}
 }
