@@ -6131,8 +6131,18 @@ void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<map
 				}
 				if (!numMatches)
 				{
-					// TODO: Look at whether one of the two alleles matches
-					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit, sampleInds[j]->markersure[i].second + unit);
+					bool nomatch[2] = { true, true };
+					for (int p = 0; p < 2; i++)
+					{
+						for (int z = 0; z < 2; z++)
+						{
+							if ((markers[j * 2] + z + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
+							{
+								nomatch[p] = false;
+							}
+						}
+					}
+					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit * nomatch[0], sampleInds[j]->markersure[i].second + unit * nomatch[1]);
 				}
 			}
 		}
