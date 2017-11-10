@@ -348,8 +348,8 @@ EXTERNFORGCC IAT impossible;
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-EXTERNFORGCC std::array<std::array<float, 2>, INDCOUNT> haplos;
-EXTERNFORGCC std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
+EXTERNFORGCC std::array<std::array<double, 2>, INDCOUNT> haplos;
+EXTERNFORGCC std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 
 #if !DOFB
 // done, factors and cacheprobs all keep track of the same data
@@ -381,13 +381,13 @@ EXTERNFORGCC flat_map<individ*, int> relmapshift;
 
 #ifdef DOEXTERNFORGCC
 IAT impossible;
-std::array<std::array<float, 2>, INDCOUNT> haplos;
+std::array<std::array<double, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 vector<individ*> reltreeordered;
 flat_map<individ*, int> relmap; //containing flag2 indices
 flat_map<individ*, int> relmapshift; //containing flag2 indices
-std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
+std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
@@ -418,8 +418,8 @@ struct threadblock
 	PerStateArray<int>::T* const quickendmarker;
 #endif
 	IAT* const impossible;
-	std::array<std::array<float, 2>, INDCOUNT>* const haplos;
-	std::array<std::array<flat_map<MarkerVal, float>, 2>, INDCOUNT>* infprobs;
+	std::array<std::array<double, 2>, INDCOUNT>* const haplos;
+	std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT>* infprobs;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -3732,7 +3732,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
 	double sum = 0;
-	bool doprint = ind->n == 587;
+	bool doprint = false;
 
 
 	for (auto probpair : ind->infprobs[j][side])
@@ -3781,10 +3781,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 		}		
 
 		double hzygcorred = probpair.second;
-		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
+		/*		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
 		{
 			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
-		}
+			}*/
 		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
@@ -4083,11 +4083,12 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 			    if (sims[k] > 1) sims[k] = 1 / sims[k];
 			  }
 			double similarity = min(sims[0], sims[1]);
+			similarity = 0;
 
-			if (!ind->haplocount[j] || scorea == scoreb)
+			if (!ind->haplocount[j] || similarity == 1.0)
 			{
-				ind->haplobase[j] = ind->haploweight[j] >= 0.5;
 				ind->haplocount[j] = min(1.0, (double) ind->haplocount[j]);
+				ind->haplobase[j] = ind->haploweight[j] * ind->haplocount[j];
 			}
 			else
 			{
