@@ -3781,11 +3781,11 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 		}		
 
 		double hzygcorred = probpair.second;
-		/*		if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
+		/*				if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
 		{
 			hzygcorred += hzygcorrsum * (probpair.first.value() == 1 ? 1 : -1);
-			}*/
-		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
+			}
+		*/		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
@@ -6131,18 +6131,22 @@ void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<map
 				}
 				if (!numMatches)
 				{
-					bool nomatch[2] = { true, true };
-					for (int p = 0; p < 2; i++)
+				  int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
+				  if (phases[j] == 2) swap(ms[0], ms[1]);
+
+				  bool nomatch[2] = { true, true };
+					for (int p = 0; p < 2; p++)
 					{
-						for (int z = 0; z < 2; z++)
+						for (int z = p; z < p + 1; z++)
 						{
-							if ((markers[j * 2] + z + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
+							if ((ms[z] + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
 							{
 								nomatch[p] = false;
 							}
 						}
 					}
-					sampleInds[j]->markersure[i] = make_pair(sampleInds[j]->markersure[i].first + unit * nomatch[0], sampleInds[j]->markersure[i].second + unit * nomatch[1]);
+					if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
+					sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 0.5*(1-unit)));
 				}
 			}
 		}
@@ -6207,7 +6211,7 @@ void createhapfile(const sampletype& samples, mapped_file_source& oldhapfile, os
 	}
 }
 
-void readfambed(std::string famFileName, std::string bedFileName, bool readall = true)
+void readfambed(std::string famFileName, std::string bedFileName, bool readall = true, bool dooverwrite = false)
 {
 	using namespace boost::interprocess;
 	using namespace x3;
@@ -6308,6 +6312,11 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 					0.5 * (0.5 + dous[j]->priormarkersure[i].first),
 					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
 				cout << "Increasing prior uncertainty individual " << dous[j]->n << ", marker " << i << std::endl;
+				if (dooverwrite)
+				  {
+				    dous[j]->markerdata[i] = marker;
+				    // TODO MARKERSURE
+				  }
 			}
 			/*			if (dous[j]->priormarkerdata[i].first != UnknownMarkerVal)
 			  {
@@ -6544,12 +6553,6 @@ void deserialize(istream& stream)
 					else
 					{
 					  ind->haploweight[i] = std::get<0>(output);
-						if (ind->haploweight[i] == 0.5) continue;
-
-						int newphase = 1 + (ind->haploweight[i] > 0.5);
-						if (oldphase && oldphase != newphase) switches++;
-
-						oldphase = newphase;
 
 						pair<MarkerVal, MarkerVal> pmv = make_pair(std::get<1>(output) * MarkerValue, std::get<2>(output) * MarkerValue);
 						if (pmv != ind->markerdata[i])
@@ -6559,6 +6562,12 @@ void deserialize(istream& stream)
 						}
 						ind->markerdata[i] = pmv;
 						ind->markersure[i] = make_pair(std::get<4>(output), std::get<5>(output));
+						if (ind->haploweight[i] == 0.5) continue;
+
+						int newphase = 1 + (ind->haploweight[i] > 0.5);
+						if (oldphase && oldphase != newphase) switches++;
+
+						oldphase = newphase;
 					}
 				}
 
