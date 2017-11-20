@@ -1727,7 +1727,7 @@ struct individ
 
 		if (factor < minfactor) return factor;
 
-		while (startmark < endmark)
+		while (startmark < endmark + inclusive)
 		{
 			int stepsize = 1;
 
