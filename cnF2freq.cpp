@@ -3972,7 +3972,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
 			}*/
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
 	}
 
 	return skewterms;
@@ -5089,9 +5089,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						{
 							if (val == -dous[j]->n) me = true;
 						}
-						if (count == 1 && me)
+						if (me)
 						{
-							c.weight -= skewterms[1];
+							c.weight -= skewterms[TURNBITS - 1];
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
@@ -6736,7 +6736,6 @@ int main(int argc, char* argv[])
 	  {
 	    hw = 1 - hw;
 	  }
-
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
 		{
