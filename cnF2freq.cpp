@@ -3971,8 +3971,10 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			if (sum < maxdiff) sum = maxdiff;
 			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
 			}*/
+		// Two directions across the same marker gap, hence two terms with 0.5 contribution
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
 	}
 
 	return skewterms;
@@ -4068,6 +4070,8 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 					prevval = prevval / (prevval + 1.0);*/
 				}
+				// Each direction is counted twice, for two different markers
+				relskewterm *= 0.5;
 			}
 
 			double scorea = 1.0 - ind->markersure[j].first;
