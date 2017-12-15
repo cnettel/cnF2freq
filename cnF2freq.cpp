@@ -3850,6 +3850,7 @@ struct relskewhmm
 	typedef std::array<double, 2> halfstate;
 	typedef std::array<halfstate, 2> state;
 	vector<state> relskewfwbw;
+	vector<double> ratio;
 
 	const int firstmarker;
 	const individ* ind;
@@ -3859,6 +3860,7 @@ struct relskewhmm
 	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
 	{
 		relskewfwbw.resize(endmarker - firstmarker);
+		ratio.resize(endmarker - firstmarker);
 		halfstate s = { 0.5, 0.5 };
 
 		const auto doemissions = [&s, &ind](int m)
@@ -3914,7 +3916,17 @@ struct relskewhmm
 			relskewfwbw[m - firstmarker + 1][1] = s;
 
 			dotransitions(m);
-			renormalizes();			
+			renormalizes();
+			double ratiofactors[2] = { 0 };
+			for (int k = 0; k < 2; k++)
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					ratiofactors[k][i] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
+				}
+			}
+
+			ratio[m - firstmarker] = ratiofactors[1] / ratiofactors[0];
 		}
 	}
 
@@ -3931,6 +3943,11 @@ struct relskewhmm
 
 		double sum = s[0] + s[1];
 		return s[1] / sum;
+	}
+
+	double getratio(int m)
+	{
+		return ratio[m];
 	}
 };
 
@@ -3958,9 +3975,6 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
-		double prevval = relskews[i].getweight(marker, 0);
-		double nextval = relskews[i].getweight(marker + 1, 1);
-
 		// TODO: OVERRUN AT MARKER + 1 ?
 		/*for (int k = 0; k < 2; k++)
 		{
@@ -3976,8 +3990,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			}*/
 		// Two directions across the same marker gap, hence two terms with 0.5 contribution
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
-		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
+		skewterms[truei] -= log(relskews[i].getratio(marker));
 	}
 
 	return skewterms;
