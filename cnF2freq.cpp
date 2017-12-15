@@ -3869,7 +3869,7 @@ struct relskewhmm
 		  if (ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
 		  else
 		    {
-		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
+//		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
 		    w = ind->haploweight[m];
 		    }
 		  for (int k = 0; k < 2; k++)
