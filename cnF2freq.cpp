@@ -3866,7 +3866,10 @@ struct relskewhmm
 		  double w;
 		  if (ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
 		  else
+		    {
+		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
 		    w = ind->haploweight[m];
+		    }
 		  for (int k = 0; k < 2; k++)
 			{
 				s[k] *= fabs(!k - w);
@@ -3973,8 +3976,8 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			}*/
 		// Two directions across the same marker gap, hence two terms with 0.5 contribution
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
-		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
 	}
 
 	return skewterms;
@@ -5089,11 +5092,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					for (clause& c : toulInput[marker])
 					{
 						bool me = false;
+						int count = 0;
 						for (int val : c.cinds)
 						{
 							if (val == -dous[j]->n) me = true;
+							if (val < 0) count++;
 						}
-						if (me)
+						if (me && count == 1)
 						{
 							c.weight -= skewterms[TURNBITS - 1];
 							if (c.weight > maxweight) {
