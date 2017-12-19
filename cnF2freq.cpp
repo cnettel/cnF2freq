@@ -3869,7 +3869,7 @@ struct relskewhmm
 		  if (ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
 		  else
 		    {
-		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
+		      //		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
 		    w = ind->haploweight[m];
 		    }
 		  for (int k = 0; k < 2; k++)
@@ -3922,7 +3922,7 @@ struct relskewhmm
 			{
 				for (int i = 0; i < 2; i++)
 				{
-					ratiofactors[k][i] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
+					ratiofactors[k] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
 				}
 			}
 
@@ -5099,7 +5099,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				std::array<double, TURNBITS> skewterms;
 #pragma omp critical(negshifts)
-				for (int marker = chromstarts[i]; marker < chromstarts[i + 1]; marker++)
+				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
 					for (clause& c : toulInput[marker])
@@ -5113,7 +5113,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 						if (me && count == 1)
 						{
-							c.weight -= skewterms[TURNBITS - 1];
+							c.weight -= skewterms[TURNBITS - 1] * WEIGHT_DISCRETIZER;
+							fprintf(stderr, "SKEWTERMS %d %d %lld %lf\n", dous[j]->n, marker, c.weight, -skewterms[TURNBITS - 1]);
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
