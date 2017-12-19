@@ -3975,22 +3975,26 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
+		double prevval = relskews[i].getweight(marker, 0);
+		double nextval = relskews[i].getweight(marker + 1, 1);
+
 		// TODO: OVERRUN AT MARKER + 1 ?
 		/*for (int k = 0; k < 2; k++)
 		{
-			double relval = fabs(k - ind->relhaplo[marker]);
-			double sum = 0;
-			double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
-			sum += term;
+		double relval = fabs(k - ind->relhaplo[marker]);
+		double sum = 0;
+		double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
+		sum += term;
 
-			term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
-			sum += term;
-			if (sum < maxdiff) sum = maxdiff;
-			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-			}*/
+		term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
+		sum += term;
+		if (sum < maxdiff) sum = maxdiff;
+		skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+		}*/
 		// Two directions across the same marker gap, hence two terms with 0.5 contribution
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= log(relskews[i].getratio(marker));
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= 0.5 * ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));
 	}
 
 	return skewterms;
