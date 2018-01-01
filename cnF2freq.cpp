@@ -5455,8 +5455,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
+				for (size_t c = 0; c < chromstarts.size() - 1; c++)
+				{
+					for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 
-			  std::atomic_int hitnnn(0);
+				}
+				std::atomic_int hitnnn(0);
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
@@ -5498,11 +5502,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
-				for (size_t c = 0; c < chromstarts.size() - 1; c++)
-				  {
-				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
-
-				  }
 			}
 		}
 	}
