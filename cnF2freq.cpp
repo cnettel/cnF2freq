@@ -3861,7 +3861,7 @@ struct relskewhmm
 	{
 		relskewfwbw.resize(endmarker - firstmarker);
 		ratio.resize(endmarker - firstmarker);
-		halfstate s = { 0.5, 0.5 };
+		halfstate s = { 0, 0 };
 
 		const auto doemissions = [&s, &ind](int m)
 		{
@@ -3874,22 +3874,40 @@ struct relskewhmm
 		    }
 		  for (int k = 0; k < 2; k++)
 			{
-				s[k] *= fabs(!k - w);
+			  s[k] += fabs(!k - w); // TODO: Remove HACK (+= rather than *=)
 			}
 		};
 		const auto dotransitions = [&s, &ind](int m)
 		{
 			double n = ind->relhaplo[m];
+			double nb = 1 - n;
+			double base = min(n, nb);
+			nb -= base;
+			n -= base;
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
-				nexts[k] = s[k] * n + s[!k] * (1 - n);
+				nexts[k] = s[k] * n + s[!k] * nb;
 			}
 
+			double sum = 0;
+			for (int k = 0; k < 2; k++)
+			  {
+			    sum += nexts[k];
+			  }
+
+			sum *= (1.0 - n - nb) / max((double) (n + nb), (double) maxdiff);
+			sum = 1.0 / max((double) sum, (double) maxdiff);
+			
+			for (int k = 0; k < 2; k++)
+			  {
+			    nexts[k] *= sum;
+			  }
 			s = nexts;
 		};
 		const auto renormalizes = [&s]
 		{
+		  return; // HACK: Disable normalization
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
@@ -3909,7 +3927,7 @@ struct relskewhmm
 		}
 
 		// BW, but not really, emissions included everywhere
-		s = { 1, 1 };
+		s = { 0, 0 };
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
