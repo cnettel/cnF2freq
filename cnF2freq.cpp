@@ -2772,6 +2772,11 @@ void lockhaplos(individ* ind, int i)
 				{
 					count += 1.0 - (&(pars[p]->markersure[j].first))[i];
 				}
+				if ((&(pars[p]->priormarkerdata[j].first))[i] != UnknownMarkerVal &&
+				    (&(pars[p]->markerdata[j].first))[i] == (&(pars[p]->priormarkerdata[j].first))[i])
+				{
+					count += 1.0 - (&(pars[p]->priormarkersure[j].first))[i];
+				}
 			}
 			if (p == 0) count *= 2;
 		}
@@ -3012,7 +3017,8 @@ struct negshifter
 		for (int p = minstart + 1; p < (int)chromstarts[c + 1]; p++)
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
-			ind->haploweight[p] = 1.0f - ind->haploweight[p];
+	     		ind->haploweight[p] = 1.0f - ind->haploweight[p];
+			//		ind->haplobase[p] = ind->haplocount[p] - ind->haplobase[p];
 		}
 	}
 };
@@ -3696,16 +3702,16 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 	if (diff > limn / limd1)
 	{
-		if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn / limd1, intended, orig);
+	  //		if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn / limd1, intended, orig);
 		intended = orig + limn / limd1;
-		hitnnn++;
+		if (intended < 0.5) hitnnn++;
 	}
 
 	if (diff < -limn / limd2)
 	{
-		if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn / limd2, intended, orig);
+	  //if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn / limd2, intended, orig);
 		intended = orig - limn / limd2;
-		hitnnn++;
+		if (intended > 0.5) hitnnn++;
 	}
 
 	return intended;
@@ -3861,7 +3867,7 @@ struct relskewhmm
 	{
 		relskewfwbw.resize(endmarker - firstmarker);
 		ratio.resize(endmarker - firstmarker);
-		halfstate s = { 0.5, 0.5 };
+		halfstate s = { 0, 0 };
 
 		const auto doemissions = [&s, &ind](int m)
 		{
@@ -3874,22 +3880,40 @@ struct relskewhmm
 		    }
 		  for (int k = 0; k < 2; k++)
 			{
-				s[k] *= fabs(!k - w);
+			  s[k] += fabs(!k - w); // TODO: Remove HACK (+= rather than *=)
 			}
 		};
 		const auto dotransitions = [&s, &ind](int m)
 		{
 			double n = ind->relhaplo[m];
+			double nb = 1 - n;
+			double base = min(n, nb);
+			nb -= base;
+			n -= base;
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
-				nexts[k] = s[k] * n + s[!k] * (1 - n);
+				nexts[k] = s[k] * n + s[!k] * nb;
 			}
 
+			double sum = 0;
+			for (int k = 0; k < 2; k++)
+			  {
+			    sum += nexts[k];
+			  }
+
+			sum *= (1.0 - n - nb) / max((double) (n + nb), (double) maxdiff);
+			sum = 1.0 / max((double) sum, (double) maxdiff);
+			
+			for (int k = 0; k < 2; k++)
+			  {
+			    nexts[k] *= sum;
+			  }
 			s = nexts;
 		};
 		const auto renormalizes = [&s]
 		{
+		  return; // HACK: Disable normalization
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
@@ -3909,7 +3933,7 @@ struct relskewhmm
 		}
 
 		// BW, but not really, emissions included everywhere
-		s = { 1, 1 };
+		s = { 0, 0 };
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
@@ -3922,7 +3946,7 @@ struct relskewhmm
 			{
 				for (int i = 0; i < 2; i++)
 				{
-					ratiofactors[k][i] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
+					ratiofactors[k] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
 				}
 			}
 
@@ -3975,22 +3999,27 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
+		double prevval = relskews[i].getweight(marker, 0);
+		double nextval = relskews[i].getweight(marker + 1, 1);
+
 		// TODO: OVERRUN AT MARKER + 1 ?
 		/*for (int k = 0; k < 2; k++)
 		{
-			double relval = fabs(k - ind->relhaplo[marker]);
-			double sum = 0;
-			double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
-			sum += term;
+		double relval = fabs(k - ind->relhaplo[marker]);
+		double sum = 0;
+		double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
+		sum += term;
 
-			term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
-			sum += term;
-			if (sum < maxdiff) sum = maxdiff;
-			skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-			}*/
+		term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
+		sum += term;
+		if (sum < maxdiff) sum = maxdiff;
+		skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
+		}*/
 		// Two directions across the same marker gap, hence two terms with 0.5 contribution
+		// // 0.5 removed
 		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= log(relskews[i].getratio(marker));
+		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
+		skewterms[truei] -= ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));
 	}
 
 	return skewterms;
@@ -4086,8 +4115,8 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 					prevval = prevval / (prevval + 1.0);*/
 				}
-				// Each direction is counted twice, for two different markers
-				relskewterm *= 0.5;
+				// // Each direction is counted twice, for two different markers
+				// relskewterm *= 0.5;
 			}
 
 			double scorea = 1.0 - ind->markersure[j].first;
@@ -4257,7 +4286,8 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 			sumweight += c.weight;
 			if (anyswitch) for (int val : c.cinds)
 			{
-				cover.insert(val);
+			  int ind = val < 0 ? -val : val;
+				cover.insert(ind);
 			}
 		}
 	}
@@ -5099,7 +5129,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				std::array<double, TURNBITS> skewterms;
 #pragma omp critical(negshifts)
-				for (int marker = chromstarts[i]; marker < chromstarts[i + 1]; marker++)
+				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
 					for (clause& c : toulInput[marker])
@@ -5113,7 +5143,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 						if (me && count == 1)
 						{
-							c.weight -= skewterms[TURNBITS - 1];
+							c.weight -= skewterms[TURNBITS - 1] * WEIGHT_DISCRETIZER;
+							//							fprintf(stderr, "SKEWTERMS %d %d %lld %lf\n", dous[j]->n, marker, c.weight, -skewterms[TURNBITS - 1]);
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
@@ -5159,7 +5190,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			bool skippable;
 
 #pragma omp critical(negshifts)
-			skippable = bestcands.size() && bestcands.begin()->score < fakegain;
+			skippable = bestcands.size() && (--bestcands.end())->score < fakegain;
 
 			if (skippable)
 			{
@@ -5236,14 +5267,17 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				    }
 					bestcands.insert(std::move(data));
 				}
-
 				while (bestcands.size() > 100)
 				{
 					bestcands.erase(--bestcands.end());
 				}
 			}			
 		}
-		
+
+		bool toolarge = false;
+		do
+		  {
+		    toolarge = false;
 		for (auto i = bestcands.rbegin(); i != bestcands.rend(); i++)
 		{
 			for (auto j = bestcands.begin(); *j < *i; j++)
@@ -5271,11 +5305,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  newcand.cover.insert(j->cover.begin(), j->cover.end());
 				  newcand.cands.insert(j->cands.begin(), j->cands.end());
 				  bestcands.insert(std::move(newcand));
-					// The greedy part
-					break;
+					// The greedy part, replaced by maximum size limit
+					// // break;
 				}
 			}
+			while (bestcands.size() > 1000)
+			  {
+			    bestcands.erase(--bestcands.end());
+			    toolarge = true;
+			  }
+			if (toolarge) break;
 		}
+		  } while (toolarge);
+
 		if (bestcands.size())
 			negshiftcands[i] = bestcands.begin()->cands;
 		else
@@ -5432,8 +5474,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
+				for (size_t c = 0; c < chromstarts.size() - 1; c++)
+				{
+					for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 
-			  std::atomic_int hitnnn(0);
+				}
+				std::atomic_int hitnnn(0);
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
@@ -5475,11 +5521,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
 				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
-				for (size_t c = 0; c < chromstarts.size() - 1; c++)
-				  {
-				    for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
-
-				  }
 			}
 		}
 	}
@@ -6095,7 +6136,8 @@ void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<map
 	      {
 		if (RELSKEWS)
 		  {
-		    sampleInds[j]->relhaplo[i] = unit;
+		    // HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
+		    sampleInds[j]->relhaplo[i] = unit * 0.5;
 		  }
 		sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
 	      }
