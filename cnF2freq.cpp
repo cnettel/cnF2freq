@@ -3853,6 +3853,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 
 struct relskewhmm
 {
+  static constexpr bool realhmm = true;
 	typedef std::array<double, 2> halfstate;
 	typedef std::array<halfstate, 2> state;
 	vector<state> relskewfwbw;
@@ -3867,7 +3868,7 @@ struct relskewhmm
 	{
 		relskewfwbw.resize(endmarker - firstmarker);
 		ratio.resize(endmarker - firstmarker);
-		halfstate s = { 0, 0 };
+		halfstate s = { 0.5 * realhmm, 0.5 * realhmm };
 
 		const auto doemissions = [&s, &ind](int m)
 		{
@@ -3880,40 +3881,50 @@ struct relskewhmm
 		    }
 		  for (int k = 0; k < 2; k++)
 			{
-			  s[k] += fabs(!k - w); // TODO: Remove HACK (+= rather than *=)
+			  auto val = fabs(!k - w);
+			  if (realhmm) s[k] *= val;
+			  else
+			    s[k] += val;
 			}
 		};
 		const auto dotransitions = [&s, &ind](int m)
 		{
 			double n = ind->relhaplo[m];
 			double nb = 1 - n;
-			double base = min(n, nb);
-			nb -= base;
-			n -= base;
+
+			if (!realhmm)
+			  {
+			    double base = min(n, nb);
+			    nb -= base;
+			    n -= base;
+			  }
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
 				nexts[k] = s[k] * n + s[!k] * nb;
 			}
 
-			double sum = 0;
-			for (int k = 0; k < 2; k++)
+			if (!realhmm)
 			  {
-			    sum += nexts[k];
-			  }
-
-			sum *= (1.0 - n - nb) / max((double) (n + nb), (double) maxdiff);
-			sum = 1.0 / max((double) sum, (double) maxdiff);
-			
-			for (int k = 0; k < 2; k++)
-			  {
-			    nexts[k] *= sum;
+			    double sum = 0;
+			    for (int k = 0; k < 2; k++)
+			      {
+				sum += nexts[k];
+			      }
+			    
+			    sum *= (1.0 - n - nb) / max((double) (n + nb), (double) maxdiff);
+			    sum = 1.0 / max((double) sum, (double) maxdiff);
+			    
+			    for (int k = 0; k < 2; k++)
+			      {
+				nexts[k] *= sum;
+			      }
 			  }
 			s = nexts;
 		};
 		const auto renormalizes = [&s]
 		{
-		  return; // HACK: Disable normalization
+		  if (!realhmm) return; // HACK: Disable normalization
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
@@ -3933,7 +3944,7 @@ struct relskewhmm
 		}
 
 		// BW, but not really, emissions included everywhere
-		s = { 0, 0 };
+		s = { 0.5 * realhmm, 0.5 * realhmm };
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
@@ -4115,7 +4126,8 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 					prevval = prevval / (prevval + 1.0);*/
 				}
-				// // Each direction is counted twice, for two different markers
+				// Each direction is counted twice, for two different markers
+				if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
 				// relskewterm *= 0.5;
 			}
 
@@ -5132,6 +5144,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
+					if (marker != chromstarts[i]) skewterms[TURNBITS - 1] *= 0.5;
+
 					for (clause& c : toulInput[marker])
 					{
 						bool me = false;
