@@ -5234,6 +5234,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					data.cands.emplace(getind(g + 1), sumweight, m);
 				}
 			}
+			if (data.cover.size() && data.score >= 0) fprintf("ERROR: POSITIVE SCORE %lld %d %d\n", data.score, data.cover.size(), data.cands.size());)
 
 			if (data.cover.size())
 #pragma omp critical(negshifts)
@@ -5274,49 +5275,49 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}			
 		}
 
-		bool toolarge = false;
+		bool toolarge;
 		do
-		  {
-		    toolarge = false;
-		for (auto i = bestcands.rbegin(); i != bestcands.rend(); i++)
 		{
-			for (auto j = bestcands.begin(); *j < *i; j++)
+			toolarge = false;
+			for (auto i = bestcands.rbegin(); i != bestcands.rend() && !toolarge; i++)
 			{
-				auto jj = j->cover.begin();
-				bool covered = false;
-				for (auto ind : i->cover)
+				for (auto j = bestcands.begin(); *j < *i && !toolarge; j++)
 				{
-					while (jj != j->cover.end() && *jj < ind)
+					auto jj = j->cover.begin();
+					bool covered = false;
+					for (auto ind : i->cover)
 					{
-						jj++;
-					}
-					if (jj == j->cover.end()) break;
+						while (jj != j->cover.end() && *jj < ind)
+						{
+							jj++;
+						}
+						if (jj == j->cover.end()) break;
 
-					if (*jj == ind)
+						if (*jj == ind)
+						{
+							covered = true;
+							break;
+						}
+					}
+
+					if (!covered)
 					{
-						covered = true;
-						break;
+						canddata newcand{ i->score + j->score, i->cover, i->cands };
+						newcand.cover.insert(j->cover.begin(), j->cover.end());
+						newcand.cands.insert(j->cands.begin(), j->cands.end());
+						bestcands.insert(std::move(newcand));
+						// The greedy part, replaced by maximum size limit
+						// // break;
 					}
-				}
 
-				if (!covered)
-				{
-				  canddata newcand{i->score + j->score, i->cover, i->cands};
-				  newcand.cover.insert(j->cover.begin(), j->cover.end());
-				  newcand.cands.insert(j->cands.begin(), j->cands.end());
-				  bestcands.insert(std::move(newcand));
-					// The greedy part, replaced by maximum size limit
-					// // break;
+					while (bestcands.size() > 1000)
+					{
+						bestcands.erase(--bestcands.end());
+						toolarge = true;
+					}
 				}
 			}
-			while (bestcands.size() > 1000)
-			  {
-			    bestcands.erase(--bestcands.end());
-			    toolarge = true;
-			  }
-			if (toolarge) break;
-		}
-		  } while (toolarge);
+		} while (toolarge);
 
 		if (bestcands.size())
 			negshiftcands[i] = bestcands.begin()->cands;
