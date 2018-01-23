@@ -5167,21 +5167,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					  }
 					for (clause& c : toulInput[marker])
 					{
-						bool me = false;
-						int count = 0;
-						for (int val : c.cinds)
-						{
-							if (val == -dous[j]->n) me = true;
-							if (val < 0) count++;
-						}
-						if (me && count == 1)
+						if (c.cinds[0] == -dous[j]->n)
 						{
 							c.weight -= w * WEIGHT_DISCRETIZER;
-							//							fprintf(stderr, "SKEWTERMS %d %d %lld %lf\n", dous[j]->n, marker, c.weight, -skewterms[TURNBITS - 1]);
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
-							break;
 						}
 					}
 				}
