@@ -4030,7 +4030,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 		// // 0.5 removed
 		// Skewterm implicitly negative, hence surprising sign
 		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
-		skewterms[truei] -= ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));
+		skewterms[truei] -= ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
 	}
 
 	return skewterms;
@@ -5061,7 +5061,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								  }
 								else
 								  {
-								    w = -5000;
+								    if (w == 0 || isinf(w) == -1)
+								      {
+									w = -5000;
+								      }
+								    else
+								      {
+									w = 5000;
+								      }
+
 								    w *= WEIGHT_DISCRETIZER;
 								  }
 								c.weight = w;
@@ -5144,8 +5152,19 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
-					if (marker != chromstarts[i]) skewterms[TURNBITS - 1] *= 0.5;
-
+					double w = skewterms[TURNBITS - 1];
+					if (marker != chromstarts[i]) w *= 0.5;
+					if (!isfinite(w))
+					  {
+					    if (isinf(w) == -1)
+					      {
+						w = -5000;
+					      }
+					    else
+					      {
+						w = 5000;
+					      }
+					  }
 					for (clause& c : toulInput[marker])
 					{
 						bool me = false;
@@ -5157,7 +5176,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 						if (me && count == 1)
 						{
-							c.weight -= skewterms[TURNBITS - 1] * WEIGHT_DISCRETIZER;
+							c.weight -= w * WEIGHT_DISCRETIZER;
 							//							fprintf(stderr, "SKEWTERMS %d %d %lld %lf\n", dous[j]->n, marker, c.weight, -skewterms[TURNBITS - 1]);
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
@@ -5248,9 +5267,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					data.cands.emplace(getind(g + 1), sumweight, m);
 				}
 			}
-			if (data.cover.size() && data.score >= 0) fprintf("ERROR: POSITIVE SCORE %lld %d %d\n", data.score, data.cover.size(), data.cands.size());)
+			if (data.cover.size() && data.score >= 0)
+			  {
+			    fprintf(stderr, "ERROR: POSITIVE SCORE %lld %lld %lld %d %d\n", data.score, sumweight, maxweight, data.cover.size(), data.cands.size()); 
+			  }
 
-			if (data.cover.size())
+			if (data.cover.size() && data.score < 0)
 #pragma omp critical(negshifts)
 			{
 				vector<decltype(bestcands)::iterator> toremove;
@@ -5324,13 +5346,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// // break;
 					}
 
-					while (bestcands.size() > 1000)
-					{
-						bestcands.erase(--bestcands.end());
-						toolarge = true;
-					}
+					if (bestcands.size() > 1000) break;
 				}
+				if (bestcands.size() > 1000) break;
 			}
+			while (bestcands.size() > 1000)
+			  {
+			    bestcands.erase(--bestcands.end());
+			    toolarge = true;
+			  }
 		} while (toolarge);
 
 		if (bestcands.size())
