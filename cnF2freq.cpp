@@ -6709,7 +6709,8 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn;
+	bool clear;
 	int COUNT;
 
 	desc.add_options()("samplefile", po::value<string>(&samplefilename), "ShapeIT-style .sample file")
@@ -6730,6 +6731,9 @@ int main(int argc, char* argv[])
 		("mapfile", po::value<string>(&mapfilename), "map file in original PlantImpute format, similar to AlphaImpute.")
 	        ("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
 		("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
+		("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
+		("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
+		("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
 		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
 	auto parser = po::command_line_parser(argc, argv);
