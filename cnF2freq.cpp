@@ -6761,8 +6761,24 @@ int main(int argc, char* argv[])
 		cerr << "Reading genotype file " << genfilename << "\n";
 		readalphadata(genofile);
 	  }
+	
 
 	// TODO: Make sets of required params.
+	if (clear)
+	{		
+		set<double> protcms;
+		set<individ*> protinds;
+		if (!protmarkersfn.empty())
+		{
+			addprotmarkers(protcms, mapped_file_source(protmarkersfn));
+		}
+		if (!protindsfn.empty())
+		{
+			addprotinds(protinds, mapped_file_source(protindsfn));
+		}
+		clearunprotected(protinds, protcms);
+	}
+
 	samplereader samples;
 	vector<mapped_file_source*> hapFiles;
 	if (samplefilename != "")
