@@ -75,9 +75,17 @@ const long long WEIGHT_DISCRETIZER = 1000000000;
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/spirit/home/x3.hpp>
 #include <boost/spirit/home/x3/support/ast/variant.hpp>
+#include <boost/fusion/container/vector.hpp>
+#include <boost/fusion/sequence.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/container/vector/vector_fwd.hpp>
+#include <boost/fusion/include/vector_fwd.hpp>
+
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/io.hpp>
+#include <boost/fusion/adapted/std_pair.hpp>
 #include <boost/fusion/include/std_pair.hpp>
+#include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/fusion/include/std_tuple.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/fusion/include/at_c.hpp>
@@ -104,12 +112,6 @@ namespace ode = boost::numeric::odeint;
 #include <numeric>
 #include <type_traits>
 
-// Will be in C++17...
-template <class T>
-constexpr std::add_const_t<T>& as_const(T& t) noexcept
-{
-  return t;
-}
 
 using namespace std; // use functions that are part of the standard library
 #ifdef _MSC_VER
@@ -210,6 +212,8 @@ bool early = false;
 
 vector<double> markerposes;
 vector<double> actrec[2];
+map<string, int> markernames;
+
 //int selfgen = 0;
 double genrec[3];
 vector<unsigned int> chromstarts;
@@ -4647,7 +4651,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				factor += log(realfactor);
 				printf("%lf %d\n", factor, shiftend);
 				fflush(stdout);
-				if (std::_isnan(factor) || factor < MINFACTOR) continue;
+				if (std::isnan(factor) || factor < MINFACTOR) continue;
 
 				// Walk over all chromosome positions, whether it be markers (negative q values <= -1000) or grid positions
 				for (int q = qstart; q != qend; q += qd)
@@ -6017,6 +6021,16 @@ const auto marker_ = (x3::int_ > word_);
 const auto hapsLine = (marker_ > x3::omit[x3::float_] > word_ > word_ > (+x3::int_));
 const auto hapsLineIgnoreGenotypes = (marker_ > x3::long_long > word_ > word_> x3::omit[(+x3::int_)]);
 
+const auto sampleHeader = x3::omit[
+	x3::repeat(7)[word_] > x3::eol >
+		x3::int_ > x3::int_ > x3::int_ > x3::repeat(4)[word_] > x3::eol];
+const auto sampleLine = (x3::omit[x3::int_] >> word_ >> x3::omit[x3::int_] >> word_ >> word_ >> x3::omit[x3::int_] >> x3::omit[x3::int_]);
+
+x3::rule<class samplesRule, sampletype, true> const samplesRule = "samplesRule";
+auto const samplesRule_def = sampleHeader >> (sampleLine % x3::eol);
+
+BOOST_SPIRIT_DEFINE(samplesRule)
+
 struct samplereader
 {
 	sampletype samples;
@@ -6025,14 +6039,11 @@ struct samplereader
 	{
 		using namespace x3;
 
-		auto sampleHeader = omit[
-			repeat(7)[word_] > eol >
-				int_ > int_ > int_ > repeat(4)[word_] > eol];
-		auto sampleLine = (omit[int_] > word_ > omit[int_] > word_ > word_ > omit[int_] > omit[int_]);
+		
 
 		try
 		{
-			parseToEndWithError(sampleFile, sampleHeader > (sampleLine % eol), samples);
+			parseToEndWithError(sampleFile, samplesRule, samples);
 			std::cout << samples.size() << " samples read." << std::endl;
 		}
 		catch (expectation_failure<mapped_file_source::iterator> const& x)
@@ -6423,6 +6434,129 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 }
 #endif
 
+auto mapline = x3::omit[x3::int_] > ::word_  > x3::double_ > x3::omit[x3::int_];
+
+void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
+{
+	using namespace x3;
+	chromstarts.push_back(0);
+	parseToEndWithError(map, mapline
+		[([&](auto& ctx)
+			{
+				using namespace boost::fusion;
+
+				auto attr = _attr(ctx);
+				auto [name, pos] = make_pair(at_c<0>(attr), at_c<1>(attr));
+				markernames[name] = markerposes.size();
+				markerposes.push_back(pos);			
+			})] % eol);	
+	chromstarts.push_back(markerposes.size());
+
+	individ* ind;
+	int nowpar = 0;
+	int nowmarker = 0;
+
+	auto indid = [&ind, &nowpar, &nowmarker](auto& ctx)
+	{
+		ind = getind(_attr(ctx));
+		nowpar = 0;
+		nowmarker = 0;
+		dous.push_back(ind);
+	};
+
+	auto parid = [&ind, &nowpar](auto& ctx) -> int
+	{
+		ind->pars[nowpar++] = getind(_attr(ctx));
+		return nowpar;
+	};
+
+	auto setSex = [&ind](auto& ctx)
+	{
+		ind->sex = _attr(ctx) - 1;
+	};
+
+	auto setMarker = [&ind, &nowmarker](auto& ctx) -> int
+	{
+		using namespace boost::fusion;
+
+		auto attr = _attr(ctx);
+		std::pair<int, int> data = make_pair(at_c<0>(attr), at_c<1>(attr));
+		ind->markerdata[nowmarker] = make_pair(data.first * MarkerValue, data.second * MarkerValue);
+		ind->markersure[nowmarker] = make_pair(1e-4, 1e-4);
+		nowmarker++;
+
+		return nowmarker;
+	};
+
+	auto transferPrior = [&ind](auto& ctx) -> int
+	{
+		ind->priormarkerdata = ind->markerdata;
+		ind->priormarkersure = ind->markersure;
+	};
+
+	parseToEndWithError(ped,
+		(omit[word_ > (word_[indid]) > repeat(2)[word_[parid]] > int_[setSex] > omit[word_] >
+			repeat(markerposes.size())[(int_ > int_)[setMarker]]])[transferPrior] % eol);
+}
+
+
+void addprotmarkers(set<double>& protmarkers, mapped_file_source&& source)
+{
+	using namespace x3;
+	parseToEndWithError(source, mapline
+		[([&](auto& ctx)
+			{
+				using namespace boost::fusion;
+
+				auto attr = _attr(ctx);
+				auto [name, pos] = make_pair(at_c<0>(attr), at_c<1>(attr));
+				auto iter = markernames.find(name);
+				if (iter == markernames.end())
+				{
+					fprintf(stderr, "Marker name mismatch. %s", name.c_str());
+				}
+
+				protmarkers.insert(pos);
+			})] % eol);
+}
+
+void addprotinds(set<individ*>& protinds, mapped_file_source&& source)
+{
+	using namespace x3;
+	parseToEndWithError(source, word_
+		[([&](auto& ctx)
+			{
+				std::string name = _attr(ctx);
+				individ* ind = getind(name, false);
+				if (ind == 0) // TODO: Correct null ind?
+				{
+					fprintf(stderr, "Incorrect individual name. %s\n", name.c_str());
+				}
+				protinds.insert(ind);
+			})] % eol);
+}
+
+void clearunprotected(set<individ*>& protinds, set<double>& protmarkers)
+{
+	for (individ* ind : dous)
+	{
+		if (protinds.find(ind) != protinds.end()) continue;
+
+		int lastmarker = 0;
+		for (double i : protmarkers)
+		{			
+			for (; markerposes[lastmarker] < i; lastmarker++)
+			{
+				ind->markerdata[lastmarker] = { UnknownMarkerVal, UnknownMarkerVal };
+				ind->markersure[lastmarker] = make_pair(0, 0);
+			}
+			lastmarker++;
+		}
+		ind->priormarkerdata = ind->markerdata;
+		ind->priormarkersure = ind->markersure;
+	}
+}
+
 void compareimputedoutput(istream& filteredOutput)
 {
   int j = 0;
@@ -6709,7 +6843,7 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn, gigimapfilename, gigipedfilename;
 	bool clear;
 	int COUNT;
 
@@ -6729,8 +6863,10 @@ int main(int argc, char* argv[])
 		chromstarts[1] = min(cap, (int)chromstarts[1]);
 	}), "Limit to marker count.")
 		("mapfile", po::value<string>(&mapfilename), "map file in original PlantImpute format, similar to AlphaImpute.")
-	        ("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
+	    ("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
 		("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
+		("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
+		("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
 		("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
 		("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
 		("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
@@ -6740,7 +6876,7 @@ int main(int argc, char* argv[])
 	parser.options(desc);
 	po::store(parser.run(), inOptions);
 	po::notify(inOptions);
-
+	
 	if (mapfilename != "")
 	  {
 		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
@@ -6761,22 +6897,27 @@ int main(int argc, char* argv[])
 		cerr << "Reading genotype file " << genfilename << "\n";
 		readalphadata(genofile);
 	  }
+
+	if (gigimapfilename != "" && gigipedfilename != "")
+	{
+		readgigidata(mapped_file_source(gigimapfilename), mapped_file_source(gigipedfilename));
+	}
 	
 
 	// TODO: Make sets of required params.
 	if (clear)
 	{		
-		set<double> protcms;
+		set<double> protmarkers;
 		set<individ*> protinds;
 		if (!protmarkersfn.empty())
 		{
-			addprotmarkers(protcms, mapped_file_source(protmarkersfn));
+			addprotmarkers(protmarkers, mapped_file_source(protmarkersfn));
 		}
 		if (!protindsfn.empty())
 		{
 			addprotinds(protinds, mapped_file_source(protindsfn));
 		}
-		clearunprotected(protinds, protcms);
+		clearunprotected(protinds, protmarkers);
 	}
 
 	samplereader samples;
@@ -6901,7 +7042,7 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 							if (!world.rank())
 #endif
-								/*if (i == COUNT - 1)*/ fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+								/*if (i == COUNT - 1)*/ fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);
 							ind->negshift[j] = 0;
 						}
