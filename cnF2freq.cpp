@@ -6473,6 +6473,8 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 	auto setSex = [&ind](auto& ctx)
 	{
 		ind->sex = _attr(ctx) - 1;
+
+		return 0;
 	};
 
 	auto setMarker = [&ind, &nowmarker](auto& ctx) -> int
@@ -6492,6 +6494,8 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 	{
 		ind->priormarkerdata = ind->markerdata;
 		ind->priormarkersure = ind->markersure;
+
+		return 0;
 	};
 
 	parseToEndWithError(ped,
