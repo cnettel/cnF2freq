@@ -6473,8 +6473,6 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 	auto setSex = [&ind](auto& ctx)
 	{
 		ind->sex = _attr(ctx) - 1;
-
-		return 0;
 	};
 
 	auto setMarker = [&ind, &nowmarker](auto& ctx) -> int
@@ -6527,7 +6525,7 @@ void addprotmarkers(set<double>& protmarkers, mapped_file_source&& source)
 void addprotinds(set<individ*>& protinds, mapped_file_source&& source)
 {
 	using namespace x3;
-	parseToEndWithError(source, word_
+	parseToEndWithError(source, (omit[word_] > word_
 		[([&](auto& ctx)
 			{
 				std::string name = _attr(ctx);
@@ -6537,7 +6535,7 @@ void addprotinds(set<individ*>& protinds, mapped_file_source&& source)
 					fprintf(stderr, "Incorrect individual name. %s\n", name.c_str());
 				}
 				protinds.insert(ind);
-			})] % eol);
+			})]) % eol);
 }
 
 void clearunprotected(set<individ*>& protinds, set<double>& protmarkers)
