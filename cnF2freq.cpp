@@ -4908,7 +4908,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					// TODO: NEGSHIFT DOESN'T TAKE RELMAP FLAG2 RESTRICTIONS INTO ACCOUNT
 					// Consider doing haplotype reversal from a specific position and all the way down.
-					if (HAPLOTYPING && !early && !full && dous[j]->gen >= 0)
+					if (HAPLOTYPING && !early && !full /*&& dous[j]->gen >= 0*/)
 					{
 						int marker = -q - 1000;					       
 						
@@ -5059,7 +5059,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w *= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
-								if (w && isfinite(w))
+								if (w > 0 && isfinite(w))
 								  {
 								    w = log(w) * WEIGHT_DISCRETIZER;
 								  }
@@ -5158,9 +5158,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					skewterms = calcskewterms(marker, &relskews[0]);
 					double w = skewterms[TURNBITS - 1];
 					if (marker != chromstarts[i]) w *= 0.5;
-					if (!isfinite(w))
+					if (!isfinite(w) || fabs(w) > 5000)
 					  {
-					    if (isinf(w) == -1)
+					    if (w < -5000)
 					      {
 						w = -5000;
 					      }
@@ -5196,7 +5196,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
 		  //		  continue;
- 		  if ((m % 10) == (iter % 10)) donext++;
+ 		  if ((m % 100) == (iter % 100)) donext++;
 		  if (!donext) continue;
 		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
@@ -5541,12 +5541,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				parentswapnegshifts(nsm);
 
-				bool badhit = hitnnn > min(oldhitnnn, oldhitnnn2) * 0.99 + 1;
+				bool badhit = hitnnn > max(oldhitnnn, oldhitnnn2);
 				if (badhit)
 				  {
 				    scalefactor /= 1.1;
 				  }
-				else
+				bool goodhit = hitnnn < min(oldhitnnn, oldhitnnn2) * 0.99;
+				if (goodhit)
 				  {
 				    scalefactor *= 1.1;
 				  }
@@ -6950,7 +6951,8 @@ int main(int argc, char* argv[])
 
 	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
 	// getting stuck towards the end.
-	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
+	dous.resize(104);
+	//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
     if (docompare)
 	{
 		std::ifstream filteredOutput(impoutput);
@@ -6988,11 +6990,6 @@ int main(int argc, char* argv[])
 		out = fopen(outputfilename.c_str(), "w");
 	}
 
-	individ* ind = getind(89);
-	for (auto& hw : ind->haploweight)
-	  {
-	    hw = 1 - hw;
-	  }
 	if (HAPLOTYPING || true)
 		for (int i = 0; i < COUNT; i++)
 		{
@@ -7025,6 +7022,7 @@ int main(int argc, char* argv[])
 
 			for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 			{
+			  if (i2 > 104) continue;
 				individ* ind = getind(i2);
 				if (!ind) continue;
 
@@ -7033,7 +7031,7 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 					if (!world.rank())
 #endif
-						/*if (i == COUNT - 1)*/						fprintf(stdout, "%d %s\n", i2, ind->name.c_str());
+						/*if (i == COUNT - 1)*/						fprintf(out, "%d %s\n", i2, ind->name.c_str());
 					// Printing of haplotype data for each iteration
 					for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
 
