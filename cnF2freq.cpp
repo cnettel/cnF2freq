@@ -5065,7 +5065,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								  }
 								else
 								  {
-								    if (w == 0 || isinf(w) == -1)
+								    if (w < 0)
 								      {
 									w = -5000;
 								      }
@@ -5083,7 +5083,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp critical(negshifts)
 								{
 								  if (c.weight > maxweight) {
+									  fprintf(stderr, "New maxweight %lld, was %lld, w %lf", maxweight, c.weight, w);
 								    maxweight = c.weight;
+									  
 								  }
 								  toulInput[mark].push_back(c);
 								}
