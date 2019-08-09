@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <omp.h>
+#include <limits>
 
 
 const int ANALYZE_FLAG_FORWARD = 0;
@@ -5059,13 +5060,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w *= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
-								if (w > 0 && isfinite(w))
+								if (w >= std::numeric_limits<double>::min() && isfinite(w))
 								  {
 								    w = log(w) * WEIGHT_DISCRETIZER;
 								  }
 								else
 								  {
-								    if (w < 0)
+								    if (w < 1)
 								      {
 									w = -5000;
 								      }
@@ -5203,7 +5204,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
-			std::string toulout(tmppath + "/" + std::string("toul_out") + tid + ".txt");
+			std::string toulout(/*tmppath + "/" + std::string("toul_out") + tid + ".txt"*/ "/dev/null");
 			std::string sol(tmppath + "/" + std::string("sol") + tid);			
 
 			long long fakegain = 0;
@@ -5220,7 +5221,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			bool skippable;
 
 #pragma omp critical(negshifts)
-			skippable = bestcands.size() && (--bestcands.end())->score < fakegain;
+			skippable = !fakegain || (bestcands.size() && (--bestcands.end())->score < fakegain);
 
 			if (skippable)
 			{
@@ -5230,7 +5231,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
-			string str = "toulbar2 " + toulin + " -p=8 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin + " -p=8 -O=-1 m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
