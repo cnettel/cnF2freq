@@ -211,7 +211,7 @@ const float maxdiff = 0.000005;
 
 bool early = false;
 
-vector<double> markerposes;
+vector<double> markerposes;;
 vector<double> actrec[2];
 map<string, int> markernames;
 
@@ -828,11 +828,12 @@ struct individ
 	// Line or strain of origin, should only exist in founders.
 	int strain;
 	// Marker data as a list of pairs. No specific ordering assumed.
-	vector<MarkerValPair > markerdata;
-	vector<pair<double, double> > markersure;
+	vector<MarkerValPair> markerdata;
+	vector<double> variances;
+	vector<pair<double, double>> markersure;
 
-	vector<MarkerValPair > priormarkerdata;
-	vector<pair<double, double> > priormarkersure;
+	vector<MarkerValPair> priormarkerdata;
+	vector<pair<double, double>> priormarkersure;
 
 	// Temporary storage of all possible marker values, used in fixparents.
 	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
@@ -1270,7 +1271,7 @@ struct individ
 		}
 
 		double okvals[2] = { 0 };
-		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one intepretation has gained acceptance,
+		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one interpretation has gained acceptance,
 		// no need to retest it.
 		for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
 		{
@@ -1326,6 +1327,47 @@ struct individ
 					}
 				}
 			}
+		}
+	}
+
+	void addvariance(unsigned int marker)
+	{
+		MarkerValPair& themarker = markerdata[marker];
+
+		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one interpretation has gained acceptance,
+		// no need to retest it.
+		double sum = 0;
+		double sqsum = 0;
+		individ* relp[6] = { pars[0], nullptr, nullptr, pars[1], nullptr, nullptr, this };
+		for (int i = 0; i < 2; i++)
+		{
+			if (relp[i * 3])
+			{
+				relp[i * 3 + 1] = relp[i * 3]->pars[0];
+				relp[i * 3 + 2] = relp[i * 3]->pars[1];
+			}
+		}
+
+		for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
+		{
+			threadblock tb;
+			for (int i = 0; i < NUMTYPES; i++)
+			{
+				for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
+				{
+					double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
+					sum += ok;
+					sqsum += ok * ok;
+				}
+			}
+		}
+
+		if (!sum) return;
+		double contrib = sqsum / (sum * sum);
+		for (individ* rel : relp)
+		{
+			if (!rel) continue;
+			rel->variances[marker] += contrib;
 		}
 	}
 
@@ -2184,6 +2226,8 @@ individ* const __attribute__((const)) getind(int n, bool real = false)
 		ind->homozyg.resize(markerposes.size());
 		ind->markersure.resize(markerposes.size());
 
+		ind->variances.resize(markerposes.size());
+
 		if (RELSKEWS)
 		{
 			ind->relhaplo.resize(markerposes.size());
@@ -2757,39 +2801,14 @@ void lockhaplos(individ* ind, int i)
 		ind->lockstart[i] = 0;
 	}
 	int bestpos = -1;
-	double bestcount = -1;
+	double bestvar = 0;
 
 	for (j = max(chromstarts[i], ind->lockstart[i]); j != chromstarts[i + 1]; j++)
 	{
-		if (ind->markerdata[j].first == ind->markerdata[j].second) continue;
-		if (fabs(ind->haploweight[j] - 0.5) > 0.49999) continue;
-
-		individ* pars[3] = { ind, ind->pars[0], ind->pars[1] };
-		double count = 0;
-
-		for (int p = 0; p < 3; p++)
+		if (ind->variances[j] > bestvar)
 		{
-			if (!pars[p] || pars[p]->markerdata.size() <= j) continue;
-
-			for (int i = 0; i < 2; i++)
-			{
-				if ((&(pars[p]->markerdata[j].first))[i] != UnknownMarkerVal)
-				{
-					count += 1.0 - (&(pars[p]->markersure[j].first))[i];
-				}
-				if ((&(pars[p]->priormarkerdata[j].first))[i] != UnknownMarkerVal &&
-				    (&(pars[p]->markerdata[j].first))[i] == (&(pars[p]->priormarkerdata[j].first))[i])
-				{
-					count += 1.0 - (&(pars[p]->priormarkersure[j].first))[i];
-				}
-			}
-			if (p == 0) count *= 2;
-		}
-
-		if (count > bestcount)
-		{
-			bestcount = count;
 			bestpos = j;
+			bestvar = ind->variances[j];
 		}
 	}
 
@@ -2864,7 +2883,7 @@ void postmarkerdata()
 				generation++;
 
 				for (size_t g = 0; g < ind->markerdata.size(); g++)
-				{
+				{f
 					ind->fixparents(g, latephase);
 				}
 			}
@@ -2963,6 +2982,24 @@ void postmarkerdata()
 		}
 	} while (any > anyrem);
 
+#pragma omp parallel for schedule(dynamic,32)
+	for (int i = 1; i < INDCOUNT; i++)
+	{
+		individ* ind = getind(i);
+
+		// Lock the first position
+		if (HAPLOTYPING && ind && ind->haploweight.size())
+			// These days we do the locking in all generations
+		{
+			for (int j = 0; j < markerposes.size(); j++)
+			{
+				ind->addvariance(j);
+			}
+		}
+	}
+
+
+#pragma omp parallel for schedule(dynamic,32)
 	for (int i = 1; i < INDCOUNT; i++)
 	{
 		individ* ind = getind(i);
