@@ -3988,6 +3988,10 @@ struct relskewhmm
 				s[0] *= 1e20;
 				s[1] *= 1e20;
 			}
+			if (sum == 0)
+			{
+				fprintf(stderr, "Renormalization problem.\n");
+			}
 		};
 
 		// FW
@@ -4034,12 +4038,11 @@ struct relskewhmm
 		}*/
 
 		double sum = s[0] + s[1];
+		if (sum == 0)
+		{
+			fprintf(stderr, "Renormalization problem for ind %d at %d, dir %d.\n", ind->n, m, dir);
+		}
 		return s[1] / sum;
-	}
-
-	double getratio(int m)
-	{
-		return ratio[m];
 	}
 };
 
