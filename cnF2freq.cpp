@@ -5607,9 +5607,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				bool goodhit = hitnnn < min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (goodhit)
 				  {
-				    scalefactor *= 1.1;
+				    scalefactor *= 1.21;
 				  }
-				scalefactor *= 0.99;
+				scalefactor *= 0.997;
 				oldhitnnn2 = oldhitnnn;
 				oldhitnnn = hitnnn;
 				//if (scalefactor < 0.01) scalefactor = 0.01;
