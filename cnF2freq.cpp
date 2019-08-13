@@ -5254,7 +5254,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
 		  //		  continue;
- 		  if ((m % 100) == (iter % 100)) donext++;
+ 		  if ((m % 20) == (iter % 20)) donext++;
 		  if (!donext) continue;
 		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
