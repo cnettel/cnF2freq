@@ -5286,7 +5286,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
-			string str = "toulbar2 " + toulin + " -p=8 -O=-1 m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
