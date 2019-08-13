@@ -1,5 +1,5 @@
 // cnF2freq, (c) Carl Nettelblad, Department of Information Technology, Uppsala University
-// 2008-2017
+// 2008-2019
 //
 // PlantImpute 1.5, with support for forward-backward and old "true" tree-style cnF2freq
 // algorithm. This reduces mamoery requirements and speeds up imputation. A lot. Still
@@ -43,6 +43,8 @@ float templgeno[8] = { -1, -0.5,
 	0,  0.5,
 	1, -0.5 };
 
+const int NO_EQUIVALENCE = -1;
+const int ZERO_PROPAGATE = 1;
 const long long WEIGHT_DISCRETIZER = 1000000000;
 
 // _MSC_VER is here to be interpreted as any compiler providing TR1 C++ headers
@@ -281,10 +283,10 @@ int sexc = 1;
 // The logic we use currently represents "0" as unknown, anything else as a known
 // marker value.
 // NOTE, VALUE CHANGED FOR ZEROS!
-template<bool zeropropagate> bool markermiss(MarkerVal& a, const MarkerVal b)
+template<int zeropropagate> bool markermiss(MarkerVal& a, const MarkerVal b)
 {
 	// This is the real logic; we do not bind anything at all when zeropropagate is true
-	if (zeropropagate) return false;
+	if (zeropropagate == ZERO_PROPAGATE) return false;
 
 	if (a == UnknownMarkerVal)
 	{
@@ -905,7 +907,7 @@ struct individ
 	//
 	// The double overload means that the class can be treated as a conventional function call, returning a double, when the pre-lookup
 	// is not needed. In the "real" trackpossible method, one instance is called in that way, while the other one is pre-looked up.
-	template<int update, bool zeropropagate> struct recursetrackpossible
+	template<int update, int zeropropagate> struct recursetrackpossible
 	{
 		individ* mother;
 		int upflagr;
@@ -931,7 +933,7 @@ struct individ
 			upshiftr = upflagit(upshift, firstpar, genwidth >> (NUMGEN - NUMSHIFTGEN));
 
 			prelok = true;
-			if (!zeropropagate && genwidth == (1 << (NUMGEN - 1)))
+			if (zeropropagate != ZERO_PROPAGATE && genwidth == (1 << (NUMGEN - 1)))
 			{
 				if (DOIMPOSSIBLE)
 				{
@@ -968,7 +970,7 @@ struct individ
 					upflag2r,
 					upshiftr, extparams, genwidth >> 1);
 
-			if (DOIMPOSSIBLE && impossibleref && !zeropropagate && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
+			if (DOIMPOSSIBLE && impossibleref && zeropropagate != ZERO_PROPAGATE && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
 			{
 				*impossibleref = impossibleval;
 			}
@@ -980,7 +982,8 @@ struct individ
 	// zeropropagate also implies that there is a gstr value, we propagate zeros to find any possible source strain
 	// The main logic of tracking a specific inheritance pathway, computing haplotype weights, and overall feasibility.
 	// update: Should haplotype weights be updated?
-	// zeropropagate: Should zero marker values be kept, or changed to the actual values they are matched against.
+	// zeropropagate: Should zero marker values be kept, or changed to the actual values they are matched against. Is it ok
+        // treat equivalent values as one.
 	// threadblock: Reference to all thread-local data.
 	// inmarkerval: The marker val we are matching against.
 	// marker: The marker number.
@@ -991,7 +994,7 @@ struct individ
 	// individuals in the analysis.
 	// extparams: external parameters.
 	// genwidth: The width of the generation flags.
-	template<int update, bool zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
+	template<int update, int zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
 		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
 		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
 	{
@@ -1245,7 +1248,7 @@ struct individ
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
-			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
+							    marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
 	}
 
 	// "Fix" parents, i.e. infer correct marker values for any zero values existing.
@@ -1333,12 +1336,13 @@ struct individ
 	void addvariance(unsigned int marker)
 	{
 		MarkerValPair& themarker = markerdata[marker];
+		auto& thesure = markersure[marker];
 
 		// We only accept an interpretation when it is by exclusion the only possible one. As soon as one interpretation has gained acceptance,
 		// no need to retest it.
 		double sum = 0;
 		double sqsum = 0;
-		individ* relp[6] = { pars[0], nullptr, nullptr, pars[1], nullptr, nullptr, this };
+		individ* relp[7] = { pars[0], nullptr, nullptr, pars[1], nullptr, nullptr, this };
 		for (int i = 0; i < 2; i++)
 		{
 			if (relp[i * 3])
@@ -1347,28 +1351,39 @@ struct individ
 				relp[i * 3 + 2] = relp[i * 3]->pars[1];
 			}
 		}
+		bool debugtime = (n == 68) && (marker == 0 || marker == 15);
 
-		for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
-		{
-			threadblock tb;
-			for (int i = 0; i < NUMTYPES; i++)
-			{
-				for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
-				{
-					double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
-					sum += ok;
-					sqsum += ok * ok;
-				}
-			}
-		}
+		int count = 0;
+		for (int allele = 0; allele < 2; allele++)
+		  {
+		    for (shiftflagmode = 0; shiftflagmode < 2; shiftflagmode += 1)
+		      {
+		        threadblock tb;
+			for (int i = 0; i < NUMTYPES * 2; i++)
+			  {
+			    //int flag2 = -1;
+			    			    for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
+			      {
+				double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
+			marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
+				//				double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
+				sum += ok;
+				sqsum += ok * ok;
+				if (debugtime && ok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf\n", n, marker, allele, shiftflagmode, i, flag2, ok);
+				count++;
+			      }
+			  }
+		      }
+		  }
 
 		if (!sum) return;
-		double contrib = sqsum / (sum * sum);
-		for (individ* rel : relp)
+		double contrib = (sqsum - (sum * sum / count)) / (sum * sum) * count;
+		/*		for (individ* rel : relp)
 		{
-			if (!rel) continue;
-			rel->variances[marker] += contrib;
-		}
+		if (!rel) continue;*/
+			variances[marker] += contrib;
+			if (debugtime) fprintf(stderr, "Variance for %d at %d is %lf (%lf:%lf)\n", n, marker, contrib, sqsum, sum);
+			//		}
 	}
 
 	// Verifies that an update should take place and performs it. Just a wrapper to calltrackpossible.
@@ -2883,7 +2898,7 @@ void postmarkerdata()
 				generation++;
 
 				for (size_t g = 0; g < ind->markerdata.size(); g++)
-				{f
+				{
 					ind->fixparents(g, latephase);
 				}
 			}
