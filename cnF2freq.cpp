@@ -5226,7 +5226,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					  }
 					for (clause& c : toulInput[marker])
 					{
-						if (c.cinds[0] == -dous[j]->n)
+						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
 							c.weight -= w * WEIGHT_DISCRETIZER;
 							if (c.weight > maxweight) {
