@@ -5357,7 +5357,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				      bestcands.erase(i);
 				    }
 					bestcands.insert(std::move(data));
-					fprintf("Candidate at marker %d added\n", m);
+					fprintf(stderr, "Candidate at marker %d added\n", m);
 				}
 				while (bestcands.size() > 100)
 				{
