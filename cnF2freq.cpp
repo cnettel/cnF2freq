@@ -5303,7 +5303,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				tf.push_back(rawinput);
 				if (rawinput)
 				  {
-				    fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size() - 1, m);
+				    fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size(), m);
 				  }
 			}
 
@@ -5313,6 +5313,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			canddata data;
 			data.score = sumweight - (maxweight + 1) * (long long)dous.size();
+			fprintf(stderr, "Candidate at marker %d with score %lld\n", data.score);
 			data.cover = std::move(cover);
 			for (size_t g = 0; g<tf.size(); g++) {
 				if (tf[g])
@@ -5356,6 +5357,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				      bestcands.erase(i);
 				    }
 					bestcands.insert(std::move(data));
+					fprintf("Candidate at marker %d added\n", m);
 				}
 				while (bestcands.size() > 100)
 				{
