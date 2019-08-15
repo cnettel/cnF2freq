@@ -3742,7 +3742,7 @@ ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
 
 int oldhitnnn = 0;
 int oldhitnnn2 = 0;
-double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn)
+double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf)
 {
 	double nnn = 3;
 	if (nnn < 1.0) nnn = 1.0;
@@ -3771,10 +3771,12 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 		if (intended > 0.5) hitnnn++;
 	}
 
+	if (breakathalf && (intended - 0.5) * (orig - 0.5) < 0) intended = 0.5;
+
 	return intended;
 }
 
-template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn)
+template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {
   std::array<double, 1> state{orig};
   ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
@@ -3787,7 +3789,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		       }, state,
 		       0., scalefactor, scalefactor * 0.01);
 
-  return caplogitchange(state[0], orig, epsilon, hitnnn);
+  return caplogitchange(state[0], orig, epsilon, hitnnn, breakathalf);
 }
 
 void processinfprobs(individ * ind, const unsigned int j, const int side, int iter, std::atomic_int &hitnnn)
@@ -4237,7 +4239,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 			if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 			{
 				// Cap the change if the net difference is small/miniscule
-				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn);
+			  double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn, ind->lastinved[cno] != -1);
 				//				fprintf(stderr, "HAPLOS: %d %d %lf %lf %lf %lf\n", ind->n, j, intended, ind->haplobase[j], ind->haplocount[j], ind->haploweight[j]);
 
 				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
@@ -4612,6 +4614,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			if (dous[j]->markerdata.size())
 			{
+			  dous[j]->lastinved[i] = -1;
 				int qstart = -1000 - chromstarts[i];
 				int qend = -1000 - chromstarts[i + 1];
 												 //TODO: WRONG RANGE
@@ -5027,7 +5030,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								if (!isfinite(rawervals[g][oldshift]))
 								{
-									rawvals[g][oldshift] = 0;
+								  if (rawervals[g][oldshift] > 1e300)
+								    rawvals[g][oldshift] = 1e300;
+								  else
+								    rawvals[g][oldshift] = 0;
 									continue;
 								}
 
@@ -5139,7 +5145,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp critical(negshifts)
 								{
 								  if (c.weight > maxweight) {
-									  fprintf(stderr, "New maxweight %lld, was %lld, w %lf", maxweight, c.weight, w);
+								    fprintf(stderr, "New maxweight %lld, was %lld, w %lf\n", c.weight, maxweight, w);
 								    maxweight = c.weight;
 									  
 								  }
@@ -5254,7 +5260,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
 		  //		  continue;
- 		  if ((m % 20) == (iter % 20)) donext++;
+ 		  if ((m % 1) == (iter % 1)) donext++;
 		  if (!donext) continue;
 		  donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
@@ -5313,7 +5319,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			canddata data;
 			data.score = sumweight - (maxweight + 1) * (long long)dous.size();
-			fprintf(stderr, "Candidate at marker %d with score %lld\n", data.score);
+			fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
 			data.cover = std::move(cover);
 			for (size_t g = 0; g<tf.size(); g++) {
 				if (tf[g])
@@ -5568,12 +5574,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (!world.rank())
 #endif
 			{
+				std::atomic_int hitnnn(0);
 				for (size_t c = 0; c < chromstarts.size() - 1; c++)
 				{
 					for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
-
 				}
-				std::atomic_int hitnnn(0);
+
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
 				{
