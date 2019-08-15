@@ -3287,6 +3287,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 {
 	// TODO: Sanitize for zero, inf, nan.
 	// Compensate for duplicates
+	// TODO: Does this compensation make sense when infprobs is cleared below?
 	norm *= 2;
 	for (individ* ind : reltreeordered)
 	{
@@ -3295,41 +3296,9 @@ void moveinfprobs(int i, int k, int marker, double norm)
 
 	for (int side = 0; side < 2; side++)
 	{
-		MarkerVal priorval = UnknownMarkerVal;
-		std::array<double, 2> compfactors = { 1, 1 };
-		//TODO REMOVE PRIOR HANDLING FROM HERE
-		/*
-		if (reltree[k]->priormarkerdata.size() > marker)
-		{
-			priorval = (&reltree[k]->priormarkerdata[marker].first)[side];
-		}
-
-		if (priorval != UnknownMarkerVal)
-		{
-			double priorprob = 1.0 - (&reltree[k]->priormarkersure[marker].first)[side];
-
-			MarkerVal nowval = (&reltree[k]->markerdata[marker].first)[side];
-			double nowprob = 1.0 - (&reltree[k]->priormarkersure[marker].first)[side];
-			if (nowval != priorval)
-			{
-				nowprob = 1.0 - nowprob;
-			}
-			//compfactors = { (1.0 - priorprob) * (1.0 - priorprob) / (1.0 - nowprob), priorprob * priorprob / nowprob};
-			compfactors = { (1.0 - priorprob), priorprob };
-		}*/
-
-		double sum = 0;
 		for (auto infval : infprobs[i][side])
 		{
-			sum += infval.second * compfactors[infval.first == priorval];
-		}
-
-		sum = 1 / sum;
-
-		for (auto infval : infprobs[i][side])
-		{
-		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * compfactors[(int) (infval.first == priorval)] * norm /* * sum*/;
-		  if ((reltree[k]->n == 433 && marker >= 4086 && marker <= 4087)) fprintf(stdout, "INFPROBS: %d %d %d %d %lf %lf (%d)\n", reltree[k]->n, marker, side, infval.first, infval.second, sum, shiftflagmode);
+		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * norm /* * sum*/;
 		}
 		infprobs[i][side].clear();
 	}
