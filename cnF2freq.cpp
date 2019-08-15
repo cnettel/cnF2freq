@@ -1433,7 +1433,7 @@ struct individ
 			  double val = probs[i];
 
 				// We will multiply this already small number with an even smaller number... let's assume it's zero and be done with it.
-				if (val < 1e-200)
+				if (val < 1e-300)
 				{
 					probs[i] = 0;
 					continue;
@@ -1563,7 +1563,7 @@ struct individ
 		for (int i = 0; i < NUMTYPES; i++)
 		{
 			double step = (tb.factors[*tb.shiftflagmode])[index][i] - factor;
-			if (probs[i] == 0.0 || step <= -100.0f) continue;
+			if (probs[i] == 0.0 || step <= -700.0f) continue;
 			double basef = exp((double)step) * probs[i];
 			if (basef == 0.0) continue;
 			const double* probsource = &(tb.cacheprobs[*tb.shiftflagmode])[index][i][0];
@@ -2141,7 +2141,7 @@ struct individ
 					// the 64-state model (or beyond).
 					for (int from = 0; from < VALIDSELFNUMTYPES; from++) // SELFING condition removes the double-bit set case, which is not allowed
 					{
-						if (probs[from] < MINFACTOR || !probs[from]) continue;
+						if (probs[from] <= 0) continue;
 #pragma ivdep
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
@@ -5319,7 +5319,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			canddata data;
 			data.score = sumweight - (maxweight + 1) * (long long)dous.size();
-			fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
 			data.cover = std::move(cover);
 			for (size_t g = 0; g<tf.size(); g++) {
 				if (tf[g])
@@ -5335,6 +5334,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (data.cover.size() && data.score < 0)
 #pragma omp critical(negshifts)
 			{
+			  fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
 				vector<decltype(bestcands)::iterator> toremove;
 				bool addme = true;
 				for (const canddata& elem : bestcands)
