@@ -771,6 +771,7 @@ template<> double getactrec<stopmodpair>(const stopmodpair& stopdata, double sta
 const int HAPLOS = 1;
 const int GENOS = 2;
 const int HOMOZYGOUS = 4;
+const int GENOSPROBE = 8;
 
 struct clause
 {
@@ -1097,8 +1098,8 @@ struct individ
 				mainsecondval = effectivemarkersure * effectivesecondval;
 			}
 			 
-			// Include it all in one big thing, or 
-			if (attopnow)
+			// Include it all in one big thing, because it doesn't matter, or we want to enforce the genotype
+			if (attopnow || (update & (GENOS || GENOSPROBE))
 			{
 				baseval += mainsecondval;
 				mainsecondval = 0;
@@ -4795,7 +4796,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										{
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 											{
-												double sideval = dous[j]->trackpossible<false, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+												double sideval = dous[j]->trackpossible<GENOSPROBE, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
 												sidevals[side][markerval.value() - 1] += sideval;
 												sidevalsums[side] += sideval;
 											}
