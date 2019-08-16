@@ -3194,7 +3194,7 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use unscaled gradient".
 double scalefactor = 0.013;
 
-pair<int, int> fixtrees(int j)
+pair<int, int> fixtrees(individ* ind)
 {
 	int flag2ignore = 0;
 	int shiftignore = 0;
@@ -3204,11 +3204,11 @@ pair<int, int> fixtrees(int j)
 	relmapshift.clear();
 	reltreeordered.clear();
 
-	reltree.push_back(dous[j]);
+	reltree.push_back(ind);
 	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
-	reltreeordered[0] = dous[j];
-	relmap[dous[j]] = 1;
-	relmapshift[dous[j]] = 1;
+	reltreeordered[0] = ind;
+	relmap[ind] = 1;
+	relmapshift[ind] = 1;
 
 	if (HAPLOTYPING)
 	{
@@ -3217,7 +3217,7 @@ pair<int, int> fixtrees(int j)
 		bool anylev1 = false;
 		for (int lev1 = 0; lev1 < 2; lev1++)
 		{
-			individ* lev1i = dous[j]->pars[lev1];
+			individ* lev1i = ind->pars[lev1];
 			if (!lev1i) continue;
 			int flag2index = 1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1);
 			int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
@@ -3271,7 +3271,7 @@ pair<int, int> fixtrees(int j)
 		}
 		else
 		{
-			dous[j]->founder = true;
+			ind->founder = true;
 		}
 		flag2ignore ^= (NUMPATHS - 1);
 		shiftignore ^= (NUMSHIFTS - 1);
@@ -4607,10 +4607,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				// Special optimization hardcoded for this population structure, eagerly skipping flags that do not
 				// correspond to any inheritance, i.e. if not the full pedigree of 6 individuals back is present.
-				int shiftignore;
-				int flag2ignore;
-
-				std::tie(shiftignore, flag2ignore) = fixtrees(j);						
+				auto [shiftignore, flag2ignore] = fixtrees(dous[j]);						
 
 				bool skipsome = false;
 				for (size_t u = 0; u < reltree.size() && !skipsome; u++)
