@@ -3822,12 +3822,16 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 			}
 		*/		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
+		double hw = ind->haploweight[m];
+		double etf = 1 + (side ? 0 : -1) * 4 * (hw - hw * hw);
+
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
 		  double curprob = in[0];
 		  double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
 
-			d += log(1 / curprob - 1); // Entropy term
+		  double et = log(1 / curprob - 1);
+			d += etf * et; // Entropy term
 
 			if (priorval != UnknownMarkerVal)
 			{
