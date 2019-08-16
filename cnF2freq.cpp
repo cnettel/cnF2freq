@@ -1334,7 +1334,7 @@ struct individ
 		}
 	}
 
-	void addvariance(unsigned int marker)
+	void addvariance(unsigned int marker, int flag2ignore = 0)
 	{
 		MarkerValPair& themarker = markerdata[marker];
 		auto& thesure = markersure[marker];
@@ -1365,6 +1365,8 @@ struct individ
 			    //int flag2 = -1;
 			    			    for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
 			      {
+									if (flag2 & flag2ignore) continue;
+
 				double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
 			marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
 				//				double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
@@ -2862,6 +2864,97 @@ double dosureval(int what, pair<int, double> val)
 	return toret;
 }
 
+pair<int, int> fixtrees(individ* ind)
+{
+	int flag2ignore = 0;
+	int shiftignore = 0;
+
+	reltree.clear();
+	relmap.clear();
+	relmapshift.clear();
+	reltreeordered.clear();
+
+	reltree.push_back(ind);
+	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
+	reltreeordered[0] = ind;
+	relmap[ind] = 1;
+	relmapshift[ind] = 1;
+
+	if (HAPLOTYPING)
+	{
+		flag2ignore = 1;
+		shiftignore = 0;
+		bool anylev1 = false;
+		for (int lev1 = 0; lev1 < 2; lev1++)
+		{
+			individ* lev1i = ind->pars[lev1];
+			if (!lev1i) continue;
+			int flag2index = 1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1);
+			int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
+
+			if (!lev1i->empty)
+			{
+				flag2ignore |= 1 << flag2index;
+				relmap[lev1i] |= 1 << flag2index;
+				relmapshift[lev1i] |= shiftval;
+				reltreeordered[flag2index] = lev1i;
+			}
+
+			bool anypars = false;
+			reltree.push_back(lev1i);
+			if (NUMGEN > 2)
+			{
+				for (int lev2 = 0; lev2 < 2; lev2++)
+				{
+					individ* lev2i = lev1i->pars[lev2];
+					if (!lev2i) continue;
+
+					if (!lev2i->empty)
+					{
+						flag2ignore |= 1 << (flag2index + lev2 + 1);
+						relmap[lev2i] |= 1 << (flag2index + lev2 + 1);
+						relmapshift[lev2i] |= 0;
+						reltreeordered[flag2index + lev2 + 1] = lev2i;
+						anypars = true;
+					}
+					reltree.push_back(lev2i);
+				}
+			}
+
+			if (anypars)
+			{
+				shiftignore |= shiftval;
+			}
+			else
+			{
+				//lev1i->founder = true;
+			}
+			// Any information of relevance in parents
+			if (anypars || !lev1i->empty)
+			{
+				anylev1 = true;
+			}
+		}
+		if (anylev1)
+		{
+			shiftignore |= 1;
+		}
+		else
+		{
+			ind->founder = true;
+		}
+		flag2ignore ^= (NUMPATHS - 1);
+		shiftignore ^= (NUMSHIFTS - 1);
+	}
+
+	//reltreeordered = reltree;
+	sort(reltree.begin(), reltree.end());
+	reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
+
+	return make_pair(shiftignore, flag2ignore);
+}
+
+
 // Some operations performed when marker data has been read, independent of format.
 void postmarkerdata()
 {
@@ -3002,6 +3095,7 @@ void postmarkerdata()
 	for (int i = 1; i < INDCOUNT; i++)
 	{
 		individ* ind = getind(i);
+		auto [shiftignore, flag2ignore] = fixtrees(ind);
 
 		// Lock the first position
 		if (HAPLOTYPING && ind && ind->haploweight.size())
@@ -3009,7 +3103,7 @@ void postmarkerdata()
 		{
 			for (int j = 0; j < markerposes.size(); j++)
 			{
-				ind->addvariance(j);
+				ind->addvariance(j, flag2ignore);
 			}
 		}
 	}
@@ -3194,95 +3288,6 @@ void resizecaches()
 // Global scale factor, 1.0 meaning "use unscaled gradient".
 double scalefactor = 0.013;
 
-pair<int, int> fixtrees(individ* ind)
-{
-	int flag2ignore = 0;
-	int shiftignore = 0;
-
-	reltree.clear();
-	relmap.clear();
-	relmapshift.clear();
-	reltreeordered.clear();
-
-	reltree.push_back(ind);
-	reltreeordered.resize(TURNBITS); // Right constant? Lots of equalities with some settings.
-	reltreeordered[0] = ind;
-	relmap[ind] = 1;
-	relmapshift[ind] = 1;
-
-	if (HAPLOTYPING)
-	{
-		flag2ignore = 1;
-		shiftignore = 0;
-		bool anylev1 = false;
-		for (int lev1 = 0; lev1 < 2; lev1++)
-		{
-			individ* lev1i = ind->pars[lev1];
-			if (!lev1i) continue;
-			int flag2index = 1 + lev1 * ((1 << (NUMFLAG2GEN - 1)) - 1);
-			int shiftval = (NUMGEN == 3) ? (2 << lev1) : 0;
-
-			if (!lev1i->empty)
-			{
-				flag2ignore |= 1 << flag2index;
-				relmap[lev1i] |= 1 << flag2index;
-				relmapshift[lev1i] |= shiftval;
-				reltreeordered[flag2index] = lev1i;
-			}
-
-			bool anypars = false;
-			reltree.push_back(lev1i);
-			if (NUMGEN > 2)
-			{
-				for (int lev2 = 0; lev2 < 2; lev2++)
-				{
-					individ* lev2i = lev1i->pars[lev2];
-					if (!lev2i) continue;
-
-					if (!lev2i->empty)
-					{
-						flag2ignore |= 1 << (flag2index + lev2 + 1);
-						relmap[lev2i] |= 1 << (flag2index + lev2 + 1);
-						relmapshift[lev2i] |= 0;
-						reltreeordered[flag2index + lev2 + 1] = lev2i;
-						anypars = true;
-					}
-					reltree.push_back(lev2i);
-				}
-			}
-
-			if (anypars)
-			{
-				shiftignore |= shiftval;
-			}
-			else
-			{
-				//lev1i->founder = true;
-			}
-			// Any information of relevance in parents
-			if (anypars || !lev1i->empty)
-			{
-				anylev1 = true;
-			}
-		}
-		if (anylev1)
-		{
-			shiftignore |= 1;
-		}
-		else
-		{
-			ind->founder = true;
-		}
-		flag2ignore ^= (NUMPATHS - 1);
-		shiftignore ^= (NUMSHIFTS - 1);
-	}
-
-	//reltreeordered = reltree;
-	sort(reltree.begin(), reltree.end());
-	reltree.resize(unique(reltree.begin(), reltree.end()) - reltree.begin());
-
-	return make_pair(shiftignore, flag2ignore);
-}
 
 void moveinfprobs(int i, int k, int marker, double norm)
 {
