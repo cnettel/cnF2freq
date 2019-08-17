@@ -1099,7 +1099,7 @@ struct individ
 			}
 			 
 			// Include it all in one big thing, because it doesn't matter, or we want to enforce the genotype
-			if (attopnow || (update & (GENOS || GENOSPROBE))
+			if (attopnow || (update & (GENOS || GENOSPROBE)))
 			{
 				baseval += mainsecondval;
 				mainsecondval = 0;
@@ -3822,7 +3822,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 			}
 		*/		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
-		double hw = ind->haploweight[m];
+		double hw = ind->haploweight[j];
 		double etf = 1 + (side ? 0 : -1) * 4 * (hw - hw * hw);
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
