@@ -3095,12 +3095,12 @@ void postmarkerdata()
 	for (int i = 1; i < INDCOUNT; i++)
 	{
 		individ* ind = getind(i);
-		auto [shiftignore, flag2ignore] = fixtrees(ind);
 
 		// Lock the first position
 		if (HAPLOTYPING && ind && ind->haploweight.size())
 			// These days we do the locking in all generations
 		{
+		  auto [shiftignore, flag2ignore] = fixtrees(ind);
 			for (int j = 0; j < markerposes.size(); j++)
 			{
 				ind->addvariance(j, flag2ignore);
