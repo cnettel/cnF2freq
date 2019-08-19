@@ -6854,6 +6854,34 @@ void deserialize(istream& stream)
 	}
 }
 
+std::string getname(individ* ind)
+{
+	if (ind)
+	{
+		return ind->name;
+	}
+	else
+	{
+		return "0";
+	}
+}
+
+void outputped(const std::string& filename)
+{
+	FILE* f = fopen(filename.c_str(), "w");
+	for (individ* ind : dous)
+	{
+	
+		fprintf(f, "%d %s %s %s %d %d", 1, getname(ind).c_str(), getname(ind->pars[0]).c_str(), getname(ind->pars[1]).c_str(), ind->sex + 1, -9);
+		for (auto [a, b] : ind->markerdata)
+		{
+			fprintf(f, " %d %d", a.value(), b.value());
+		}
+		fprintf(f, "\n");
+	}
+	fclose(f);
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef _MSC_VER
@@ -6888,7 +6916,7 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn, gigimapfilename, gigipedfilename;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn, gigimapfilename, gigipedfilename, outputpedfilename;
 	bool clear;
 	int COUNT;
 
@@ -6912,6 +6940,7 @@ int main(int argc, char* argv[])
 		("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
 		("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
 		("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
+		("outputpedfile", po::value<string>(&outputpedfilename), "Output ped file based on read data (including genotypes).")
 		("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
 		("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
 		("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
@@ -6995,6 +7024,11 @@ int main(int argc, char* argv[])
 	// getting stuck towards the end.
 	dous.resize(104);
 	//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
+
+	if (outputpedfilename != "")
+	{
+		outputped(outputpedfilename);
+	}
     if (docompare)
 	{
 		std::ifstream filteredOutput(impoutput);
