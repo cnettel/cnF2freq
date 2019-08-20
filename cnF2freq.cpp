@@ -6080,9 +6080,7 @@ struct samplereader
 
 	void read(mapped_file_source& sampleFile)
 	{
-		using namespace x3;
-
-		
+		using namespace x3;		
 
 		try
 		{
@@ -6099,11 +6097,138 @@ struct samplereader
 	}
 };
 
-void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<mapped_file_source*>& hapsFile)
+void readFirstHaps(const std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>& snpData, const vector<individ*>&
+	sampleInds,	auto dohaploweight, auto indexconv)
+{
+	for (size_t i = 0; i < snpData.size(); i++)
+	{
+		const vector<int>& markers = get<4>(snpData[i]);
+		for (size_t j = 0; j < sampleInds.size(); j++)
+		{
+			float sureVal = 0;
+			/*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
+			sampleInds[j]->markerdata[i] = make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i));
+			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
+			sampleInds[j]->markersure[i] = { sureVal, sureVal };
+			if (RELSKEWS)
+			{
+				if (i != markerposes.size() - 1)
+				{
+					//sampleInds[j]->relhaplo[i] = 0.51;//(markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
+					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
+					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
+					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
+					sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
+				}
+			}
+		}
+	}
+}
+
+using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
+
+void readOtherHaps(const SnpDataType& snpData,
+	const vector<individ*>& sampleInds, double unit, auto dohaploweight, auto indexconv)
+{
+	vector<int> phases;
+	vector<int> origPhases;
+	phases.resize(sampleInds.size());
+	origPhases.resize(sampleInds.size());	
+	for (size_t i = 0; i < snpData.size(); i++)
+	{
+		const vector<int>& markers = get<4>(snpData[i]);
+		for (size_t j = 0; j < sampleInds.size(); j++)
+		{
+			int oldPhase = phases[j];
+			int matchNum;
+			int numMatches = 0;
+
+			for (int p = 1; p <= 2; p++)
+			{
+				auto marker = (p == 1) ? make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)) :
+					make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
+				if (marker == sampleInds[j]->markerdata[i])
+				{
+					matchNum = p;
+					numMatches++;
+				}
+			}
+
+			// Not conclusive, assume same phase
+			if (numMatches == 2 || numMatches == 0)
+			{
+				matchNum = oldPhase;
+			}
+
+			phases[j] = matchNum;
+			if (phases[j] && !origPhases[j])
+			{
+				origPhases[j] = phases[j];
+			}
+			if (dohaploweight(sampleInds[j]) && origPhases[j] && origPhases[j] != phases[j])
+			{
+				sampleInds[j]->haploweight[i] += unit;
+			}
+			if (RELSKEWS && i)
+			{
+				// The definition of relhaplo is that marker i
+				// defines the skewness shift to the NEXT marker.
+				sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
+			}
+			if (!numMatches)
+			{
+				int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
+				if (phases[j] == 2) swap(ms[0], ms[1]);
+
+				bool nomatch[2] = { true, true };
+				for (int p = 0; p < 2; p++)
+				{
+					for (int z = p; z < p + 1; z++)
+					{
+						if ((ms[z] + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
+						{
+							nomatch[p] = false;
+						}
+					}
+				}
+				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
+				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 0.5*(1-unit)));
+			}
+		}
+	}
+}
+
+double initPadding(const vector<individ*>& sampleInds, int count)
+{	
+	const double padding = 0.01;
+	double unit = 1.0 / (count + padding);
+	for (size_t j = 0; j < sampleInds.size(); j++)
+	{
+		for (size_t i = 0; i < markerposes.size(); i++)
+		{
+			if (RELSKEWS)
+			{
+				// HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
+				sampleInds[j]->relhaplo[i] = unit * 0.5;
+			}
+			sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
+		}
+	}
+
+	return unit;
+}
+
+
+MarkerVal mvFromIndex(int index, size_t)
+{
+	return (index + 1) * MarkerValue;
+}
+
+void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector<mapped_file_source*>& hapsFile)
 {
 	using namespace x3;
 	
-	std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>> snpData;
+	SnpDataType snpData;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
 		
 	auto alleles_ = word_ > word_;
@@ -6188,122 +6313,58 @@ void readhaps(const sampletype& samples, mapped_file_source& bimFile, vector<map
 
 	auto dohaploweight = [] (individ* ind) { return (ind->gen < 2); };
 
-	for (size_t i = 0; i < snpData.size(); i++)
-	{
-		const vector<int>& markers = get<4>(snpData[i]);
-		for (size_t j = 0; j < sampleInds.size(); j++)
-		{
-		  float sureVal = 0;
-		  /*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
-			sampleInds[j]->markerdata[i] = make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue);
-			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
-			sampleInds[j]->markersure[i] = { sureVal, sureVal };
-			if (RELSKEWS)
-			  {
-				if (i != markerposes.size() - 1)
-				{
-					//sampleInds[j]->relhaplo[i] = 0.51;//(markers[j * 2] == markers[j * 2 + 1]) ? 1.0 : 0.51;
-					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
-					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
-					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
-				  sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
-				}
-			  }
-		}
-	}
-
-	const double padding = 0.01;
-	double unit = 1.0 / (hapsFile.size() + padding);
-	for (size_t j = 0; j < sampleInds.size(); j++)
-	  {
-	    for (size_t i = 0; i < snpData.size(); i++)
-	      {
-		if (RELSKEWS)
-		  {
-		    // HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
-		    sampleInds[j]->relhaplo[i] = unit * 0.5;
-		  }
-		sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
-	      }
-	  }
+	readFirstHaps(snpData, sampleInds, dohaploweight, mvFromIndex);
+	
+	double unit = initPadding(sampleInds, hapsFile.size());
 
 	for (size_t k = 1; k < hapsFile.size(); k++)
 	{
-		vector<int> phases;
-		vector<int> origPhases;
-		phases.resize(sampleInds.size());
-		origPhases.resize(sampleInds.size());
 		snpData.clear();
-
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
-		for (size_t i = 0; i < snpData.size(); i++)
-		{
-			const vector<int>& markers = get<4>(snpData[i]);
-			for (size_t j = 0; j < sampleInds.size(); j++)
-			{
-				int oldPhase = phases[j];
-				int matchNum;
-				int numMatches = 0;
 
-				for (int p = 1; p <= 2; p++)
-				{
-					auto marker = (p == 1) ? make_pair((markers[j * 2] + 1) * MarkerValue, (markers[j * 2 + 1] + 1) * MarkerValue) : make_pair((markers[j * 2 + 1] + 1) * MarkerValue, (markers[j * 2] + 1) * MarkerValue);
-					if (marker == sampleInds[j]->markerdata[i])
-					{
-						matchNum = p;
-						numMatches++;
-					}
-				}
-
-				// Not conclusive, assume same phase
-				if (numMatches == 2 || numMatches == 0)
-				{
-					matchNum = oldPhase;
-				}
-
-				phases[j] = matchNum;
-				if (phases[j] && !origPhases[j])
-				  {
-				    origPhases[j] = phases[j];
-				  }
-				if (dohaploweight(sampleInds[j]) && origPhases[j] && origPhases[j] != phases[j])
-				  {
-				    sampleInds[j]->haploweight[i] += unit;
-				  }
-				if (RELSKEWS && i)
-				{
-				// The definition of relhaplo is that marker i
-				// defines the skewness shift to the NEXT marker.
-				  sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
-				}
-				if (!numMatches)
-				{
-				  int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
-				  if (phases[j] == 2) swap(ms[0], ms[1]);
-
-				  bool nomatch[2] = { true, true };
-					for (int p = 0; p < 2; p++)
-					{
-						for (int z = p; z < p + 1; z++)
-						{
-							if ((ms[z] + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
-							{
-								nomatch[p] = false;
-							}
-						}
-					}
-					if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-					sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 0.5*(1-unit)));
-				}
-			}
-		}
+		readOtherHaps(snpData, sampleInds, unit, dohaploweight, mvFromIndex);
 	}
 
 	for (size_t j = 0; j < sampleInds.size(); j++)
 	{
 		sampleInds[j]->priormarkerdata = sampleInds[j]->markerdata;
 		sampleInds[j]->priormarkersure = sampleInds[j]->markersure;
+	}
+}
+
+void readhapsonly(vector<mapped_file_source*>& hapsFile)
+{
+	using namespace x3;
+
+	SnpDataType snpData;
+	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
+	auto dohaploweight = [](individ* ind) { return (ind->gen < 2); };
+
+	auto mapToSnpGeno = [&snpData](int index, size_t snp)
+	{
+		switch (index)
+		{
+		case 0:
+			return (std::get<2>(snpData[snp])[0]-48) * MarkerValue;
+		case 1:
+			return (std::get<3>(snpData[snp])[0]-48) * MarkerValue;
+		default:
+			abort();
+		}
+	};
+
+	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
+
+	double unit = initPadding(dous, hapsFile.size());
+
+	for (size_t k = 1; k < hapsFile.size(); k++)
+	{
+		snpData.clear();
+		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+
+		readOtherHaps(snpData, dous, unit, dohaploweight, mapToSnpGeno);
 	}
 }
 
@@ -6996,21 +7057,27 @@ int main(int argc, char* argv[])
 
 	samplereader samples;
 	vector<mapped_file_source*> hapFiles;
+	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+
+	for (string filename : hapsfileOption)
+	{
+		hapFiles.push_back(new mapped_file_source(filename));
+	}
+
 	if (samplefilename != "")
 	{
 		mapped_file_source sampleFile(samplefilename);
 		samples.read(sampleFile);
 
 		mapped_file_source bimFile(inOptions["bimfile"].as<string>());
-		vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+		
 
-		for (string filename : hapsfileOption)
-		{
-			hapFiles.push_back(new mapped_file_source(filename));
-		}
-
-		readhaps(samples.samples, bimFile, hapFiles);
+		readhapsfull(samples.samples, bimFile, hapFiles);
 		std::cout << "readhapssample finished." << std::endl;
+	}
+	else
+	{
+		readhapsonly(hapFiles);
 	}
 
 	bool docompare = (impoutput != "");
