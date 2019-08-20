@@ -6097,7 +6097,9 @@ struct samplereader
 	}
 };
 
-void readFirstHaps(const std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>& snpData, const vector<individ*>&
+using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
+
+void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 	sampleInds,	auto dohaploweight, auto indexconv)
 {
 	for (size_t i = 0; i < snpData.size(); i++)
@@ -6124,8 +6126,6 @@ void readFirstHaps(const std::vector<std::tuple<int, std::string, std::string, s
 		}
 	}
 }
-
-using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
 
 void readOtherHaps(const SnpDataType& snpData,
 	const vector<individ*>& sampleInds, double unit, auto dohaploweight, auto indexconv)
@@ -6350,6 +6350,7 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		case 1:
 			return (std::get<3>(snpData[snp])[0]-48) * MarkerValue;
 		default:
+			fprintf(stderr, "Encountered index %d at snp %d\n", index, snp);
 			abort();
 		}
 	};
