@@ -6176,7 +6176,7 @@ void readOtherHaps(const SnpDataType& snpData,
 				sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
 			}
 			if (!numMatches)
-			{
+			{do
 				int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
 				if (phases[j] == 2) swap(ms[0], ms[1]);
 
@@ -7065,6 +7065,7 @@ int main(int argc, char* argv[])
 		hapFiles.push_back(new mapped_file_source(filename));
 	}
 
+	dous.resize(104);
 	if (samplefilename != "")
 	{
 		mapped_file_source sampleFile(samplefilename);
@@ -7090,7 +7091,6 @@ int main(int argc, char* argv[])
 
 	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
 	// getting stuck towards the end.
-	dous.resize(104);
 	//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 
 	if (outputpedfilename != "")
