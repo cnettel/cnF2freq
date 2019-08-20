@@ -6176,7 +6176,7 @@ void readOtherHaps(const SnpDataType& snpData,
 				sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
 			}
 			if (!numMatches)
-			{do
+			{
 				int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
 				if (phases[j] == 2) swap(ms[0], ms[1]);
 
