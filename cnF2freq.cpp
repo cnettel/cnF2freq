@@ -3746,7 +3746,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 		if (intended > 0.5) hitnnn++;
 	}
 
-	if (breakathalf && (intended - 0.5) * (orig - 0.5) < 0) intended = 0.5;
+	if (breakathalf && (intended - 0.5) * (orig - 0.5) <= 0) intended = 0.5;
 
 	return intended;
 }
