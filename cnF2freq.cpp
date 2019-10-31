@@ -3911,7 +3911,7 @@ struct relskewhmm
 		const auto doemissions = [&s, &ind](int m)
 		{
 		  double w;
-		  if (ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
+		  if (false && ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
 		  else
 		    {
 //		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
@@ -6109,7 +6109,18 @@ void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 		{
 			float sureVal = 0;
 			/*if (sampleInds[j]->gen == 2)*/ sureVal = 0;
-			sampleInds[j]->markerdata[i] = make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i));
+			auto straightmarker = make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i));
+			for (int p = 1; p <= 2; p++)
+			{
+				auto marker = (p == 1) ? straightmarker :
+					make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
+				if (marker == sampleInds[j]->markerdata[i])
+				{
+				  sampleInds[j]->priormarkerdata[i] = straightmarker;
+					break;
+				}
+			}
+			sampleInds[j]->markerdata[i] = straightmarker;
 			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = { sureVal, sureVal };
 			if (RELSKEWS)
@@ -6177,7 +6188,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			}
 			if (!numMatches)
 			{
-				int ms[2] = {markers[j * 2], markers[j * 2 + 1]};
+			  MarkerVal ms[2] = {indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)};
 				if (phases[j] == 2) swap(ms[0], ms[1]);
 
 				bool nomatch[2] = { true, true };
@@ -6185,7 +6196,7 @@ void readOtherHaps(const SnpDataType& snpData,
 				{
 					for (int z = p; z < p + 1; z++)
 					{
-						if ((ms[z] + 1) * MarkerValue == (&sampleInds[j]->markerdata[i].first)[p])
+						if (ms[z] == (&sampleInds[j]->markerdata[i].first)[p])
 						{
 							nomatch[p] = false;
 						}
@@ -6366,6 +6377,18 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 
 		readOtherHaps(snpData, dous, unit, dohaploweight, mapToSnpGeno);
+	}
+
+	for (size_t j = 0; j < dous.size(); j++)
+	{
+	  for (size_t i = 0; i < markerposes.size(); i++)
+	    {
+	      if (dous[j]->priormarkerdata.size() > i && dous[j]->priormarkerdata[i] == pair(UnknownMarkerVal, UnknownMarkerVal))
+		{
+		  dous[j]->priormarkerdata[i] = dous[j]->markerdata[i];
+		  dous[j]->priormarkersure[i] = dous[j]->markersure[i];
+		}
+	    }
 	}
 }
 
@@ -7058,9 +7081,10 @@ int main(int argc, char* argv[])
 
 	samplereader samples;
 	vector<mapped_file_source*> hapFiles;
-	vector<string> hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+	vector<string> hapsfileOption;
+	if (inOptions.count("hapfiles")) hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
 
-	for (string filename : hapsfileOption)
+       for (string filename : hapsfileOption)
 	{
 		hapFiles.push_back(new mapped_file_source(filename));
 	}
@@ -7079,7 +7103,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		readhapsonly(hapFiles);
+	  if (hapFiles.size()) readhapsonly(hapFiles);
 	}
 
 	bool docompare = (impoutput != "");
