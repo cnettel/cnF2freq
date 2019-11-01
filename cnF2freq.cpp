@@ -6350,7 +6350,7 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 
 	SnpDataType snpData;
 	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
-	auto dohaploweight = [](individ* ind) { return (ind->gen < 2); };
+	auto dohaploweight = [](individ* ind) { /*return (ind->gen < 2);*/ return true; };
 
 	auto mapToSnpGeno = [&snpData](int index, size_t snp)
 	{
