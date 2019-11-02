@@ -45,7 +45,7 @@ float templgeno[8] = { -1, -0.5,
 
 const int NO_EQUIVALENCE = -1;
 const int ZERO_PROPAGATE = 1;
-const long long WEIGHT_DISCRETIZER = 1000000000;
+const long long WEIGHT_DISCRETIZER = 1000000;
 
 // _MSC_VER is here to be interpreted as any compiler providing TR1 C++ headers
 //#ifdef _MSC_VER
@@ -2841,7 +2841,7 @@ void lockhaplos(individ* ind, int i)
 
 	if (j != chromstarts[i + 1])
 	{
-		ind->haploweight[j] = 0;
+	  ind->haploweight[j] = ind->haploweight[j] <= 0.5 ? 0 : 1;
 		ind->lockstart[i] = j + 1;
 	}
 }
@@ -3103,6 +3103,7 @@ void postmarkerdata()
 		  auto [shiftignore, flag2ignore] = fixtrees(ind);
 			for (int j = 0; j < markerposes.size(); j++)
 			{
+			  // TODO: Variance could take relskew into account...
 				ind->addvariance(j, flag2ignore);
 			}
 		}
@@ -4145,32 +4146,39 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 				val = 1;
 			}
 
-			double relskewterm = 0;
-			if (RELSKEWS)
-			{
+			auto relskewterm = [&] (double hwnow)
+			  {
+			    double relskewterm = 0;
+			    if (RELSKEWS)
+			      {
 				for (int d = -1; d < 1; d++)
-				{
-					double otherval;
-					if (d == -1)
-					{
-						if (j == chromstarts[cno]) continue;
-						otherval = relskews->getweight(j - 1, 0);
-					}
-					else
-					{
-						if (j + 1 >= chromstarts[cno + 1]) continue;
-						otherval = relskews->getweight(j + 1, 1);
-					}
-					relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-					//if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
-
-					/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-					prevval = prevval / (prevval + 1.0);*/
-				}
+				  {
+				    double otherval;
+				    if (d == -1)
+				      {
+					if (j == chromstarts[cno]) continue;
+					otherval = relskews->getweight(j - 1, 0);
+				      }
+				    else
+				      {
+					if (j + 1 >= chromstarts[cno + 1]) continue;
+					otherval = relskews->getweight(j + 1, 1);
+				      }
+				    // arctanh arises from log(1-x) - log(x)
+				    //relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+				    relskewterm += (1 - otherval - 2 * hwnow * otherval * atanh(1 - 2 * hwnow) + 2 * hwnow * (1 - 2 * otherval) * atanh(1 - 2 * ind->relhaplo[j + d])) / hwnow;
+				    //if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
+				    
+				    /*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
+				      prevval = prevval / (prevval + 1.0);*/
+				  }
 				// Each direction is counted twice, for two different markers
 				if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
 				// relskewterm *= 0.5;
-			}
+			      }
+
+			    return relskewterm;
+			  };
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -4211,7 +4219,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
 					 (1 - 0 * similarity) * 1 * (log(1 / in[0] - 1) + // Entropy term
-							     relskewterm));
+								     relskewterm(in[0])));
 			};
 
 
@@ -4372,9 +4380,9 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
-		if (c.weight < 0)
+	  if (c.weight <= 0)
 		{
-			fprintf(stderr, "Negative weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
+			fprintf(stderr, "Non-positive weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
 			abort();
 		}
 		infile << c.weighttostring() << c.clausetostring() << " 0\n";
@@ -6145,25 +6153,59 @@ void readOtherHaps(const SnpDataType& snpData,
 	vector<int> origPhases;
 	phases.resize(sampleInds.size());
 	origPhases.resize(sampleInds.size());	
+	auto findMatch = [&indexconv, &sampleInds, &snpData] (int i, int j) -> pair<int, int> {
+		  const vector<int>& markers = get<4>(snpData[i]);
+		  int matchNum;
+		  int numMatches = 0;
+		  
+		  for (int p = 1; p <= 2; p++)
+		    {
+		      auto marker = (p == 1) ? make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)) :
+			make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
+		      if (marker == sampleInds[j]->markerdata[i])
+			{
+			  matchNum = p;
+			  numMatches++;
+			}
+		    }
+		  return make_pair(matchNum, numMatches);
+		  
+		};
+
+	for (size_t i = 0; i < snpData.size(); i++)
+	{
+		for (size_t j = 0; j < sampleInds.size(); j++)
+		{
+		  if (!origPhases[j])
+		    {
+			auto [matchNum, numMatches] = findMatch(i, j);
+			if (numMatches == 1)
+			  {
+			    origPhases[j] = matchNum;
+			    phases[j] = origPhases[j];
+			  }
+		    }
+		}
+	}
+	
+	for (size_t j = 0; j < sampleInds.size(); j++)
+	  {
+	    if (!origPhases[j])
+	      {
+		origPhases[j] = 1;
+		phases[j] = 1;
+	      }
+	  }
+
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
 		const vector<int>& markers = get<4>(snpData[i]);
+
+
 		for (size_t j = 0; j < sampleInds.size(); j++)
 		{
 			int oldPhase = phases[j];
-			int matchNum;
-			int numMatches = 0;
-
-			for (int p = 1; p <= 2; p++)
-			{
-				auto marker = (p == 1) ? make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)) :
-					make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
-				if (marker == sampleInds[j]->markerdata[i])
-				{
-					matchNum = p;
-					numMatches++;
-				}
-			}
+			auto [matchNum, numMatches] = findMatch(i, j);
 
 			// Not conclusive, assume same phase
 			if (numMatches == 2 || numMatches == 0)
@@ -6172,11 +6214,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			}
 
 			phases[j] = matchNum;
-			if (phases[j] && !origPhases[j])
-			{
-				origPhases[j] = phases[j];
-			}
-			if (dohaploweight(sampleInds[j]) && origPhases[j] && origPhases[j] != phases[j])
+			if (dohaploweight(sampleInds[j]) && origPhases[j] != phases[j])
 			{
 				sampleInds[j]->haploweight[i] += unit;
 			}
@@ -6203,7 +6241,7 @@ void readOtherHaps(const SnpDataType& snpData,
 					}
 				}
 				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 0.5*(1-unit)));
+				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 2*0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 2*0.5*(1-unit)));
 			}
 		}
 	}
