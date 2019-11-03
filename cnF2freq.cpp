@@ -4052,27 +4052,26 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
-		double prevval = relskews[i].getweight(marker, 0);
-		double nextval = relskews[i].getweight(marker + 1, 1);
+		double vals[2] = { relskews[i].getweight(marker, 0), relskews[i].getweight(marker + 1, 1) };
 
-		// TODO: OVERRUN AT MARKER + 1 ?
-		/*for (int k = 0; k < 2; k++)
+		for (int ix = 0; ix < 2; ix++)
 		{
-		double relval = fabs(k - ind->relhaplo[marker]);
-		double sum = 0;
-		double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
-		sum += term;
-
-		term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
-		sum += term;
-		if (sum < maxdiff) sum = maxdiff;
-		skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-		}*/
-		// Two directions across the same marker gap, hence two terms with 0.5 contribution
-		// // 0.5 removed
-		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
-		skewterms[truei] -= ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));
+			double hw = ind->haploweight[marker + ix];
+			double val = vals[ix];
+			double rh = ind->relhaplo[marker];
+			
+			double now =
+				hw * val * (log(rh) + log(hw)) +
+				(1 - hw) * (1 - val) * (log(rh) + log(1 - hw)) +
+				hw * (1 - val) * (log(1 - rh) + log(hw)) +
+				(1 - hw) * val * (log(1 - rh) + log(1 - hw));
+			double then =
+				hw * (1 - val) * (log(rh) + log(hw)) +
+				(1 - hw) * val * (log(rh) + log(1 - hw)) +
+				hw * val * (log(1 - rh) + log(hw)) +
+				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw));
+			skewterms[truei] -= then - now;
+		}		
 	}
 
 	return skewterms;
@@ -5240,6 +5239,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		std::set<canddata> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 		int donext = 1;
+		bool solexists = false;
 
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
@@ -5250,7 +5250,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(/*tmppath + "/" + std::string("toul_out") + tid + ".txt"*/ "/dev/null");
-			std::string sol(tmppath + "/" + std::string("sol") + tid);
+			std::string sol(tmppath + "/" + std::string("sol") + tid + ".sol");
 
 			long long fakegain = 0;
 			for (clause& c : toulInput[m])
@@ -5276,13 +5276,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
-			string str = "toulbar2 " + toulin + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			// Run toulbar2 with partitioning rules that match the fact that we use small pedigrees
+			// Feed previous sol file as certificate/starting point
+			string str = "toulbar2 " + toulin + (solexists ? " " + sol + " " : "") + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
 																			 // Convert string to const char * as system requires
 			const char* command = str.c_str();
 			system(command);
+			solexists = true;
 
 			//Read outfile and store best result in negshift
 			std::fstream touloutput(sol, ios::in);
