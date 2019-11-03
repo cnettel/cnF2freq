@@ -4020,7 +4020,7 @@ struct relskewhmm
 		}*/
 
 		double sum = s[0] + s[1];
-		if (sum == 0)
+		if (sum == 0)re
 		{
 			fprintf(stderr, "Renormalization problem for ind %d at %d, dir %d.\n", ind->n, m, dir);
 		}
@@ -4164,12 +4164,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 							otherval = relskews->getweight(j + 1, 1);
 						}
 						// arctanh arises from log(1-x) - log(x)
-						//relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-						relskewterm += (1 - otherval - 2 * hwnow * otherval * atanh(1 - 2 * hwnow) + 2 * hwnow * (1 - 2 * otherval) * atanh(1 - 2 * ind->relhaplo[j + d])) / hwnow;
-						//if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
-
-						/*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-						  prevval = prevval / (prevval + 1.0);*/
+						relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
 					}
 					// Each direction is counted twice, for two different markers
 					if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
@@ -4217,7 +4212,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					(1 - 0 * similarity) * 1 * (log(1 / in[0] - 1) + // Entropy term
+					(1 - 0 * similarity) * 2 * (log(1 / in[0] - 1) + // Entropy term
 						relskewterm(in[0])));
 			};
 
