@@ -170,21 +170,21 @@ struct MarkerVal
 {
 private:
 	int val;
-	
+
 public:
-    constexpr explicit MarkerVal(int val) : val(val) {}
+	constexpr explicit MarkerVal(int val) : val(val) {}
 	constexpr MarkerVal() : val(0) {}
 	constexpr int value() const
 	{
 		return val;
 	}
 
-        constexpr bool operator == (const MarkerVal& rhs) const
+	constexpr bool operator == (const MarkerVal& rhs) const
 	{
 		return val == rhs.val;
 	}
 
-        constexpr bool operator != (const MarkerVal& rhs) const
+	constexpr bool operator != (const MarkerVal& rhs) const
 	{
 		return val != rhs.val;
 	}
@@ -445,7 +445,7 @@ struct threadblock
 		done(::done), factors(::factors), cacheprobs(::cacheprobs),
 		quickmark(::quickmark), quickgen(::quickgen), quickmem(::quickmem),
 		quickfactor(::quickfactor), quickendfactor(::quickendfactor), quickendprobs(::quickendprobs),
-			quickendmarker(::quickendmarker),
+		quickendmarker(::quickendmarker),
 #else
 		fwbw(::fwbw), fwbwfactors(::fwbwfactors), fwbwdone(::fwbwdone)
 #endif
@@ -489,9 +489,9 @@ public:
 				((turn & 8) ? 4 : 0);
 			// Mis-guided (?) attempt to correct for relskews
 			if (RELSKEWSTATES && false)
-			  {
-			    this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
-			  }
+			{
+				this->turn |= (flagmodeshift & 1) << BITS_W_SELF;
+			}
 		}
 		else
 		{
@@ -711,7 +711,7 @@ struct stopmodpair : tssmcommon, smnonecommon
 	}
 };
 
-template<class G> const bool canquickend(int startmark, const G &stopdata)
+template<class G> const bool canquickend(int startmark, const G& stopdata)
 {
 	return false;
 }
@@ -721,12 +721,12 @@ template<class G> const bool canquickend(int startmark, const G &stopdata)
 return false;
 }*/
 
-template<> const bool canquickend<classicstop>(int startmark, const classicstop &stopdata)
+template<> const bool canquickend<classicstop>(int startmark, const classicstop& stopdata)
 {
 	return stopdata.lockpos <= -1000 && stopdata.genotype >= 0;
 }
 
-template<> const bool canquickend<twicestop>(int startmark, const twicestop &stopdata)
+template<> const bool canquickend<twicestop>(int startmark, const twicestop& stopdata)
 {
 	return stopdata.lockpos == -1000 - startmark + 1;
 }
@@ -984,7 +984,7 @@ struct individ
 	// The main logic of tracking a specific inheritance pathway, computing haplotype weights, and overall feasibility.
 	// update: Should haplotype weights be updated?
 	// zeropropagate: Should zero marker values be kept, or changed to the actual values they are matched against. Is it ok
-        // treat equivalent values as one.
+		// treat equivalent values as one.
 	// threadblock: Reference to all thread-local data.
 	// inmarkerval: The marker val we are matching against.
 	// marker: The marker number.
@@ -1009,7 +1009,7 @@ struct individ
 
 		const bool attopnow = !(update & HOMOZYGOUS) && ((genwidth == HAPLOTYPING) || founder);
 
-		const int selfval = (flag >> (TYPEBITS + 1)) & SELFMASK;
+		const int selfval = (flag >> (TYPEBITS + 1))& SELFMASK;
 
 		if (rootgen)
 		{
@@ -1031,14 +1031,14 @@ struct individ
 		if (flag99 != -1 && genwidth >> (NUMGEN - NUMFLAG2GEN) > 0)
 		{
 			upflag2 = flag99 >> 1;
-			  f2s = (flag99 & 1);
-			    f2end = (flag99 & 1) + 1;
+			f2s = (flag99 & 1);
+			f2end = (flag99 & 1) + 1;
 		}
 
 		if (relskewingNOW)
 		{
-		  const int relskewval = (flag >> (BITS_W_SELF + 1));
-		    //std::cout << relskewval << std::endl;
+			const int relskewval = (flag >> (BITS_W_SELF + 1));
+			//std::cout << relskewval << std::endl;
 			f2s = max(f2s, relskewval);
 			f2end = min(f2end, relskewval + 1);
 		}
@@ -1091,13 +1091,13 @@ struct individ
 			}
 			else
 			{
-				double effectivesecondval = (inmarkerval == UnknownMarkerVal && markerval != UnknownMarkerVal) ? 1 : secondval;				
+				double effectivesecondval = (inmarkerval == UnknownMarkerVal && markerval != UnknownMarkerVal) ? 1 : secondval;
 				baseval = 1.0 - themarkersure[f2n];
 
 				double effectivemarkersure = (themarker[f2n] == UnknownMarkerVal ? 1 : themarkersure[f2n]);
 				mainsecondval = effectivemarkersure * effectivesecondval;
 			}
-			 
+
 			// Include it all in one big thing, because it doesn't matter, or we want to enforce the genotype
 			if (attopnow || (update & (GENOS || GENOSPROBE)))
 			{
@@ -1130,7 +1130,7 @@ struct individ
 			{
 				if (HAPLOTYPING)
 				{
-				  // TODO interaction relskew/selfing
+					// TODO interaction relskew/selfing
 					baseval *= fabs((f2n ? 1.0 : 0.0) - haploweight[marker]);
 				}
 				else
@@ -1193,10 +1193,10 @@ struct individ
 					{
 						if (markerval != secmark)
 						{
-						  if (secmark != UnknownMarkerVal)
-						    {
+							if (secmark != UnknownMarkerVal)
+							{
 								baseval *= themarkersure[!realf2n];
-						    }
+							}
 							secmark = markerval;
 							secsecondval = 0;
 						}
@@ -1232,7 +1232,7 @@ struct individ
 
 			if ((update & HAPLOS) /*&& !allthesame*/ && doupdatehaplo)
 			{
-				(*tb.haplos)[n][f2n] += extparams.updateval;				
+				(*tb.haplos)[n][f2n] += extparams.updateval;
 			}
 			if (update & GENOS)
 			{
@@ -1249,7 +1249,7 @@ struct individ
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
 		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
-							    marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
+			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
 	}
 
 	// "Fix" parents, i.e. infer correct marker values for any zero values existing.
@@ -1356,37 +1356,37 @@ struct individ
 
 		int count = 0;
 		for (int allele = 0; allele < 2; allele++)
-		  {
-		    for (shiftflagmode = 0; shiftflagmode < 2; shiftflagmode += 1)
-		      {
-		        threadblock tb;
-			for (int i = 0; i < NUMTYPES * 2; i++)
-			  {
-			    //int flag2 = -1;
-			    			    for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
-			      {
-									if (flag2 & flag2ignore) continue;
+		{
+			for (shiftflagmode = 0; shiftflagmode < 2; shiftflagmode += 1)
+			{
+				threadblock tb;
+				for (int i = 0; i < NUMTYPES * 2; i++)
+				{
+					//int flag2 = -1;
+					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
+					{
+						if (flag2 & flag2ignore) continue;
 
-				double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
-			marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
-				//				double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
-				sum += ok;
-				sqsum += ok * ok;
-				if (debugtime && ok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf\n", n, marker, allele, shiftflagmode, i, flag2, ok);
-				count++;
-			      }
-			  }
-		      }
-		  }
+						double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
+							marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
+						//				double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
+						sum += ok;
+						sqsum += ok * ok;
+						if (debugtime && ok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf\n", n, marker, allele, shiftflagmode, i, flag2, ok);
+						count++;
+					}
+				}
+			}
+		}
 
 		if (!sum) return;
 		double contrib = (sqsum - (sum * sum / count)) / (sum * sum) * count;
 		/*		for (individ* rel : relp)
 		{
 		if (!rel) continue;*/
-			variances[marker] += contrib;
-			if (debugtime) fprintf(stderr, "Variance for %d at %d is %lf (%lf:%lf)\n", n, marker, contrib, sqsum, sum);
-			//		}
+		variances[marker] += contrib;
+		if (debugtime) fprintf(stderr, "Variance for %d at %d is %lf (%lf:%lf)\n", n, marker, contrib, sqsum, sum);
+		//		}
 	}
 
 	// Verifies that an update should take place and performs it. Just a wrapper to calltrackpossible.
@@ -1398,7 +1398,7 @@ struct individ
 
 		if (ok)
 		{
- 			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
+			calltrackpossible<true, false>(tb, &themarker.first, marker, i, 0, flag2, updateval);
 		}
 		else
 		{
@@ -1433,7 +1433,7 @@ struct individ
 
 			for (unsigned int i = 0; i < NUMTYPES; i++) // genotype
 			{
-			  double val = probs[i];
+				double val = probs[i];
 
 				// We will multiply this already small number with an even smaller number... let's assume it's zero and be done with it.
 				if (val < 1e-300)
@@ -1449,8 +1449,8 @@ struct individ
 					realok += calltrackpossible<false, false>(tb, &themarker.first, marker, i, 0, flag2);
 				}
 
-				
- 				// TODO UGLY CAPPING
+
+				// TODO UGLY CAPPING
 				if (HAPLOTYPING)
 				{
 					val *= (double)realok;
@@ -1465,10 +1465,10 @@ struct individ
 
 			if (!ruleout && sum == 0)
 			{
-			  assert(false && "Bring back probs2");
+				assert(false && "Bring back probs2");
 				for (int i = 0; i < NUMTYPES; i++)
 				{
-				  //					probs[i] = probs2[i];
+					//					probs[i] = probs2[i];
 				}
 
 				// The code sees: This doesn't make sense, ignore this marker!
@@ -1607,7 +1607,7 @@ struct individ
 
 	// Analyze for a specific range, including a possible fixed specific state at some position (determined by stopdata)
 	template<bool inclusive, class T, class G> double quickanalyze(const threadblock& tb, const T& turner, unsigned int startmark,
-		const unsigned int endmark, const G &stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
+		const unsigned int endmark, const G& stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
 		float minfactor = MINFACTOR)
 	{
 		unsigned int stepsize;
@@ -1639,109 +1639,109 @@ struct individ
 				stopdata.okstep(startmark, startmark + stepsize) &&
 				!(startmark & (stepsize - 1)); stepsize *= 2);
 
-				// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the
-				// way down the tree.
-				if (stepsize <= 2)
+			// A single step, either due to the fixated genotypee being within this range, or simply because we've gone all the
+			// way down the tree.
+			if (stepsize <= 2)
+			{
+				stepsize = 1;
+
+				if (!frommem && !stopdata.okstep(startmark, startmark + 1))
 				{
-					stepsize = 1;
+					// If we have a fixated genotype at marker x in one call, it is very likely that the next call will also
+					// be a fixated genotype at marker x. Possibly another one, but still fixated. The fixated genotype does not
+					// change the probability values leading up to this position, so they are cached.
+					tb.quickgen[*tb.shiftflagmode] = *tb.generation;
+					tb.quickmark[*tb.shiftflagmode] = startmark;
+					tb.lockpos[*tb.shiftflagmode] = (int)stopdata;
+					tb.quickfactor[*tb.shiftflagmode] = factor;
 
-					if (!frommem && !stopdata.okstep(startmark, startmark + 1))
+					for (int i = 0; i < NUMTYPES; i++)
 					{
-						// If we have a fixated genotype at marker x in one call, it is very likely that the next call will also
-						// be a fixated genotype at marker x. Possibly another one, but still fixated. The fixated genotype does not
-						// change the probability values leading up to this position, so they are cached.
-						tb.quickgen[*tb.shiftflagmode] = *tb.generation;
-						tb.quickmark[*tb.shiftflagmode] = startmark;
-						tb.lockpos[*tb.shiftflagmode] = (int)stopdata;
-						tb.quickfactor[*tb.shiftflagmode] = factor;
-
-						for (int i = 0; i < NUMTYPES; i++)
-						{
-							tb.quickmem[*tb.shiftflagmode][i] = probs[i];
-							tb.quickendmarker[*tb.shiftflagmode][i] = -1;
-							tb.quickendfactor[*tb.shiftflagmode][i] = 1.0;
-						}
-						frommem = true;
+						tb.quickmem[*tb.shiftflagmode][i] = probs[i];
+						tb.quickendmarker[*tb.shiftflagmode][i] = -1;
+						tb.quickendfactor[*tb.shiftflagmode][i] = 1.0;
 					}
-					bool willquickend = (frommem && turner.canquickend() && canquickend(startmark, stopdata));
-					int genotype = stopdata.getgenotype(startmark);
+					frommem = true;
+				}
+				bool willquickend = (frommem && turner.canquickend() && canquickend(startmark, stopdata));
+				int genotype = stopdata.getgenotype(startmark);
 
-					if (genotype < 0) willquickend = false;
+				if (genotype < 0) willquickend = false;
 
-					if (willquickend)
+				if (willquickend)
+				{
+					if (factor + tb.quickendfactor[*tb.shiftflagmode][genotype] <= minfactor)
 					{
-						if (factor + tb.quickendfactor[*tb.shiftflagmode][genotype] <= minfactor)
-						{
-							return MINFACTOR;
-						}
-						// If we are doing a quick end
-						factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
-					}
-					else
-					{
-						factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
-					}
-
-					if (!_finite(factor) || factor <= minfactor)
-					{						
-						if (!_finite(factor)) fprintf(stderr, "Non-finiteA %d %d\n", n, startmark);
 						return MINFACTOR;
 					}
-					if (willquickend)
-					{
-						double wasval = probs[genotype];
-						if (tb.quickendfactor[*tb.shiftflagmode][genotype] > 0.0 || tb.quickendmarker[*tb.shiftflagmode][genotype] != startmark)
-						{
-							// Precalc the full set of transitions from this very marker, for all states, all the way to the end
-							// That way, any new analysis starting from this marker can be solved with no recomputation at all.
-							// Note that only the latest marker used is stored here, but as we generally loop over all states and possibly
-							// multiple flag values, it still helps.
-							for (int i = 0; i < NUMTYPES; i++)
-							{
-								tb.quickendprobs[*tb.shiftflagmode][genotype][i] = 0;
-							}
-							tb.quickendprobs[*tb.shiftflagmode][genotype][genotype] = 1.0;
-							double superfactor = realanalyze<0 | 2, T>(tb, turner, startmark, startmark + stepsize, NONESTOP, -1, ruleout, &tb.quickendprobs[*tb.shiftflagmode][genotype]);
-
-							superfactor += quickanalyze<true, T>(tb, turner, startmark + stepsize, endmark, NONESTOP, flag2, ruleout, tb.quickendprobs[*tb.shiftflagmode][genotype],
-								// all uses of this precalced data will have the
-								// quickfactor component in common, so taking that
-								// into account for the limit is not problematic
-								// any strong filtering at this specific locus can be
-								// handled by the return MINFACTOR line above
-								minfactor - tb.quickfactor[*tb.shiftflagmode]);
-
-							tb.quickendmarker[*tb.shiftflagmode][genotype] = startmark;
-							tb.quickendfactor[*tb.shiftflagmode][genotype] = superfactor;
-						}
-
-						factor += tb.quickendfactor[*tb.shiftflagmode][genotype];
-						factor += log(wasval);
-						if (factor <= minfactor) return MINFACTOR;
-
-						for (int i = 0; i < NUMTYPES; i++)
-						{
-							probs[i] = tb.quickendprobs[*tb.shiftflagmode][genotype][i];
-						}
-
-						return factor;
-					}
+					// If we are doing a quick end
+					factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
 				}
 				else
 				{
-					// Use a stored multi-step transition.
-					stepsize /= 2;
+					factor += realanalyze<0, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				}
 
-					int base = 0;
-					for (int q = stepsize / 2; q > 1; q /= 2)
+				if (!_finite(factor) || factor <= minfactor)
+				{
+					if (!_finite(factor)) fprintf(stderr, "Non-finiteA %d %d\n", n, startmark);
+					return MINFACTOR;
+				}
+				if (willquickend)
+				{
+					double wasval = probs[genotype];
+					if (tb.quickendfactor[*tb.shiftflagmode][genotype] > 0.0 || tb.quickendmarker[*tb.shiftflagmode][genotype] != startmark)
 					{
-						base += markerposes.size() / q;
+						// Precalc the full set of transitions from this very marker, for all states, all the way to the end
+						// That way, any new analysis starting from this marker can be solved with no recomputation at all.
+						// Note that only the latest marker used is stored here, but as we generally loop over all states and possibly
+						// multiple flag values, it still helps.
+						for (int i = 0; i < NUMTYPES; i++)
+						{
+							tb.quickendprobs[*tb.shiftflagmode][genotype][i] = 0;
+						}
+						tb.quickendprobs[*tb.shiftflagmode][genotype][genotype] = 1.0;
+						double superfactor = realanalyze<0 | 2, T>(tb, turner, startmark, startmark + stepsize, NONESTOP, -1, ruleout, &tb.quickendprobs[*tb.shiftflagmode][genotype]);
+
+						superfactor += quickanalyze<true, T>(tb, turner, startmark + stepsize, endmark, NONESTOP, flag2, ruleout, tb.quickendprobs[*tb.shiftflagmode][genotype],
+							// all uses of this precalced data will have the
+							// quickfactor component in common, so taking that
+							// into account for the limit is not problematic
+							// any strong filtering at this specific locus can be
+							// handled by the return MINFACTOR line above
+							minfactor - tb.quickfactor[*tb.shiftflagmode]);
+
+						tb.quickendmarker[*tb.shiftflagmode][genotype] = startmark;
+						tb.quickendfactor[*tb.shiftflagmode][genotype] = superfactor;
 					}
 
-					base += startmark / stepsize;
+					factor += tb.quickendfactor[*tb.shiftflagmode][genotype];
+					factor += log(wasval);
+					if (factor <= minfactor) return MINFACTOR;
 
-					factor += fillortake(tb, base, startmark, startmark + stepsize, probs);
+					for (int i = 0; i < NUMTYPES; i++)
+					{
+						probs[i] = tb.quickendprobs[*tb.shiftflagmode][genotype][i];
+					}
+
+					return factor;
 				}
+			}
+			else
+			{
+				// Use a stored multi-step transition.
+				stepsize /= 2;
+
+				int base = 0;
+				for (int q = stepsize / 2; q > 1; q /= 2)
+				{
+					base += markerposes.size() / q;
+				}
+
+				base += startmark / stepsize;
+
+				factor += fillortake(tb, base, startmark, startmark + stepsize, probs);
+			}
 			startmark += stepsize;
 			allowfull |= true;
 
@@ -1764,7 +1764,7 @@ struct individ
 #else
 // Analyze for a specific range, including a possible fixed specific state at some position (determined by stopdata)
 	template<bool inclusive, class T, class G> double quickanalyze(const threadblock& tb, const T& turner, unsigned int startmark,
-		const unsigned int endmark, const G &stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
+		const unsigned int endmark, const G& stopdata, const int flag2, bool ruleout, PerStateArray<double>::T& probs,
 		float minfactor = MINFACTOR)
 	{
 		// Probe the distance to test
@@ -1802,7 +1802,7 @@ struct individ
 			{
 				// If we are doing a quick end
 				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
-				
+
 				// We might have turned, this value might not exist
 				initfwbw(tb, origstart, endmark);
 
@@ -1909,7 +1909,7 @@ struct individ
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = EVENGEN * (SELFING ?
-					selfingfactors[(i >> TYPEBITS) & SELFMASK] : 1.0);
+					selfingfactors[(i >> TYPEBITS)& SELFMASK] : 1.0);
 			}
 
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
@@ -2135,8 +2135,8 @@ struct individ
 					float relscore[2] = { 1, 1 };
 					if (RELSKEWSTATES && iter == tofind)
 					{
-					  relscore[0] = relhaplo[min(j, j - d)];
-					  relscore[1] = 1 - relhaplo[min(j, j - d)];
+						relscore[0] = relhaplo[min(j, j - d)];
+						relscore[1] = 1 - relhaplo[min(j, j - d)];
 					}
 
 					// Use those xor values
@@ -2149,7 +2149,7 @@ struct individ
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
-							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS) & SELFMASK][(to >> TYPEBITS) & SELFMASK] : 1) *
+							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS)& SELFMASK][(to >> TYPEBITS)& SELFMASK] : 1)*
 								(RELSKEWSTATES ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
 						}
 					}
@@ -2404,7 +2404,7 @@ void readqtlmas14()
 		markertranslation[n - 1] = n - 1;
 		if (c != oldc)
 		{
-			chromstarts.push_back(n - 1);			
+			chromstarts.push_back(n - 1);
 			n2 = 0;
 			oldc = c;
 		}
@@ -2841,7 +2841,7 @@ void lockhaplos(individ* ind, int i)
 
 	if (j != chromstarts[i + 1])
 	{
-	  ind->haploweight[j] = ind->haploweight[j] <= 0.5 ? 0 : 1;
+		ind->haploweight[j] = ind->haploweight[j] <= 0.5 ? 0 : 1;
 		ind->lockstart[i] = j + 1;
 	}
 }
@@ -3100,10 +3100,10 @@ void postmarkerdata()
 		if (HAPLOTYPING && ind && ind->haploweight.size())
 			// These days we do the locking in all generations
 		{
-		  auto [shiftignore, flag2ignore] = fixtrees(ind);
+			auto [shiftignore, flag2ignore] = fixtrees(ind);
 			for (int j = 0; j < markerposes.size(); j++)
 			{
-			  // TODO: Variance could take relskew into account...
+				// TODO: Variance could take relskew into account...
 				ind->addvariance(j, flag2ignore);
 			}
 		}
@@ -3126,7 +3126,7 @@ void postmarkerdata()
 			for (size_t i = 0; i < chromstarts.size() - 1; i++)
 			{
 				//if (!ind->pars[0] && !ind->pars[1])
-					lockhaplos(ind, i);
+				lockhaplos(ind, i);
 			}
 		}
 	}
@@ -3170,7 +3170,7 @@ struct negshifter
 		for (int p = minstart + 1; p < (int)chromstarts[c + 1]; p++)
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
-	     		ind->haploweight[p] = 1.0f - ind->haploweight[p];
+			ind->haploweight[p] = 1.0f - ind->haploweight[p];
 			//		ind->haplobase[p] = ind->haplocount[p] - ind->haplobase[p];
 		}
 	}
@@ -3203,10 +3203,10 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 		if (filtered && filtered != currfilter) return true;
 		//if (marker >= 0 && i->first->markerdata[marker].first == UnknownMarkerVal && i->first->markerdata[marker].second == UnknownMarkerVal && (!(flag2 & i->second)))
 		if (marker >= 0 && i->first->markerdata[marker].first == i->first->markerdata[marker].second && i->first->markersure[marker].first == i->first->markersure[marker].second && !(((bool)filtered) ^ ((bool)(shiftflagmode & j->second))) &&
-			((!RELSKEWSTATES || currfilter != 1 ) && (!SELFING/* || selfgen == 0*/)))
+			((!RELSKEWSTATES || currfilter != 1) && (!SELFING/* || selfgen == 0*/)))
 		{
-		  //			return false;
-		  return true;
+			//			return false;
+			return true;
 		}
 	}
 	return false;
@@ -3217,9 +3217,9 @@ template<int N> struct valuereporter
 {
 	std::array<double, N> probs;
 
-  valuereporter()
-  {
-  		for (int k = 0; k < N; k++)
+	valuereporter()
+	{
+		for (int k = 0; k < N; k++)
 		{
 			probs[k] = 0;
 		}
@@ -3283,7 +3283,7 @@ void resizecaches()
 		fwbw[t].resize(markerposes.size());
 		fwbwdone[t] = 0;
 #endif
-	}
+}
 }
 
 // Global scale factor, 1.0 meaning "use unscaled gradient".
@@ -3305,7 +3305,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 	{
 		for (auto infval : infprobs[i][side])
 		{
-		  reltree[k]->infprobs[marker][side][infval.first] += infval.second * norm /* * sum*/;
+			reltree[k]->infprobs[marker][side][infval.first] += infval.second * norm /* * sum*/;
 		}
 		infprobs[i][side].clear();
 	}
@@ -3321,7 +3321,7 @@ void movehaplos(int i, int k, int marker)
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 			//if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
 			{
-			  reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
+				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
 				reltree[k]->haplocount[marker] += 1;
 			}
 		}
@@ -3330,7 +3330,7 @@ void movehaplos(int i, int k, int marker)
 	}
 }
 
-void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], double colsums[NUMTYPES], double &acc3, double &acc4, double mwfvals[1])
+void calcdistancecolrowsums(double mwvals[1][1], double rowsums[NUMTYPES], double colsums[NUMTYPES], double& acc3, double& acc4, double mwfvals[1])
 {
 	for (int g = 0; g < NUMTYPES; g++)
 	{
@@ -3377,27 +3377,27 @@ void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int 
 			// This is hardcoded for the generation count of 3.
 			if (NUMGEN == 3)
 			{
-				dous[j]->negshift[marker] += log(val) * (1.0 - ((g >> 6) & 1) * 2) * ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
+				dous[j]->negshift[marker] += log(val) * (1.0 - ((g >> 6) & 1) * 2)* ((g2 >> 6) & 1) /*/ sumnegval[6]*/;
 
 				if (dous[j]->pars[0])
-					dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /* / sumnegval[0] */;
+					dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2)* ((g2 >> 0) & 1) /* / sumnegval[0] */;
 
 				if (dous[j]->pars[1])
-					dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 3) & 1) * 2) * ((g2 >> 3) & 1) /* / sumnegval[3] */;
+					dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 3) & 1) * 2)* ((g2 >> 3) & 1) /* / sumnegval[3] */;
 
 				if (dous[j]->gen >= 2)
 				{
 					if (dous[j]->pars[0] && dous[j]->pars[0]->pars[0])
-						dous[j]->pars[0]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
+						dous[j]->pars[0]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2)* ((g2 >> 1) & 1) /* / sumnegval[1]*/ / dous[j]->pars[0]->children;
 
 					if (dous[j]->pars[0] && dous[j]->pars[0]->pars[1])
-						dous[j]->pars[0]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 2) & 1) * 2) * ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
+						dous[j]->pars[0]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 2) & 1) * 2)* ((g2 >> 2) & 1) /*/ sumnegval[2]*/ / dous[j]->pars[0]->children;
 
 					if (dous[j]->pars[1] && dous[j]->pars[1]->pars[0])
-						dous[j]->pars[1]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 4) & 1) * 2) * ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
+						dous[j]->pars[1]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 4) & 1) * 2)* ((g2 >> 4) & 1) /*/ sumnegval[4]*/ / dous[j]->pars[1]->children;
 
 					if (dous[j]->pars[1] && dous[j]->pars[1]->pars[1])
-						dous[j]->pars[1]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 5) & 1) * 2) * ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
+						dous[j]->pars[1]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 5) & 1) * 2)* ((g2 >> 5) & 1) /*/ sumnegval[5]*/ / dous[j]->pars[1]->children;
 				}
 			}
 #if false
@@ -3406,10 +3406,10 @@ void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int 
 				dous[j]->negshift[marker] += val * (1.0 - ((g >> 2) & 1) * 2) /* * ((g2 >> 2) & 1) */ / (sumnegval[2]);
 
 				if (dous[j]->pars[0])
-					dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2) * ((g2 >> 0) & 1) /*/ (sumnegval[0])*/;
+					dous[j]->pars[0]->negshift[marker] += log(val) * (1.0 - ((g >> 0) & 1) * 2)* ((g2 >> 0) & 1) /*/ (sumnegval[0])*/;
 
 				if (dous[j]->pars[1])
-					dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2) * ((g2 >> 1) & 1) /*/ (sumnegval[1])*/;
+					dous[j]->pars[1]->negshift[marker] += log(val) * (1.0 - ((g >> 1) & 1) * 2)* ((g2 >> 1) & 1) /*/ (sumnegval[1])*/;
 				if (dous[j]->pars[0] && dous[j]->pars[1])
 				{
 					nsm[make_pair(dous[j]->pars[0], dous[j]->pars[1])][marker][g] +=
@@ -3430,7 +3430,7 @@ void updatenegshifts(const bool validg[NUMTURNS], int shifts, int shiftend, int 
 }
 
 #if 0
-void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * out)
+void oldinfprobslogic(individ* ind, unsigned int j, int iter, int cno, FILE* out)
 {
 	MarkerVal bestvals[2] = { UnknownMarkerVal, UnknownMarkerVal };
 	double bestsure[2] = { ind->markersure[j].first, ind->markersure[j].second };
@@ -3703,7 +3703,7 @@ void oldinfprobslogic(individ * ind, unsigned int j, int iter, int cno, FILE * o
 				}*/
 
 				ind->markerdata[j] = make_pair(bestvals[0], bestvals[1]);
-ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
+				ind->markersure[j] = make_pair(bestsure[0], bestsure[1]);
 			}
 		}
 		for (int a = 0; a < 2; a++)
@@ -3735,14 +3735,14 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 	if (diff > limn / limd1)
 	{
-	  //		if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn / limd1, intended, orig);
+		//		if (!hitnnn)  fprintf(stderr, "CAP: Exceeding limit %lf > %lf, intended %lf, orig %lf\n", diff, limn / limd1, intended, orig);
 		intended = orig + limn / limd1;
 		if (intended < 0.5) hitnnn++;
 	}
 
 	if (diff < -limn / limd2)
 	{
-	  //if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn / limd2, intended, orig);
+		//if (!hitnnn) fprintf(stderr, "CAP: Underflowing limit %lf < %lf, intended %lf, orig %lf\n", diff, -limn / limd2, intended, orig);
 		intended = orig - limn / limd2;
 		if (intended > 0.5) hitnnn++;
 	}
@@ -3774,7 +3774,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   return caplogitchange(state[0], orig, epsilon, hitnnn, breakathalf);
 }
 
-void processinfprobs(individ * ind, const unsigned int j, const int side, int iter, std::atomic_int &hitnnn)
+void processinfprobs(individ* ind, const unsigned int j, const int side, int iter, std::atomic_int& hitnnn)
 {
 	double bestprob = 0;
 	MarkerVal bestmarker = UnknownMarkerVal;
@@ -3795,7 +3795,7 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 
 	for (int i = 0; i < 2; i++)
 	{
-	  if (doprint) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
+		if (doprint) fprintf(stdout, "PROBHZYG  : %d %d %d   %lf\n", ind->n, j, i, ind->homozyg[j][i]);
 	}
 
 	double hzygcorrsum = 0;
@@ -3811,21 +3811,21 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 			hzygcorrterm -= hzygval / probpair.second * sum;
 			hzygcorrterm += hzygval / otherside;
 
-			hzygcorrsum += hzygcorrterm * (probpair.first.value() == 1  ? 1 : -1);
+			hzygcorrsum += hzygcorrterm * (probpair.first.value() == 1 ? 1 : -1);
 		}
 	}
 
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
-	  if (doprint) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
+		if (doprint) fprintf(stdout, "PROBPAIR A: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), probpair.second);
 		double curprob = 0.5;
 		auto curmarker = (&ind->markerdata[j].first)[side];
 
 		if (curmarker != UnknownMarkerVal)
 		{
 			curprob = fabs((curmarker == probpair.first ? 1 : 0) - (&ind->markersure[j].first)[side]);
-		}		
+		}
 
 		double hzygcorred = probpair.second;
 		/*				if (probpair.first.value() >= 1 && probpair.first.value() <= 2)
@@ -3839,10 +3839,10 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 
 		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
 		{
-		  double curprob = in[0];
-		  double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+			double curprob = in[0];
+			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
 
-		  double et = log(1 / curprob - 1);
+			double et = log(1 / curprob - 1);
 			d += etf * et; // Entropy term
 
 			if (priorval != UnknownMarkerVal)
@@ -3879,26 +3879,26 @@ void processinfprobs(individ * ind, const unsigned int j, const int side, int it
 	// Putting them in will make the ind non-empty, breaking assumptions
 	if (!ind->empty && (bestmarker != UnknownMarkerVal || bestprob > 0))
 	{
-	  //if (iter <= 3)
-	    {
-		(&ind->markerdata[j].first)[side] = bestmarker;
-		double intended = 1.0 - bestprob;
-		(&ind->markersure[j].first)[side] = intended;
-	    }
+		//if (iter <= 3)
+		{
+			(&ind->markerdata[j].first)[side] = bestmarker;
+			double intended = 1.0 - bestprob;
+			(&ind->markersure[j].first)[side] = intended;
+		}
 	}
 	ind->infprobs[j][side].clear();
 	if (side == 1)
 	{
-	  for (int i = 0; i < 2; i++)
-	    {
-	      ind->homozyg[j][i] = 0;
-	    }
+		for (int i = 0; i < 2; i++)
+		{
+			ind->homozyg[j][i] = 0;
+		}
 	}
 }
 
 struct relskewhmm
 {
-  static constexpr bool realhmm = true;
+	static constexpr bool realhmm = true;
 	typedef std::array<double, 2> halfstate;
 	typedef std::array<halfstate, 2> state;
 	vector<state> relskewfwbw;
@@ -3907,7 +3907,7 @@ struct relskewhmm
 	const int firstmarker;
 	const individ* ind;
 
-  relskewhmm() : firstmarker(-1), ind(nullptr) {}
+	relskewhmm() : firstmarker(-1), ind(nullptr) {}
 
 	relskewhmm(int firstmarker, int endmarker, const individ* ind) : firstmarker(firstmarker), ind(ind)
 	{
@@ -3917,19 +3917,19 @@ struct relskewhmm
 
 		const auto doemissions = [&s, &ind](int m)
 		{
-		  double w;
-		  if (false && ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
-		  else
-		    {
-//		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
-		    w = ind->haploweight[m];
-		    }
-		  for (int k = 0; k < 2; k++)
+			double w;
+			if (false && ind->haplocount[m]) w = ind->haplobase[m] / ind->haplocount[m];
+			else
 			{
-			  auto val = fabs(!k - w);
-			  if (realhmm) s[k] *= val;
-			  else
-			    s[k] += val;
+				//		      fprintf(stderr, "FILLING IN %d %d\n", ind->n, m);
+				w = ind->haploweight[m];
+			}
+			for (int k = 0; k < 2; k++)
+			{
+				auto val = fabs(!k - w);
+				if (realhmm) s[k] *= val;
+				else
+					s[k] += val;
 			}
 		};
 		const auto dotransitions = [&s, &ind](int m)
@@ -3938,11 +3938,11 @@ struct relskewhmm
 			double nb = 1 - n;
 
 			if (!realhmm)
-			  {
-			    double base = min(n, nb);
-			    nb -= base;
-			    n -= base;
-			  }
+			{
+				double base = min(n, nb);
+				nb -= base;
+				n -= base;
+			}
 			halfstate nexts;
 			for (int k = 0; k < 2; k++)
 			{
@@ -3950,26 +3950,26 @@ struct relskewhmm
 			}
 
 			if (!realhmm)
-			  {
-			    double sum = 0;
-			    for (int k = 0; k < 2; k++)
-			      {
-				sum += nexts[k];
-			      }
-			    
-			    sum *= (1.0 - n - nb) / max((double) (n + nb), (double) maxdiff);
-			    sum = 1.0 / max((double) sum, (double) maxdiff);
-			    
-			    for (int k = 0; k < 2; k++)
-			      {
-				nexts[k] *= sum;
-			      }
-			  }
+			{
+				double sum = 0;
+				for (int k = 0; k < 2; k++)
+				{
+					sum += nexts[k];
+				}
+
+				sum *= (1.0 - n - nb) / max((double)(n + nb), (double)maxdiff);
+				sum = 1.0 / max((double)sum, (double)maxdiff);
+
+				for (int k = 0; k < 2; k++)
+				{
+					nexts[k] *= sum;
+				}
+			}
 			s = nexts;
 		};
 		const auto renormalizes = [&s]
 		{
-		  if (!realhmm) return; // HACK: Disable normalization
+			if (!realhmm) return; // HACK: Disable normalization
 			double sum = s[0] + s[1];
 			if (sum < 1e-10)
 			{
@@ -3984,7 +3984,7 @@ struct relskewhmm
 
 		// FW
 		for (int m = firstmarker; m < endmarker; m++)
-		{			
+		{
 			doemissions(m);
 			relskewfwbw[m - firstmarker][0] = s;
 
@@ -4058,33 +4058,32 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 			truei -= 1;
 		}
 
-		double prevval = relskews[i].getweight(marker, 0);
-		double nextval = relskews[i].getweight(marker + 1, 1);
+		double vals[2] = { relskews[i].getweight(marker, 0), relskews[i].getweight(marker + 1, 1) };
 
-		// TODO: OVERRUN AT MARKER + 1 ?
-		/*for (int k = 0; k < 2; k++)
+		for (int ix = 0; ix < 2; ix++)
 		{
-		double relval = fabs(k - ind->relhaplo[marker]);
-		double sum = 0;
-		double term = nextval * (prevval * relval + (1 - prevval) * (1 - relval));
-		sum += term;
-
-		term = (1 - nextval) * ((1 - prevval) * relval + prevval * (1 - relval));
-		sum += term;
-		if (sum < maxdiff) sum = maxdiff;
-		skewterms[truei] += (0 == k ? 1 : -1) * log(sum);
-		}*/
-		// Two directions across the same marker gap, hence two terms with 0.5 contribution
-		// // 0.5 removed
-		// Skewterm implicitly negative, hence surprising sign
-		skewterms[truei] -= ((1 - ind->haploweight[marker + 1]) - ind->haploweight[marker + 1]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * prevval - 1));
-		skewterms[truei] -= ((1 - ind->haploweight[marker]) - ind->haploweight[marker]) * 2 * atanh((2 * ind->relhaplo[marker] - 1) * (2 * nextval - 1));		
+			double hw = ind->haploweight[marker + ix];
+			double val = vals[ix];
+			double rh = ind->relhaplo[marker];
+			
+			double now =
+				hw * val * (log(rh) + log(hw)) +
+				(1 - hw) * (1 - val) * (log(rh) + log(1 - hw)) +
+				hw * (1 - val) * (log(1 - rh) + log(hw)) +
+				(1 - hw) * val * (log(1 - rh) + log(1 - hw));
+			double then =
+				hw * (1 - val) * (log(rh) + log(hw)) +
+				(1 - hw) * val * (log(rh) + log(1 - hw)) +
+				hw * val * (log(1 - rh) + log(hw)) +
+				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw));
+			skewterms[truei] -= then - now;
+		}		
 	}
 
 	return skewterms;
 }
 
-void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hitnnn)
+void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitnnn)
 {
 	vector<bool> allhalf;
 	vector<bool> anyinfo;
@@ -4103,7 +4102,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 		nudgeme[k] = -1;
 	}
 
-	unsigned int cno = (unsigned int) -1;
+	unsigned int cno = (unsigned int)-1;
 	std::unique_ptr<relskewhmm> relskews;
 
 	for (size_t j = 0; j < ind->haplocount.size(); j++)
@@ -4152,63 +4151,58 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 				val = 1;
 			}
 
-			auto relskewterm = [&] (double hwnow)
-			  {
-			    double relskewterm = 0;
-			    if (RELSKEWS)
-			      {
-				for (int d = -1; d < 1; d++)
-				  {
-				    double otherval;
-				    if (d == -1)
-				      {
-					if (j == chromstarts[cno]) continue;
-					otherval = relskews->getweight(j - 1, 0);
-				      }
-				    else
-				      {
-					if (j + 1 >= chromstarts[cno + 1]) continue;
-					otherval = relskews->getweight(j + 1, 1);
-				      }
-				    // arctanh arises from log(1-x) - log(x)
-				    relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-				    //relskewterm += (1 - otherval - 2 * hwnow * otherval * atanh(1 - 2 * hwnow) + 2 * hwnow * (1 - 2 * otherval) * atanh(1 - 2 * ind->relhaplo[j + d])) / hwnow;
-				    //if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
-				    
-				    /*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
-				      prevval = prevval / (prevval + 1.0);*/
-				  }
-				// Each direction is counted twice, for two different markers
-				//if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
-				// relskewterm *= 0.5;
-			      }
+			auto relskewterm = [&](double hwnow)
+			{
+				double relskewterm = 0;
+				if (RELSKEWS)
+				{
+					for (int d = -1; d < 1; d++)
+					{
+						double otherval;
+						if (d == -1)
+						{
+							if (j == chromstarts[cno]) continue;
+							otherval = relskews->getweight(j - 1, 0);
+						}
+						else
+						{
+							if (j + 1 >= chromstarts[cno + 1]) continue;
+							otherval = relskews->getweight(j + 1, 1);
+						}
+						// arctanh arises from log(1-x) - log(x)
+						relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+					}
+					// Each direction is counted twice, for two different markers
+					if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
+					// relskewterm *= 0.5;
+				}
 
-			    return relskewterm;
-			  };
+				return relskewterm;
+			};
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
 			if (ind->markerdata[j].first != ind->markerdata[j].second) scoreb = 1 - scoreb;
 
-			/*double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) * 
+			/*double similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb)) / sqrt((scorea * scorea + (1-scorea) * (1-scorea)) *
 			  (scoreb * scoreb + (1-scoreb) * (1-scoreb)));*/
 			double sims[2];
 			for (int k = 0; k < 2; k++)
-			  {
-			    sims[k] = fabs(k - scorea) / fabs(k - scoreb);
-			    if (sims[k] > 1) sims[k] = 1 / sims[k];
-			  }
+			{
+				sims[k] = fabs(k - scorea) / fabs(k - scoreb);
+				if (sims[k] > 1) sims[k] = 1 / sims[k];
+			}
 			double similarity = min(sims[0], sims[1]);
 			similarity = 0;
 
 			if (!ind->haplocount[j] || similarity == 1.0)
 			{
-				ind->haplocount[j] = min(1.0, (double) ind->haplocount[j]);
+				ind->haplocount[j] = min(1.0, (double)ind->haplocount[j]);
 				ind->haplobase[j] = ind->haploweight[j] * ind->haplocount[j];
 			}
 			else
 			{
-			  if (similarity >= 1 - maxdiff) similarity = 1 - maxdiff;
+				if (similarity >= 1 - maxdiff) similarity = 1 - maxdiff;
 
 				double count = ind->haplocount[j];
 				ind->haplobase[j] -= count * ind->haploweight[j];
@@ -4232,7 +4226,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 			if (/*ind->children &&*/ (ind->lastinved[cno] == -1 || true) /*&& !ind->pars[0] && !ind->pars[1]*/)
 			{
 				// Cap the change if the net difference is small/miniscule
-			  double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn, ind->lastinved[cno] != -1);
+				double intended = cappedgd(gradient, ind->haploweight[j], maxdiff / (ind->children + 1), hitnnn, ind->lastinved[cno] != -1);
 				//				fprintf(stderr, "HAPLOS: %d %d %lf %lf %lf %lf\n", ind->n, j, intended, ind->haplobase[j], ind->haplocount[j], ind->haploweight[j]);
 
 				//								if ((ind->haploweight[j] - 0.5) * (intended - 0.5) < 0) intended = 0.5;
@@ -4247,7 +4241,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 
 
 				// Nudging flag currently not respected
-				if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff && ind->haploweight[j] < 1 - maxdiff)
+				if ((nudgeme[cno] == -1 || fabs(ind->haploweight[nudgeme[cno]] - 0.5) < fabs(ind->haploweight[j] - 0.5)) && ind->haploweight[j] > maxdiff&& ind->haploweight[j] < 1 - maxdiff)
 				{
 					nudgeme[cno] = j;
 				}
@@ -4339,9 +4333,9 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 		{
 			int ind = val < 0 ? -val : val;
 			if (val < 0)
-			  {
-			    anyswitch = true;
-			  }
+			{
+				anyswitch = true;
+			}
 			if (tf[ind - 1] == (val > 0))
 			{
 				viol = false;
@@ -4353,7 +4347,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 			sumweight += c.weight;
 			if (anyswitch) for (int val : c.cinds)
 			{
-			  int ind = val < 0 ? -val : val;
+				int ind = val < 0 ? -val : val;
 				cover.insert(ind);
 			}
 		}
@@ -4379,14 +4373,14 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	infile << "c nbclauses is the exact number of clauses contained in the file\n";
 	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
 
-	int nbclauses = (int) clauses.size();
+	int nbclauses = (int)clauses.size();
 	int nbc = nbclauses;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
 	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
-	  if (c.weight <= 0)
+		if (c.weight <= 0)
 		{
 			fprintf(stderr, "Non-positive weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
 			abort();
@@ -4406,7 +4400,7 @@ struct canddata
 	set<negshiftcand> cands;
 };
 
-auto operator < (const canddata &a, const canddata &b) noexcept {
+auto operator < (const canddata& a, const canddata& b) noexcept {
 	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
 }
 
@@ -4438,7 +4432,7 @@ void parentswapnegshifts(nsmtype& nsm)
 
 	for (int k = allnegshifts.size() - 1; k >= 0; k--)
 	{
-		if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first &&
+		if (bestshift[allnegshifts[k].second.get<0>()] < allnegshifts[k].first&&
 			bestshift[allnegshifts[k].second.get<1>()] < allnegshifts[k].first)
 		{
 			bestshift[allnegshifts[k].second.get<0>()] = allnegshifts[k].first;
@@ -4501,7 +4495,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #ifdef F2MPI
 	, mpi::communicator& world
 #endif
-	)
+)
 {
 	const bool doprint = full;
 #ifdef F2MPI
@@ -4542,7 +4536,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		{
 			ind->haplocount[j] = 0.0f;
 			ind->haplobase[j] = 0.0f;
-		}
+	}
 
 #ifdef F2MPI
 		broadcast(world, ind->haploweight, 0);
@@ -4552,7 +4546,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		world.barrier();
 #endif
 
-	}
+}
 
 	for (size_t j = 0; j < dous.size(); j++)
 	{
@@ -4607,10 +4601,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			if (dous[j]->markerdata.size())
 			{
-			  dous[j]->lastinved[i] = -1;
+				dous[j]->lastinved[i] = -1;
 				int qstart = -1000 - chromstarts[i];
 				int qend = -1000 - chromstarts[i + 1];
-												 //TODO: WRONG RANGE
+				//TODO: WRONG RANGE
 				int qd = -1;
 				int f2s = 0;
 				int f2end = NUMPATHS;
@@ -4626,7 +4620,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				// Special optimization hardcoded for this population structure, eagerly skipping flags that do not
 				// correspond to any inheritance, i.e. if not the full pedigree of 6 individuals back is present.
-				auto [shiftignore, flag2ignore] = fixtrees(dous[j]);						
+				auto [shiftignore, flag2ignore] = fixtrees(dous[j]);
 
 				bool skipsome = false;
 				for (size_t u = 0; u < reltree.size() && !skipsome; u++)
@@ -4828,21 +4822,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 											homozyg[markerval.value() - 1] += sideval;
 										}
 									}
-//									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
+									//									double pairvalsum = accumulate(begin(pairvals), end(pairvals), 0.0);
 
-/*									for (int i = 0; &pairvals[i] != end(pairvals); i++)
-									{
-									  reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
-									}*/
-									/*/*if (!outmapval && val > 1e-3)
-									{
-										//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
-									}
-									if (mapval < 0 || mapval > 2)
-									  {
-									  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
-									  }*/
-									//reporter.addval(q, mapval, g, flag2, val);
+									/*									for (int i = 0; &pairvals[i] != end(pairvals); i++)
+																		{
+																		  reporter.addval(q, i, g, flag2, val * pairvals[i] / pairvalsum);
+																		}*/
+																		/*/*if (!outmapval && val > 1e-3)
+																		{
+																			//std::cerr << "ERROR TERROR " << -q - 1000 << " " << g * 2 << " " << flag2 << " " << *(tb.shiftflagmode) << "\t" << val << "\n";
+																		}
+																		if (mapval < 0 || mapval > 2)
+																		  {
+																		  std::cerr << "Incorrect mapval " << -q - 1000 << " " << dous[j]->n << std::endl;
+																		  }*/
+																		  //reporter.addval(q, mapval, g, flag2, val);
 									if (!full && HAPLOTYPING)
 									{
 										dous[j]->updatehaplo(tb, marker, g, flag2, val);
@@ -4858,7 +4852,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 													dous[j]->trackpossible<GENOS, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(updateval, nullptr));
 												}
 											}
-											
+
 											double hzs = 0;
 											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 											{
@@ -4959,8 +4953,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					// Consider doing haplotype reversal from a specific position and all the way down.
 					if (HAPLOTYPING && !early && !full /*&& dous[j]->gen >= 0*/)
 					{
-						int marker = -q - 1000;					       
-						
+						int marker = -q - 1000;
+
 						double rawvals[NUMTURNS][NUMSHIFTS];
 						double rawervals[NUMTURNS][NUMSHIFTS];
 						double sumnegval[TURNBITS] = { 0 };
@@ -4982,9 +4976,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #if !DOTOULBAR
 							int c = 0;
 							for (int p = 0; p < TYPEBITS + 1; p++)
-							  {
-							    if (g & (1 << p)) c++;
-							  }
+							{
+								if (g & (1 << p)) c++;
+							}
 
 							if (c > 1) continue;
 #endif
@@ -4994,7 +4988,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 								if (g & (1 << i))
 								{
-								  //									skewterm += skewterms[i];
+									//									skewterm += skewterms[i];
 								}
 							}
 							aroundturner turn(g);
@@ -5020,10 +5014,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								if (!isfinite(rawervals[g][oldshift]))
 								{
-								  if (rawervals[g][oldshift] > 1e300)
-								    rawvals[g][oldshift] = 1e300;
-								  else
-								    rawvals[g][oldshift] = 0;
+									if (rawervals[g][oldshift] > 1e300)
+										rawvals[g][oldshift] = 1e300;
+									else
+										rawvals[g][oldshift] = 0;
 									continue;
 								}
 
@@ -5039,7 +5033,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							}
 
-						}
+							}
 
 						for (int t = 0; t < TYPEBITS + 1; t++)
 						{
@@ -5067,7 +5061,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							vector<int> cands(7);
 							vector<bool> exists(7, false);
 							fillcandsexists(dous[j], cands, exists);
-							
+
 							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
 
 																											//Use structure clause to store weight and values.
@@ -5112,34 +5106,34 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								if (w >= std::numeric_limits<double>::min() && isfinite(w))
-								  {
-								    w = log(w) * WEIGHT_DISCRETIZER;
-								  }
+								{
+									w = log(w) * WEIGHT_DISCRETIZER;
+								}
 								else
-								  {
-								    if (w < 1)
-								      {
-									w = -5000;
-								      }
-								    else
-								      {
-									w = 5000;
-								      }
+								{
+									if (w < 1)
+									{
+										w = -5000;
+									}
+									else
+									{
+										w = 5000;
+									}
 
-								    w *= WEIGHT_DISCRETIZER;
-								  }
+									w *= WEIGHT_DISCRETIZER;
+								}
 								c.weight = w;
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
 #pragma omp critical(negshifts)
 								{
-								  if (c.weight > maxweight) {
-								    fprintf(stderr, "New maxweight %lld, was %lld, w %lf\n", c.weight, maxweight, w);
-								    maxweight = c.weight;
-									  
-								  }
-								  toulInput[mark].push_back(c);
+									if (c.weight > maxweight) {
+										fprintf(stderr, "New maxweight %lld, was %lld, w %lf\n", c.weight, maxweight, w);
+										maxweight = c.weight;
+
+									}
+									toulInput[mark].push_back(c);
 								}
 							}
 #pragma omp critical(negshifts)
@@ -5148,11 +5142,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									indnumbers.insert(cands[b]);
 								}
 							}
-						}
+							}
 #else
 						updatenegshifts(validg, shifts, shiftend, shiftignore, rawvals, j, marker);
 #endif
-					}
+						}
 
 					//reporter.report(outqueue[j]);
 
@@ -5183,9 +5177,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 						}
 					}
-				}
+						}
 
-			}
+					}
 			fprintf(stderr, "LAST: %d %s\n", dous[j]->n, dous[j]->name.c_str());
 			fflush(stderr);
 
@@ -5212,16 +5206,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					skewterms = calcskewterms(marker, &relskews[0]);
 					double w = skewterms[TURNBITS - 1];					
 					if (!isfinite(w) || fabs(w) > 5000)
-					  {
-					    if (w < -5000)
-					      {
-						w = -5000;
-					      }
-					    else
-					      {
-						w = 5000;
-					      }
-					  }
+					{
+						if (w < -5000)
+						{
+							w = -5000;
+						}
+						else
+						{
+							w = 5000;
+						}
+					}
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
@@ -5234,7 +5228,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 				}
 			}
-		}
+				}
 
 		//Print all information to seperate files EBBA
 		// stored by marker in toulIn  vector<vector<clause>>
@@ -5245,17 +5239,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		std::set<canddata> bestcands;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 		int donext = 1;
+		bool solexists = false;
 
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
-		  //		  continue;
- 		  if ((m % 1) == (iter % 1)) donext++;
-		  if (!donext) continue;
-		  donext--;
+			//		  continue;
+			if ((m % 1) == (iter % 1)) donext++;
+			if (!donext) continue;
+			donext--;
 			std::string tid = boost::lexical_cast<std::string>(omp_get_thread_num());
 			std::string toulin(tmppath + "/" + std::string("toul_in") + tid + ".wcnf");
 			std::string toulout(/*tmppath + "/" + std::string("toul_out") + tid + ".txt"*/ "/dev/null");
-			std::string sol(tmppath + "/" + std::string("sol") + tid);			
+			std::string sol(tmppath + "/" + std::string("sol") + tid + ".sol");
 
 			long long fakegain = 0;
 			for (clause& c : toulInput[m])
@@ -5275,19 +5270,22 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			if (skippable)
 			{
-			  donext++;
+				donext++;
 				continue;
 			}
 
 			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
 
-			string str = "toulbar2 " + toulin + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			// Run toulbar2 with partitioning rules that match the fact that we use small pedigrees
+			// Feed previous sol file as certificate/starting point
+			string str = "toulbar2 " + toulin + (solexists ? " " + sol + " " : "") + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
 																			 // Convert string to const char * as system requires
-			const char *command = str.c_str();
+			const char* command = str.c_str();
 			system(command);
+			solexists = true;
 
 			//Read outfile and store best result in negshift
 			std::fstream touloutput(sol, ios::in);
@@ -5297,38 +5295,38 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			while (touloutput >> rawinput) {
 				tf.push_back(rawinput);
 				if (rawinput)
-				  {
-				    fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size(), m);
-				  }
+				{
+					fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size(), m);
+				}
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
 			set<int> cover;
-			long long sumweight = computesumweight(m, tf, toulInput, cover);	
+			long long sumweight = computesumweight(m, tf, toulInput, cover);
 
 			canddata data;
 			data.score = sumweight - (maxweight + 1) * (long long)dous.size();
 			data.cover = std::move(cover);
-			for (size_t g = 0; g<tf.size(); g++) {
+			for (size_t g = 0; g < tf.size(); g++) {
 				if (tf[g])
 				{
 					data.cands.emplace(getind(g + 1), sumweight, m);
 				}
 			}
 			if (data.cover.size() && data.score >= 0)
-			  {
-			    fprintf(stderr, "ERROR: POSITIVE SCORE %lld %lld %lld %d %d\n", data.score, sumweight, maxweight, data.cover.size(), data.cands.size()); 
-			  }
+			{
+				fprintf(stderr, "ERROR: POSITIVE SCORE %lld %lld %lld %d %d\n", data.score, sumweight, maxweight, data.cover.size(), data.cands.size());
+			}
 
 			if (data.cover.size() && data.score < 0)
 #pragma omp critical(negshifts)
 			{
-			  fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
+				fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
 				vector<decltype(bestcands)::iterator> toremove;
 				bool addme = true;
 				for (const canddata& elem : bestcands)
 				{
-				  if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
+					if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
 					{
 						if (data.score <= elem.score)
 						{
@@ -5336,9 +5334,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							toremove.push_back(bestcands.find(elem));
 						}
 					}
-				  else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+					else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
 					{
-					  if (elem.score <= data.score)
+						if (elem.score <= data.score)
 						{
 							addme = false;
 						}
@@ -5347,10 +5345,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				if (addme)
 				{
-				  for (auto i : toremove)
-				    {
-				      bestcands.erase(i);
-				    }
+					for (auto i : toremove)
+					{
+						bestcands.erase(i);
+					}
 					bestcands.insert(std::move(data));
 					fprintf(stderr, "Candidate at marker %d added\n", m);
 				}
@@ -5358,7 +5356,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					bestcands.erase(--bestcands.end());
 				}
-			}			
+			}
 		}
 
 		bool toolarge;
@@ -5401,10 +5399,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				if (bestcands.size() > 1000) break;
 			}
 			while (bestcands.size() > 1000)
-			  {
-			    bestcands.erase(--bestcands.end());
-			    toolarge = true;
-			  }
+			{
+				bestcands.erase(--bestcands.end());
+				toolarge = true;
+			}
 		} while (toolarge);
 
 		if (bestcands.size())
@@ -5418,7 +5416,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			outqueue[j].push_back(0);
 			if (out && printalot) fprintf(out, "%s:%d\n", dous[j]->name.c_str(), i + 1);
 			if (out && printalot) fprintf(out, "%s\n", &outqueue[j].front());
-		}
+			}
 
 		if (out) fflush(out);
 
@@ -5464,7 +5462,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 		if (!full && HAPLOTYPING)
-		{			
+		{
 			for (unsigned int i = 0; i < INDCOUNT; i++)
 			{
 				individ* ind = getind(i);
@@ -5489,8 +5487,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 
-							fprintf(out, "FIRST PASS: %d\n", i);
-							fflush(out);
+					fprintf(out, "FIRST PASS: %d\n", i);
+					fflush(out);
 				}
 
 #ifdef F2MPI
@@ -5548,16 +5546,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								iter++;
 							}
 
-						}
+		}
 						if (!pred.anymatch && rand() / (RAND_MAX / 5))
 						{
 							negshiftcands[c].insert(ourtuple);
 						}
-					}
+						}
 
-				}
+	}
 #endif
-			}
+}
 
 #ifdef F2MPI
 			if (!world.rank())
@@ -5581,31 +5579,31 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					unsigned int cno = 0;
 					if (DOINFPROBS)
-					for (size_t j = 0; j < ind->haplocount.size(); j++)
-					{
-						while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
-
-						for (int side = 0; side < 2; side++)
+						for (size_t j = 0; j < ind->haplocount.size(); j++)
 						{
-						  processinfprobs(ind, j, side, iter, hitnnn);
-						}
-						// oldinfprobslogic(ind, j, iter, cno, out);
-					}
+							while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1]) cno++;
 
-					updatehaploweights(ind, out, iter, hitnnn);					
+							for (int side = 0; side < 2; side++)
+							{
+								processinfprobs(ind, j, side, iter, hitnnn);
+							}
+							// oldinfprobslogic(ind, j, iter, cno, out);
+						}
+
+					updatehaploweights(ind, out, iter, hitnnn);
 				}
 				parentswapnegshifts(nsm);
 
 				bool badhit = hitnnn > max(oldhitnnn, oldhitnnn2);
 				if (badhit)
-				  {
-				    scalefactor /= 1.1;
-				  }
+				{
+					scalefactor /= 1.1;
+				}
 				bool goodhit = hitnnn < min(oldhitnnn, oldhitnnn2) * 0.99;
 				if (goodhit)
-				  {
-				    scalefactor *= 1.21;
-				  }
+				{
+					scalefactor *= 1.21;
+				}
 				scalefactor *= 0.997;
 				oldhitnnn2 = oldhitnnn;
 				oldhitnnn = hitnnn;
@@ -5735,7 +5733,7 @@ void readalphaped(FILE* in)
 
 		if (gen >= 2 && !ifounderf->gen && !ifounderm->gen)
 		{
-			individ* realpars[2] = { getind(me + (string) "_aux_realf"), getind(me + (string) "_aux_realm") };
+			individ* realpars[2] = { getind(me + (string)"_aux_realf"), getind(me + (string)"_aux_realm") };
 			for (int k = 0; k < 2; k++)
 			{
 				ime->pars[k] = realpars[k];
@@ -5803,9 +5801,9 @@ void readalphadata(FILE* in)
 				}
 				ime->markerdata[x] = marker;
 				if (marker.first != UnknownMarkerVal)
-				  {
-				    ime->markersure[x] = make_pair(0.02, 0.02);
-				  }
+				{
+					ime->markersure[x] = make_pair(0.02, 0.02);
+				}
 			}
 			else
 			{
@@ -6019,11 +6017,11 @@ template<class RuleType, class AttrType> void parseToEndWithError(mapped_file_so
 
 	if (!res)
 	{
-	  std::string val;
-	  //file >> val;
+		std::string val;
+		//file >> val;
 		throw logic_error("Parsing failed. " + (std::string) __func__ + " " + val);
 	}
-	
+
 	// TODO
 	/*if (!file.eof())
 	{
@@ -6037,13 +6035,13 @@ template<class RuleType> void parseToEndWithError(mapped_file_source& file, cons
 
 	if (!res)
 	{
-	  std::string val;
-	  /*while (!file.eof())
-	    {
-	      file >> val;
-	      std::cout << val;
-	    }
-	  std::cout << std::endl;*/
+		std::string val;
+		/*while (!file.eof())
+		  {
+			file >> val;
+			std::cout << val;
+		  }
+		std::cout << std::endl;*/
 		throw logic_error("Parsing failed. " + (std::string) __func__ + " # " + val);
 
 	}
@@ -6075,7 +6073,7 @@ typedef std::vector<std::tuple<std::string, std::string, std::string>> sampletyp
 
 const auto marker_ = (x3::int_ > word_);
 const auto hapsLine = (marker_ > x3::omit[x3::float_] > word_ > word_ > (+x3::int_));
-const auto hapsLineIgnoreGenotypes = (marker_ > x3::long_long > word_ > word_> x3::omit[(+x3::int_)]);
+const auto hapsLineIgnoreGenotypes = (marker_ > x3::long_long > word_ > word_ > x3::omit[(+x3::int_)]);
 
 const auto sampleHeader = x3::omit[
 	x3::repeat(7)[word_] > x3::eol >
@@ -6083,7 +6081,7 @@ const auto sampleHeader = x3::omit[
 const auto sampleLine = (x3::omit[x3::int_] >> word_ >> x3::omit[x3::int_] >> word_ >> word_ >> x3::omit[x3::int_] >> x3::omit[x3::int_]);
 
 x3::rule<class samplesRule, sampletype, true> const samplesRule = "samplesRule";
-auto const samplesRule_def = sampleHeader >> (sampleLine % x3::eol);
+auto const samplesRule_def = sampleHeader >> (sampleLine% x3::eol);
 
 BOOST_SPIRIT_DEFINE(samplesRule)
 
@@ -6093,7 +6091,7 @@ struct samplereader
 
 	void read(mapped_file_source& sampleFile)
 	{
-		using namespace x3;		
+		using namespace x3;
 
 		try
 		{
@@ -6113,7 +6111,7 @@ struct samplereader
 using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
 
 void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
-	sampleInds,	auto dohaploweight, auto indexconv)
+	sampleInds, auto dohaploweight, auto indexconv)
 {
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
@@ -6129,7 +6127,7 @@ void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 					make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
 				if (marker == sampleInds[j]->markerdata[i])
 				{
-				  sampleInds[j]->priormarkerdata[i] = straightmarker;
+					sampleInds[j]->priormarkerdata[i] = straightmarker;
 					break;
 				}
 			}
@@ -6144,7 +6142,7 @@ void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 					// Assume that our local bp/cM model is 1e-6 and the population-level rho used by ShapeIT is 0.0004
 					// And that a good proxy for haplotype accuracy as a function of length is the global rho...
 					// Most important point is to try to get negshift inversion boundaries located on actual marker map gaps.
-					sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */ );
+					sampleInds[j]->relhaplo[i] = 0.5 + 0.5 * exp(-(markerposes[i + 1] - markerposes[i]) /* * 1e6 * 0.0004 */);
 				}
 			}
 		}
@@ -6157,50 +6155,50 @@ void readOtherHaps(const SnpDataType& snpData,
 	vector<int> phases;
 	vector<int> origPhases;
 	phases.resize(sampleInds.size());
-	origPhases.resize(sampleInds.size());	
-	auto findMatch = [&indexconv, &sampleInds, &snpData] (int i, int j) -> pair<int, int> {
-		  const vector<int>& markers = get<4>(snpData[i]);
-		  int matchNum;
-		  int numMatches = 0;
-		  
-		  for (int p = 1; p <= 2; p++)
-		    {
-		      auto marker = (p == 1) ? make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)) :
-			make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
-		      if (marker == sampleInds[j]->markerdata[i])
+	origPhases.resize(sampleInds.size());
+	auto findMatch = [&indexconv, &sampleInds, &snpData](int i, int j) -> pair<int, int> {
+		const vector<int>& markers = get<4>(snpData[i]);
+		int matchNum;
+		int numMatches = 0;
+
+		for (int p = 1; p <= 2; p++)
+		{
+			auto marker = (p == 1) ? make_pair(indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)) :
+				make_pair(indexconv(markers[j * 2 + 1], i), indexconv(markers[j * 2], i));
+			if (marker == sampleInds[j]->markerdata[i])
 			{
-			  matchNum = p;
-			  numMatches++;
+				matchNum = p;
+				numMatches++;
 			}
-		    }
-		  return make_pair(matchNum, numMatches);
-		  
-		};
+		}
+		return make_pair(matchNum, numMatches);
+
+	};
 
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
 		for (size_t j = 0; j < sampleInds.size(); j++)
 		{
-		  if (!origPhases[j])
-		    {
-			auto [matchNum, numMatches] = findMatch(i, j);
-			if (numMatches == 1)
-			  {
-			    origPhases[j] = matchNum;
-			    phases[j] = origPhases[j];
-			  }
-		    }
+			if (!origPhases[j])
+			{
+				auto [matchNum, numMatches] = findMatch(i, j);
+				if (numMatches == 1)
+				{
+					origPhases[j] = matchNum;
+					phases[j] = origPhases[j];
+				}
+			}
 		}
 	}
-	
+
 	for (size_t j = 0; j < sampleInds.size(); j++)
-	  {
-	    if (!origPhases[j])
-	      {
-		origPhases[j] = 1;
-		phases[j] = 1;
-	      }
-	  }
+	{
+		if (!origPhases[j])
+		{
+			origPhases[j] = 1;
+			phases[j] = 1;
+		}
+	}
 
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
@@ -6231,7 +6229,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			}
 			if (!numMatches)
 			{
-			  MarkerVal ms[2] = {indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i)};
+				MarkerVal ms[2] = { indexconv(markers[j * 2], i), indexconv(markers[j * 2 + 1], i) };
 				if (phases[j] == 2) swap(ms[0], ms[1]);
 
 				bool nomatch[2] = { true, true };
@@ -6246,14 +6244,14 @@ void readOtherHaps(const SnpDataType& snpData,
 					}
 				}
 				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 2*0.5*(1-unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 2*0.5*(1-unit)));
+				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 2 * 0.5 * (1 - unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 2 * 0.5 * (1 - unit)));
 			}
 		}
 	}
 }
 
 double initPadding(const vector<individ*>& sampleInds, int count)
-{	
+{
 	const double padding = 0.01;
 	double unit = 1.0 / (count + padding);
 	for (size_t j = 0; j < sampleInds.size(); j++)
@@ -6281,22 +6279,22 @@ MarkerVal mvFromIndex(int index, size_t)
 void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector<mapped_file_source*>& hapsFile)
 {
 	using namespace x3;
-	
+
 	SnpDataType snpData;
 	map<std::pair<int, std::string>, pair<int, int> > geneMap;
-		
+
 	auto alleles_ = word_ > word_;
 	auto bimLine = (marker_ > omit[float_] > int_ > omit[alleles_]);
 
 	try
 	{
 		parseToEndWithError(bimFile, (bimLine[([&](auto& context)
-		{
-			using namespace boost::fusion;
-			auto attr = _attr(context);
-			int index = geneMap.size();
-			geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), index);
-		})])
+			{
+				using namespace boost::fusion;
+				auto attr = _attr(context);
+				int index = geneMap.size();
+				geneMap[make_pair(at_c<0>(attr), at_c<1>(attr))] = make_pair(at_c<2>(attr), index);
+			})])
 			% eol);
 		std::cout << geneMap.size() << " entries read in map." << std::endl;
 
@@ -6324,7 +6322,7 @@ void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector
 		std::tie(bppos, index) = geneMap[make_pair(chrom, get<1>(snp))];
 
 		double pos = bppos * 1e-6;
-		
+
 		if (chrom != lastchrom)
 		{
 			chromstarts.push_back(markerposes.size());
@@ -6365,10 +6363,10 @@ void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector
 		sampleInds.push_back(me);
 	}
 
-	auto dohaploweight = [] (individ* ind) { return (ind->gen < 2); };
+	auto dohaploweight = [](individ* ind) { return (ind->gen < 2); };
 
 	readFirstHaps(snpData, sampleInds, dohaploweight, mvFromIndex);
-	
+
 	double unit = initPadding(sampleInds, hapsFile.size());
 
 	for (size_t k = 1; k < hapsFile.size(); k++)
@@ -6400,9 +6398,9 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		switch (index)
 		{
 		case 0:
-			return (std::get<2>(snpData[snp])[0]-48) * MarkerValue;
+			return (std::get<2>(snpData[snp])[0] - 48) * MarkerValue;
 		case 1:
-			return (std::get<3>(snpData[snp])[0]-48) * MarkerValue;
+			return (std::get<3>(snpData[snp])[0] - 48) * MarkerValue;
 		default:
 			fprintf(stderr, "Encountered index %d at snp %d\n", index, snp);
 			abort();
@@ -6424,14 +6422,14 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 
 	for (size_t j = 0; j < dous.size(); j++)
 	{
-	  for (size_t i = 0; i < markerposes.size(); i++)
-	    {
-	      if (dous[j]->priormarkerdata.size() > i && dous[j]->priormarkerdata[i] == pair(UnknownMarkerVal, UnknownMarkerVal))
+		for (size_t i = 0; i < markerposes.size(); i++)
 		{
-		  dous[j]->priormarkerdata[i] = dous[j]->markerdata[i];
-		  dous[j]->priormarkersure[i] = dous[j]->markersure[i];
+			if (dous[j]->priormarkerdata.size() > i&& dous[j]->priormarkerdata[i] == pair(UnknownMarkerVal, UnknownMarkerVal))
+			{
+				dous[j]->priormarkerdata[i] = dous[j]->markerdata[i];
+				dous[j]->priormarkersure[i] = dous[j]->markersure[i];
+			}
 		}
-	    }
 	}
 }
 
@@ -6446,7 +6444,7 @@ void createhapfile(const sampletype& samples, mapped_file_source& oldhapfile, os
 	std::vector<std::tuple<int, std::string, long long, std::string, std::string>> snpData;
 
 	using namespace x3;
-	
+
 	try
 	{
 		parseToEndWithError(oldhapfile, hapsLineIgnoreGenotypes % eol, snpData);
@@ -6471,7 +6469,7 @@ void createhapfile(const sampletype& samples, mapped_file_source& oldhapfile, os
 	int i = 0;
 	for (auto marker : snpData)
 	{
-	  newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << " " << get<4>(marker);
+		newhapfile << get<0>(marker) << " " << get<1>(marker) << " " << get<2>(marker) << " " << get<3>(marker) << " " << get<4>(marker);
 		for (auto ind : sampleInds)
 		{
 			pair<MarkerVal, MarkerVal> data = ind->markerdata[i];
@@ -6501,10 +6499,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 
 	phrase_parse(parseriter, end, (omit[int_] > word > omit[word] > omit[word] > omit[int_] > omit[int_])
 		[([&](auto& ctx)
-	{
-	  int index = indNums.size();
-		indNums[_attr(ctx)] = index;
-	})] % eol, space - eol);
+			{
+				int index = indNums.size();
+				indNums[_attr(ctx)] = index;
+			})] % eol, space - eol);
 	cout << indNums.size() << " individuals found." << std::endl;
 
 	int blocksize = (indNums.size() + 3) / 4;
@@ -6515,13 +6513,13 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 	mapped_region snpRegion(bedFile, read_only, 3); // Skip header
 	unsigned char* snpdata = (unsigned char*)snpRegion.get_address();
 	size_t size = snpRegion.get_size();
-	cout << size << " bytes, " << size/blocksize << " SNPs." << std::endl;
+	cout << size << " bytes, " << size / blocksize << " SNPs." << std::endl;
 
 	vector<int> indArray;
 	for (individ* ind : dous)
-	{		
-	        indArray.push_back(indNums[ind->name]);
-		cout << ind->name << " " << indArray[indArray.size()-1] << std::endl;
+	{
+		indArray.push_back(indNums[ind->name]);
+		cout << ind->name << " " << indArray[indArray.size() - 1] << std::endl;
 	}
 
 	for (size_t i = 0; i < markerposes.size(); i++)
@@ -6529,10 +6527,10 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 		unsigned char* thisSnp = &snpdata[mapIndices[i] * blocksize];
 		for (size_t j = 0; j < dous.size(); j++)
 		{
-		  /*if (!(
-			dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
-			dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
-		  
+			/*if (!(
+			  dous[j]->pars[0] && !dous[j]->pars[0]->empty &&
+			  dous[j]->pars[1] && !dous[j]->pars[1]->empty)) continue;*/
+
 			int index = indArray[j];
 			int thisval = (thisSnp[index / 4] >> (2 * (index % 4))) & 3;
 			pair<MarkerVal, MarkerVal> marker;
@@ -6540,9 +6538,9 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			bool isachange = false;
 			/*			if (rand() / (RAND_MAX / 10) == 0)
 			  {
-			    cout << "Masking out " << i << "at " << j << "\n";
-			    thisval = 1;
-			    }*/
+				cout << "Masking out " << i << "at " << j << "\n";
+				thisval = 1;
+				}*/
 			switch (thisval)
 			{
 			case 0:
@@ -6553,7 +6551,7 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 				marker = make_pair(UnknownMarkerVal, UnknownMarkerVal);
 				cout << "MISSING BED " << dous[j]->name << " " << i << std::endl;
 				break;
-			case 2:			  
+			case 2:
 				marker = make_pair(1 * MarkerValue, 2 * MarkerValue);
 				isachange = dous[j]->priormarkerdata[i].first == dous[j]->priormarkerdata[i].second;
 				break;
@@ -6566,22 +6564,22 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 			}
 			if (isachange)
 			{
-			  cout << "!!! " << dous[j]->name << " " << i << " " << marker.first.value() << marker.second.value() << " " << std::endl;
+				cout << "!!! " << dous[j]->name << " " << i << " " << marker.first.value() << marker.second.value() << " " << std::endl;
 			}
 
 			/*if (readall || marker.first == UnknownMarkerVal || isachange)
 			  {
-			    //cout << "/// " << dous[j]->name << " " << i << std::endl;
-			    dous[j]->priormarkerdata[i] = marker;
-			    if (marker.first == UnknownMarkerVal)
-			      {
+				//cout << "/// " << dous[j]->name << " " << i << std::endl;
+				dous[j]->priormarkerdata[i] = marker;
+				if (marker.first == UnknownMarkerVal)
+				  {
 				/*if (RELSKEWS)
 				  {
-				    dous[j]->relhaplo[i] = 1;
-				    }*/
-				/*dous[j]->priormarkersure[i] = make_pair(0.f, 0.f);
-			      }
-			  }*/
+					dous[j]->relhaplo[i] = 1;
+					}*/
+					/*dous[j]->priormarkersure[i] = make_pair(0.f, 0.f);
+					  }
+				  }*/
 			if (isachange || marker.first == UnknownMarkerVal)
 			{
 				dous[j]->priormarkersure[i] = make_pair(
@@ -6589,23 +6587,23 @@ void readfambed(std::string famFileName, std::string bedFileName, bool readall =
 					0.5 * (0.5 + dous[j]->priormarkersure[i].second));
 				cout << "Increasing prior uncertainty individual " << dous[j]->n << ", marker " << i << std::endl;
 				if (dooverwrite)
-				  {
-				    dous[j]->markerdata[i] = marker;
-				    // TODO MARKERSURE
-				  }
+				{
+					dous[j]->markerdata[i] = marker;
+					// TODO MARKERSURE
+				}
 			}
 			/*			if (dous[j]->priormarkerdata[i].first != UnknownMarkerVal)
 			  {
-			    dous[j]->priormarkersure[i] = make_pair(
-								    max(1e-3, dous[j]->priormarkersure[i].first),
-								    max(1e-3, dous[j]->priormarkersure[i].second));			  
-								    }*/
+				dous[j]->priormarkersure[i] = make_pair(
+									max(1e-3, dous[j]->priormarkersure[i].first),
+									max(1e-3, dous[j]->priormarkersure[i].second));
+									}*/
 		}
 	}
 }
 #endif
 
-auto mapline = x3::omit[x3::int_] > ::word_  > x3::double_ > x3::omit[x3::int_];
+auto mapline = x3::omit[x3::int_] > ::word_ > x3::double_ > x3::omit[x3::int_];
 
 void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 {
@@ -6619,8 +6617,8 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 				auto attr = _attr(ctx);
 				auto [name, pos] = make_pair(at_c<0>(attr), at_c<1>(attr));
 				markernames[name] = markerposes.size();
-				markerposes.push_back(pos);			
-			})] % eol);	
+				markerposes.push_back(pos);
+			})] % eol);
 	chromstarts.push_back(markerposes.size());
 
 	individ* ind;
@@ -6714,7 +6712,7 @@ void clearunprotected(set<individ*>& protinds, set<double>& protmarkers)
 
 		int lastmarker = 0;
 		for (double i : protmarkers)
-		{			
+		{
 			for (; markerposes[lastmarker] < i; lastmarker++)
 			{
 				ind->markerdata[lastmarker] = { UnknownMarkerVal, UnknownMarkerVal };
@@ -6729,29 +6727,29 @@ void clearunprotected(set<individ*>& protinds, set<double>& protmarkers)
 
 void compareimputedoutput(istream& filteredOutput)
 {
-  int j = 0;
+	int j = 0;
 	while (!filteredOutput.eof())
 	{
-	  std::cout << j++ << std::endl;
+		std::cout << j++ << std::endl;
 		for (individ* ind : dous)
 		{
 			std::string name;
-			do			  
-			filteredOutput >> name;
+			do
+				filteredOutput >> name;
 			while (name == "--");
-			  
+
 			for (unsigned int i = 0; i < chromstarts[1]; i++)
 			{
 				double val[3];
 				int maxval = 0;
 				for (int k = 0; k < 3; k++)
 				{
-				  std::string temp;
-				  filteredOutput >> temp;
-				  if (sscanf(temp.c_str(), "%lf", &val[k]) != 1)
-				    {
-				      val[k] = -1;
-				    }
+					std::string temp;
+					filteredOutput >> temp;
+					if (sscanf(temp.c_str(), "%lf", &val[k]) != 1)
+					{
+						val[k] = -1;
+					}
 					if (val[k] > val[maxval]) maxval = k;
 				}
 
@@ -6762,13 +6760,13 @@ void compareimputedoutput(istream& filteredOutput)
 				// If reference allele is not aligned in shapit output:
 				/*				  maxval = abs(1-maxval);
 								  data = abs(1-data);*/
-				  // That will only look at hetero vs. homo, not what hetero
+								  // That will only look at hetero vs. homo, not what hetero
 				if (maxval != data &&
-			      ind->pars[0] && !ind->pars[0]->empty &&
-			      ind->pars[1] && !ind->pars[1]->empty &&
-				    i != chromstarts[1] - 1 && val[origmaxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
+					ind->pars[0] && !ind->pars[0]->empty &&
+					ind->pars[1] && !ind->pars[1]->empty &&
+					i != chromstarts[1] - 1 && val[origmaxval] >= 0 && ind->markerdata[i].first != UnknownMarkerVal)
 				{
-				  std::cout << ind->name << " " << j << ":" << i << " " << oridata << "\t";
+					std::cout << ind->name << " " << j << ":" << i << " " << oridata << "\t";
 					for (double oneVal : val)
 					{
 						std::cout << oneVal << "\t";
@@ -6918,15 +6916,15 @@ void deserialize(istream& stream)
 	This is what we're unserializing
 	fprintf(stdout, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);*/
-  auto haploline = x3::double_ >> x3::int_ >> x3::int_ >> x3::double_ >> x3::double_ >> x3::double_;
-	
+	auto haploline = x3::double_ >> x3::int_ >> x3::int_ >> x3::double_ >> x3::double_ >> x3::double_;
+
 	while (!stream.eof())
 	{
 		string line;
 		std::getline(stream, line);
 
 		pair<int, string> data;
-	
+
 		if (x3::phrase_parse(line.begin(), line.end(), x3::int_ >> word_ >> x3::eoi, x3::space, data))
 		{
 			int n;
@@ -6950,7 +6948,7 @@ void deserialize(istream& stream)
 					}
 					else
 					{
-					  ind->haploweight[i] = std::get<0>(output);
+						ind->haploweight[i] = std::get<0>(output);
 
 						pair<MarkerVal, MarkerVal> pmv = make_pair(std::get<1>(output) * MarkerValue, std::get<2>(output) * MarkerValue);
 						if (pmv != ind->markerdata[i])
@@ -6966,18 +6964,18 @@ void deserialize(istream& stream)
 						if (oldphase && oldphase != newphase) switches++;
 
 						oldphase = newphase;
+						}
 					}
-				}
 
 				if (ind->children || (ind->pars[0] && !ind->pars[0]->empty) || (ind->pars[1] && !ind->pars[1]->empty)) std::cout << "Switches " << ind->n << " " << ind->name << "\t" << switches << std::endl;
-			}
+				}
 			else
 			{
 				std::cerr << "Supposed individual header not a header: " << line << std::endl;
 			}
+			}
 		}
 	}
-}
 
 std::string getname(individ* ind)
 {
@@ -6996,7 +6994,7 @@ void outputped(const std::string& filename)
 	FILE* f = fopen(filename.c_str(), "w");
 	for (individ* ind : dous)
 	{
-	
+
 		fprintf(f, "%d %s %s %s %d %d", 1, getname(ind).c_str(), getname(ind->pars[0]).c_str(), getname(ind->pars[1]).c_str(), ind->sex + 1, -9);
 		for (auto [a, b] : ind->markerdata)
 		{
@@ -7037,7 +7035,7 @@ int main(int argc, char* argv[])
 	}
 	//selfgen = 1;
 	genrec[2] = baserec[0] /** selfgen*/;
-	 
+
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
@@ -7056,212 +7054,212 @@ int main(int argc, char* argv[])
 		("output", po::value<string>(&outputfilename), "Output file name")
 		("tmppath", po::value<string>(&tmppath), "Directory for toulbar temp files")
 		("capmarker", po::value<int>()->notifier([&](int cap)
-	{
-		markerposes.resize(cap);
-		chromstarts[1] = min(cap, (int)chromstarts[1]);
-	}), "Limit to marker count.")
-		("mapfile", po::value<string>(&mapfilename), "map file in original PlantImpute format, similar to AlphaImpute.")
-	    ("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
-		("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
-		("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
-		("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
-		("outputpedfile", po::value<string>(&outputpedfilename), "Output ped file based on read data (including genotypes).")
-		("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
-		("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
-		("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
-		("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
-
-	auto parser = po::command_line_parser(argc, argv);
-	parser.options(desc);
-	po::store(parser.run(), inOptions);
-	po::notify(inOptions);
-	
-	if (mapfilename != "")
-	  {
-		FILE* mapfile = fopen(mapfilename.c_str(), "rt");
-		cerr << "Reading map file " << mapfilename << "\n";
-		readalphamap(mapfile);
-	  }
-
-	if (pedfilename != "")
-	  {
-		FILE* pedfile = fopen(pedfilename.c_str(), "rt");
-		cerr << "Reading pedigree file " << pedfilename << "\n";
-		readalphaped(pedfile);
-	  }
-
-	if (genfilename != "")
-	  {
-		FILE* genofile = fopen(genfilename.c_str(), "rt");
-		cerr << "Reading genotype file " << genfilename << "\n";
-		readalphadata(genofile);
-	  }
-
-	if (gigimapfilename != "" && gigipedfilename != "")
-	{
-		readgigidata(mapped_file_source(gigimapfilename), mapped_file_source(gigipedfilename));
-	}
-	
-
-	// TODO: Make sets of required params.
-	if (clear)
-	{		
-		set<double> protmarkers;
-		set<individ*> protinds;
-		if (!protmarkersfn.empty())
-		{
-			addprotmarkers(protmarkers, mapped_file_source(protmarkersfn));
-		}
-		if (!protindsfn.empty())
-		{
-			addprotinds(protinds, mapped_file_source(protindsfn));
-		}
-		clearunprotected(protinds, protmarkers);
-	}
-
-	samplereader samples;
-	vector<mapped_file_source*> hapFiles;
-	vector<string> hapsfileOption;
-	if (inOptions.count("hapfiles")) hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
-
-       for (string filename : hapsfileOption)
-	{
-		hapFiles.push_back(new mapped_file_source(filename));
-	}
-
-	dous.resize(104);
-	if (samplefilename != "")
-	{
-		mapped_file_source sampleFile(samplefilename);
-		samples.read(sampleFile);
-
-		mapped_file_source bimFile(inOptions["bimfile"].as<string>());
-		
-
-		readhapsfull(samples.samples, bimFile, hapFiles);
-		std::cout << "readhapssample finished." << std::endl;
-	}
-	else
-	{
-	  if (hapFiles.size()) readhapsonly(hapFiles);
-	}
-
-	bool docompare = (impoutput != "");
-	if (inOptions.count("famfile") + inOptions.count("bedfile") == 2)
-	{
-	  std::cout << "readfambed started." << std::endl;
-	  readfambed(famfilename, bedfilename, docompare);
-	}
-
-	// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
-	// getting stuck towards the end.
-	//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
-
-	if (outputpedfilename != "")
-	{
-		outputped(outputpedfilename);
-	}
-    if (docompare)
-	{
-		std::ifstream filteredOutput(impoutput);
-		compareimputedoutput(filteredOutput);
-
-		return 0;
-	}
-#endif
-
-	//	return 0;
-	CORRECTIONINFERENCE = true;
-	postmarkerdata();
-	CORRECTIONINFERENCE = false;
-
-	if (deserializefilename != "")
-	{
-		std::ifstream deserializationFile(deserializefilename);
-
-		std::cout << "deserialize started." << std::endl;
-		deserialize(deserializationFile);
-		std::cout << "deserialize finished." << std::endl;
-	}
-
-	if (samplefilename != "" && outputhapfilename != "")
-	  {
-	    std::ofstream outputhapfile(outputhapfilename);
-	    createhapfile(samples.samples, *hapFiles[0], outputhapfile);
-	    
-	    return 0;
-	  }
-
-	FILE* out = stdout;
-	if (outputfilename != "")
-	{
-		out = fopen(outputfilename.c_str(), "w");
-	}
-
-	if (HAPLOTYPING || true)
-		for (int i = 0; i < COUNT; i++)
-		{
-			//		  	  	{
-			early = (i < 1);
-			if (!early) doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
-#ifdef F2MPI
-				, world
-#endif
-				);
-			//		}
-
-			//	doit<true>(out);
-			//		if (i == COUNT - 1)
 			{
-				//		    fprintf(out, "\n");
-				for (unsigned int j = 0; j < chromstarts[1]; j++)
-				{
-					for (int t = 0; t < 5; t++)
-					{
-						//			    fprintf(out, "%0.5lf\t", markerweight[j][t]);
-						markerweight[j][t] = 0;
-					}
-					//			fprintf(out, "\n");		
-				}
-				//		    fprintf(out, "\n");
+				markerposes.resize(cap);
+				chromstarts[1] = min(cap, (int)chromstarts[1]);
+			}), "Limit to marker count.")
+			("mapfile", po::value<string>(&mapfilename), "map file in original PlantImpute format, similar to AlphaImpute.")
+				("pedfile", po::value<string>(&pedfilename), "ped file in original PlantImpute format, similar to AlphaImpute.")
+				("genfile", po::value<string>(&genfilename), "Genotype file in original PlantImpute format, similar to AlphaImpute.")
+				("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
+				("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
+				("outputpedfile", po::value<string>(&outputpedfilename), "Output ped file based on read data (including genotypes).")
+				("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
+				("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
+				("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
+				("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
+
+			auto parser = po::command_line_parser(argc, argv);
+			parser.options(desc);
+			po::store(parser.run(), inOptions);
+			po::notify(inOptions);
+
+			if (mapfilename != "")
+			{
+				FILE* mapfile = fopen(mapfilename.c_str(), "rt");
+				cerr << "Reading map file " << mapfilename << "\n";
+				readalphamap(mapfile);
 			}
-			fflush(stdout);
-			fflush(out);
 
-			for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
+			if (pedfilename != "")
 			{
-			  if (i2 > 104) continue;
-				individ* ind = getind(i2);
-				if (!ind) continue;
+				FILE* pedfile = fopen(pedfilename.c_str(), "rt");
+				cerr << "Reading pedigree file " << pedfilename << "\n";
+				readalphaped(pedfile);
+			}
 
-				if (ind->haplocount.size())
+			if (genfilename != "")
+			{
+				FILE* genofile = fopen(genfilename.c_str(), "rt");
+				cerr << "Reading genotype file " << genfilename << "\n";
+				readalphadata(genofile);
+			}
+
+			if (gigimapfilename != "" && gigipedfilename != "")
+			{
+				readgigidata(mapped_file_source(gigimapfilename), mapped_file_source(gigipedfilename));
+			}
+
+
+			// TODO: Make sets of required params.
+			if (clear)
+			{
+				set<double> protmarkers;
+				set<individ*> protinds;
+				if (!protmarkersfn.empty())
 				{
-#ifdef F2MPI
-					if (!world.rank())
+					addprotmarkers(protmarkers, mapped_file_source(protmarkersfn));
+				}
+				if (!protindsfn.empty())
+				{
+					addprotinds(protinds, mapped_file_source(protindsfn));
+				}
+				clearunprotected(protinds, protmarkers);
+			}
+
+			samplereader samples;
+			vector<mapped_file_source*> hapFiles;
+			vector<string> hapsfileOption;
+			if (inOptions.count("hapfiles")) hapsfileOption = inOptions["hapfiles"].as<vector<string>>();
+
+			for (string filename : hapsfileOption)
+			{
+				hapFiles.push_back(new mapped_file_source(filename));
+			}
+
+			dous.resize(104);
+			if (samplefilename != "")
+			{
+				mapped_file_source sampleFile(samplefilename);
+				samples.read(sampleFile);
+
+				mapped_file_source bimFile(inOptions["bimfile"].as<string>());
+
+
+				readhapsfull(samples.samples, bimFile, hapFiles);
+				std::cout << "readhapssample finished." << std::endl;
+			}
+			else
+			{
+				if (hapFiles.size()) readhapsonly(hapFiles);
+}
+
+			bool docompare = (impoutput != "");
+			if (inOptions.count("famfile") + inOptions.count("bedfile") == 2)
+			{
+				std::cout << "readfambed started." << std::endl;
+				readfambed(famfilename, bedfilename, docompare);
+			}
+
+			// Put generation 2 first, since those are more complex to analyze, avoiding a few threads
+			// getting stuck towards the end.
+			//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
+
+			if (outputpedfilename != "")
+			{
+				outputped(outputpedfilename);
+			}
+			if (docompare)
+			{
+				std::ifstream filteredOutput(impoutput);
+				compareimputedoutput(filteredOutput);
+
+				return 0;
+			}
 #endif
-						/*if (i == COUNT - 1)*/						fprintf(out, "%d %s\n", i2, ind->name.c_str());
-					// Printing of haplotype data for each iteration
-					for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
 
+			//	return 0;
+			CORRECTIONINFERENCE = true;
+			postmarkerdata();
+			CORRECTIONINFERENCE = false;
+
+			if (deserializefilename != "")
+			{
+				std::ifstream deserializationFile(deserializefilename);
+
+				std::cout << "deserialize started." << std::endl;
+				deserialize(deserializationFile);
+				std::cout << "deserialize finished." << std::endl;
+			}
+
+			if (samplefilename != "" && outputhapfilename != "")
+			{
+				std::ofstream outputhapfile(outputhapfilename);
+				createhapfile(samples.samples, *hapFiles[0], outputhapfile);
+
+				return 0;
+}
+
+			FILE* out = stdout;
+			if (outputfilename != "")
+			{
+				out = fopen(outputfilename.c_str(), "w");
+			}
+
+			if (HAPLOTYPING || true)
+				for (int i = 0; i < COUNT; i++)
+				{
+					//		  	  	{
+					early = (i < 1);
+					if (!early) doit<false, genotypereporter>((i == COUNT - 1) ? out : stdout, /*i == COUNT - 1*/ true
+#ifdef F2MPI
+						, world
+#endif
+						);
+					//		}
+
+					//	doit<true>(out);
+					//		if (i == COUNT - 1)
 					{
-						for (unsigned int j = chromstarts[c]; j < chromstarts[c + 1]; j++)
+						//		    fprintf(out, "\n");
+						for (unsigned int j = 0; j < chromstarts[1]; j++)
 						{
+							for (int t = 0; t < 5; t++)
+							{
+								//			    fprintf(out, "%0.5lf\t", markerweight[j][t]);
+								markerweight[j][t] = 0;
+							}
+							//			fprintf(out, "\n");		
+						}
+						//		    fprintf(out, "\n");
+					}
+					fflush(stdout);
+					fflush(out);
 
+					for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
+					{
+						if (i2 > 104) continue;
+						individ* ind = getind(i2);
+						if (!ind) continue;
+
+						if (ind->haplocount.size())
+						{
 #ifdef F2MPI
 							if (!world.rank())
 #endif
-								/*if (i == COUNT - 1)*/ fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
-												ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);
-							ind->negshift[j] = 0;
-						}
-						//if (!world.rank()) fprintf(out, "\n");
-					}
-				}
-			}
-			fflush(stdout);
-			fflush(out);
-		}
+								/*if (i == COUNT - 1)*/						fprintf(out, "%d %s\n", i2, ind->name.c_str());
+							// Printing of haplotype data for each iteration
+							for (unsigned int c = 0; c < chromstarts.size() - 1; c++)
 
-	return 0;
+							{
+								for (unsigned int j = chromstarts[c]; j < chromstarts[c + 1]; j++)
+								{
+
+#ifdef F2MPI
+									if (!world.rank())
+#endif
+										/*if (i == COUNT - 1)*/ fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+											ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);
+									ind->negshift[j] = 0;
+								}
+								//if (!world.rank()) fprintf(out, "\n");
+							}
+						}
+					}
+					fflush(stdout);
+					fflush(out);
+				}
+
+			return 0;
 }
 
