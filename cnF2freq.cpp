@@ -3755,13 +3755,19 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {
   std::array<double, 1> state{orig};
+  
+  double randomdrift = boost::random::normal_distribution(0., 1e-2)(rng);
   ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
 		       [&] (std::array<double, 1>& in,
 			    std::array<double, 1>& out, double time)
 		       {
 			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
 			 else
+			   {
 			   gradient(in, out, time);
+			   out[0] += randomdrift;
+			   out[0] += log((orig / (1-orig)) / (in[0] / (1 - in[0])));
+			   }
 		       }, state,
 		       0., scalefactor, scalefactor * 0.01);
 
@@ -4165,15 +4171,15 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 					otherval = relskews->getweight(j + 1, 1);
 				      }
 				    // arctanh arises from log(1-x) - log(x)
-				    //relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-				    relskewterm += (1 - otherval - 2 * hwnow * otherval * atanh(1 - 2 * hwnow) + 2 * hwnow * (1 - 2 * otherval) * atanh(1 - 2 * ind->relhaplo[j + d])) / hwnow;
+				    relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+				    //relskewterm += (1 - otherval - 2 * hwnow * otherval * atanh(1 - 2 * hwnow) + 2 * hwnow * (1 - 2 * otherval) * atanh(1 - 2 * ind->relhaplo[j + d])) / hwnow;
 				    //if (ind->n == 89 || ind->n == 90) printf("RELSKEWTERM FOR IND %d MARKER %d %lf\n", ind->n, j, otherval);
 				    
 				    /*prevval = exp((log(val) * ind->haplocount[j] + relskewterm) + baseterm);
 				      prevval = prevval / (prevval + 1.0);*/
 				  }
 				// Each direction is counted twice, for two different markers
-				if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
+				//if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
 				// relskewterm *= 0.5;
 			      }
 
@@ -4218,7 +4224,7 @@ void updatehaploweights(individ * ind, FILE * out, int iter, std::atomic_int& hi
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					 (1 - 0 * similarity) * 1 * (log(1 / in[0] - 1) + // Entropy term
+					 (1 - 0 * similarity) * 1 * (2 * log(1 / in[0] - 1) + // Entropy term
 								     relskewterm(in[0])));
 			};
 
@@ -5204,8 +5210,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
-					double w = skewterms[TURNBITS - 1];
-					if (marker != chromstarts[i]) w *= 0.5;
+					double w = skewterms[TURNBITS - 1];					
 					if (!isfinite(w) || fabs(w) > 5000)
 					  {
 					    if (w < -5000)
@@ -6671,21 +6676,18 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 void addprotmarkers(set<double>& protmarkers, mapped_file_source&& source)
 {
 	using namespace x3;
-	parseToEndWithError(source, mapline
-		[([&](auto& ctx)
+	phrase_parse(source.begin(), source.end(), 
+		     omit[x3::lit("map") > x3::lit("marker") > x3::lit("positions")] >
+			  
+			  +(x3::double_[([&](auto& ctx)
 			{
 				using namespace boost::fusion;
 
-				auto attr = _attr(ctx);
-				auto [name, pos] = make_pair(at_c<0>(attr), at_c<1>(attr));
-				auto iter = markernames.find(name);
-				if (iter == markernames.end())
-				{
-					fprintf(stderr, "Marker name mismatch. %s", name.c_str());
-				}
+				double pos = _attr(ctx);
 
 				protmarkers.insert(pos);
-			})] % eol);
+			})]),
+		     x3::space - x3::eol);
 }
 
 void addprotinds(set<individ*>& protinds, mapped_file_source&& source)
