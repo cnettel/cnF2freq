@@ -138,8 +138,17 @@ using namespace boost::random;
 #define _finite isfinite
 #endif
 
+#define DOTOULBAR 1
+#include "settings.h"
 
+EXTERNFORGCC boost::random::mt19937 rng;
+
+#pragma omp threadprivate(rng)
+
+#ifdef DOEXTERNFORGCC
 boost::random::mt19937 rng;
+#endif
+
 int myrand(int max)
 {
 	uniform_int<> orig(0, max - 1);
@@ -208,8 +217,6 @@ const MarkerVal sexmarkerval = 9 * MarkerValue;
 
 const float maxdiff = 0.000005;
 
-#define DOTOULBAR 1
-#include "settings.h"
 
 bool early = false;
 
@@ -5278,7 +5285,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			// Run toulbar2 with partitioning rules that match the fact that we use small pedigrees
 			// Feed previous sol file as certificate/starting point
-			string str = "toulbar2 " + toulin + (solexists ? " " + sol + " " : "") + " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
+			string str = "toulbar2 " + toulin /*+ (solexists ? " " + sol + " " : "") */+ " -p=8 -O=-1 -m=1 -w=" + sol + " -s > " + toulout; //works as in it runs, not as in it actually does what we want
 																			 //string str = "toulbar2 brock200_4.clq.wcnf -m=1 -w -s";//TEST
 
 
@@ -7117,6 +7124,11 @@ int main(int argc, char* argv[])
 				clearunprotected(protinds, protmarkers);
 			}
 
+			if (outputpedfilename != "")
+			{
+				outputped(outputpedfilename);
+			}
+
 			samplereader samples;
 			vector<mapped_file_source*> hapFiles;
 			vector<string> hapsfileOption;
@@ -7155,10 +7167,6 @@ int main(int argc, char* argv[])
 			// getting stuck towards the end.
 			//	stable_sort(dous.begin(), dous.end(), [] (individ* a, individ* b) { return a->gen > b->gen; } );
 
-			if (outputpedfilename != "")
-			{
-				outputped(outputpedfilename);
-			}
 			if (docompare)
 			{
 				std::ifstream filteredOutput(impoutput);
