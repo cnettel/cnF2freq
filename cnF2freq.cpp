@@ -114,6 +114,9 @@ namespace ode = boost::numeric::odeint;
 #include <float.h>
 #include <numeric>
 #include <type_traits>
+#include <spawn.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
 using namespace std; // use functions that are part of the standard library
@@ -4069,7 +4072,7 @@ std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 
 		for (int ix = 0; ix < 2; ix++)
 		{
-			double hw = ind->haploweight[marker + ix];
+			double hw = ind->haploweight[marker + !ix];
 			double val = vals[ix];
 			double rh = ind->relhaplo[marker];
 			
@@ -4493,6 +4496,16 @@ void parentswapnegshifts(nsmtype& nsm)
 	}
 }
 
+
+void cheat_system(const char* line)
+{
+  char* const argv[4] = {"sh", "-c", (char*) line, 0};
+  pid_t respid;
+  int wstatus;
+  posix_spawn(&respid, "/bin/sh", nullptr, nullptr, argv, environ);
+
+  while (waitpid(respid, &wstatus, 0) == -1 && errno == EINTR) {};
+}
 
 // The actual walking over all chromosomes for all individuals in "dous"
 // If "full" is set to false, we assume that haplotype inference should be done, over marker positions.
@@ -5211,7 +5224,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
-					double w = skewterms[TURNBITS - 1];					
+					double w = skewterms[TURNBITS - 1] * 0.5;					
 					if (!isfinite(w) || fabs(w) > 5000)
 					{
 						if (w < -5000)
@@ -5291,7 +5304,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 																			 // Convert string to const char * as system requires
 			const char* command = str.c_str();
-			system(command);
+			cheat_system(command);
 			solexists = true;
 
 			//Read outfile and store best result in negshift
