@@ -73,6 +73,7 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/container/flat_map.hpp>
+#include <boost/container/static_vector.hpp>
 #include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -786,7 +787,7 @@ const int GENOSPROBE = 8;
 struct clause
 {
 	long long weight;
-	vector<int> cinds;
+	boost::static_vector<int, 8> cinds;
 	//vector<individ*> individuals;
 
 	string toString() const {
@@ -847,6 +848,7 @@ struct individ
 
 	vector<MarkerValPair> priormarkerdata;
 	vector<pair<double, double>> priormarkersure;
+	vector<std::array<double, 3>> priorgenotypes;
 
 	// Temporary storage of all possible marker values, used in fixparents.
 	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
@@ -4265,7 +4267,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 	}
 }
 
-void fillcandsexists(individ* ind, vector<int>& cands, vector<bool>& exists)
+void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
 {
 	std::set<int> family;
 	int temp = ind->n;
@@ -5078,8 +5080,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//Store their identifying numbers in an array.
 							//Hard coded for max 3 gens.
 							//std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
-							vector<int> cands(7);
-							vector<bool> exists(7, false);
+							array<int, 7> cands;
+							array<bool, 7> exists(false);
 							fillcandsexists(dous[j], cands, exists);
 
 							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
@@ -5096,12 +5098,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								normsum += rawvals[0][s];
 							}
 							double normfactor = 1 / normsum;
+							decltype(toulInput[mark]) subInput;
+							long long submax = 0;
 
 							for (int g = 0; g < NUMTURNS; g++) {
 								if (g & (flag2ignore >> 1)) continue;
 
 								std::bitset<16> bits(g);
-								vector<int> claus;
+								static_vector<int, NUMTURNS> claus;
 								int shiftcount = 0;
 								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
@@ -5146,20 +5150,23 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
-#pragma omp critical(negshifts)
-								{
-									if (c.weight > maxweight) {
-										fprintf(stderr, "New maxweight %lld, was %lld, w %lf\n", c.weight, maxweight, w);
-										maxweight = c.weight;
+								if (c.weight > submax) {
+									submax = c.weight;
 
-									}
-									toulInput[mark].push_back(c);
 								}
+								subInput.push_back(c);
 							}
 #pragma omp critical(negshifts)
-							for (int b = 0; b < 7; b++) {
-								if (exists[b]) {
-									indnumbers.insert(cands[b]);
+							{
+								toulInput.insert(subInput.begin(), subInput.end());
+								if (submax > maxweight)
+								{
+									maxweight = submax;
+								}
+								for (int b = 0; b < 7; b++) {
+									if (exists[b]) {
+										indnumbers.insert(cands[b]);
+									}
 								}
 							}
 							}
@@ -5273,14 +5280,25 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			std::string sol(tmppath + "/" + std::string("sol") + tid + ".sol");
 
 			long long fakegain = 0;
+			long long fakegainterm = 0;
+			long long prevlast = -1;
 			for (clause& c : toulInput[m])
 			{
-				if (c.weight > 0)
+				int mainind = *(--c.cinds.end());
+				if (mainind != prevlast)
 				{
-					fakegain += c.weight;
+					fakegain += fakegainterm;
+					fakegainterm = 0;
+					prevlast = mainind;
+				}
+
+				if (c.weight > fakegainterm)
+				{
+					fakegainterm = c.weight;
 				}
 				c.weight = maxweight - c.weight + 1;
 			}
+			fakegain += fakegainterm;
 
 			fakegain = -fakegain;
 			bool skippable;
@@ -6130,6 +6148,24 @@ struct samplereader
 
 using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
 
+void priorGenotypesFromHaps(const SnpDataType& snpData, const vector<individ*>&
+	sampleInds, auto indexconv, double unit)
+{
+	for (size_t j = 0; j < sampleInds.size(); j++)
+	{
+		sampleInds[j]->priorgenotypes.resize(snpData.size());
+	}
+	for (size_t i = 0; i < snpData.size(); i++)
+	{		
+		const vector<int>& markers = get<4>(snpData[i]);
+		for (size_t j = 0; j < sampleInds.size(); j++)
+		{
+			int geno = indexconv(markers[j * 2], i) + indexconv(markers[j * 2 + 1], i);
+			sampleInds[j]->priorgenotypes[i][geno] += unit;
+		}
+	}
+}
+
 void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 	sampleInds, auto dohaploweight, auto indexconv)
 {
@@ -6409,9 +6445,9 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 {
 	using namespace x3;
 
-	SnpDataType snpData;
-	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
+	SnpDataType snpData;	
 	auto dohaploweight = [](individ* ind) { /*return (ind->gen < 2);*/ return true; };
+	double unit = initPadding(dous, hapsFile.size());
 
 	auto mapToSnpGeno = [&snpData](int index, size_t snp)
 	{
@@ -6425,11 +6461,39 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 			fprintf(stderr, "Encountered index %d at snp %d\n", index, snp);
 			abort();
 		}
-	};
+	};	
+	
+	for (auto file : hapsFile)
+	{
+		snpData.clear();
+		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
+		priorGenotypesFromHaps(snpData, dous, indexconv, unit);
+	}
 
+	for (size_t j = 0; j < dous.size(); j++)
+	{
+		for (size_t i = 0; i < markerposes.size(); i++)
+		{
+			// TODO: Only one marker missing.
+			MarkerValPair& marker = dous[j]->markerdata[i];
+			switch (std::max_element(dous[j]->priorgenotypes[i].begin(), dous[j]->priorgenotypes[i].end()))
+			{
+			case 0:
+				marker = { 1 * MarkerValue, 1 * MarkerValue };
+				break;
+			case 1:
+				marker = { 1 * MarkerValue, 2 * MarkerValue };
+				break;
+			case 2:
+				marker = { 2 * MarkerValue, 2 * MarkerValue };
+				break;
+			}
+		}
+	}
+
+	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
 	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
-
-	double unit = initPadding(dous, hapsFile.size());
+	
 
 	for (size_t k = 1; k < hapsFile.size(); k++)
 	{
