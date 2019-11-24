@@ -121,18 +121,11 @@ namespace ode = boost::numeric::odeint;
 
 
 using namespace std; // use functions that are part of the standard library
-#ifdef _MSC_VER
-//using namespace tr1;
-#else
-using namespace boost;
-#endif
 
-using namespace boost;
 //using namespace boost::mpi;
 using namespace boost::random;
-
-#define flat_map boost::container::flat_map
-
+using boost::container::static_vector;
+using boost::container::flat_map;
 
 #define none cnF2freqNONE
 
@@ -155,7 +148,7 @@ boost::random::mt19937 rng;
 
 int myrand(int max)
 {
-	uniform_int<> orig(0, max - 1);
+  boost::uniform_int<> orig(0, max - 1);
 
 	return orig(rng);
 }
@@ -233,7 +226,7 @@ double genrec[3];
 vector<unsigned int> chromstarts;
 
 vector<int> markertranslation;
-typedef vector<std::array<double, 5 > > MWTYPE;
+typedef vector<array<double, 5 > > MWTYPE;
 
 template<class T> class vectorplus;
 
@@ -335,7 +328,7 @@ int quickgen[NUMSHIFTS];
 template<class T2> class PerStateArray
 {
 public:
-	typedef std::array<T2, NUMTYPES> T;
+	typedef array<T2, NUMTYPES> T;
 };
 
 template<class T2> class StateToStateMatrix
@@ -359,15 +352,15 @@ PerStateArray<double>::T quickmem[NUMSHIFTS];
 // A hashed store of inheritance pathway branches that are known to be impossible.
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
-typedef std::array<std::array<std::array<std::array<std::array<std::array<std::array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
+typedef array<array<array<array<array<array<array<int, 4>, HALFNUMSHIFTS>, HALFNUMPATHS + 1>, HALFNUMTYPES>, 2>, 2>, 2> IAT;
 
 EXTERNFORGCC IAT impossible;
 
 // A memory structure storing haplo information for later update.
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
-EXTERNFORGCC std::array<std::array<double, 2>, INDCOUNT> haplos;
-EXTERNFORGCC std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
+EXTERNFORGCC array<array<double, 2>, INDCOUNT> haplos;
+EXTERNFORGCC array<array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 
 #if !DOFB
 // done, factors and cacheprobs all keep track of the same data
@@ -379,8 +372,8 @@ EXTERNFORGCC vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
 EXTERNFORGCC vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 #else
-EXTERNFORGCC vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
-EXTERNFORGCC vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
+EXTERNFORGCC vector<array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
+EXTERNFORGCC vector<array<double, 2> > fwbwfactors[NUMSHIFTS];
 int fwbwdone[NUMSHIFTS];
 #endif
 
@@ -399,7 +392,7 @@ EXTERNFORGCC flat_map<individ*, int> relmapshift;
 
 #ifdef DOEXTERNFORGCC
 IAT impossible;
-std::array<std::array<double, 2>, INDCOUNT> haplos;
+array<array<double, 2>, INDCOUNT> haplos;
 vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 vector<individ*> reltree;
 vector<individ*> reltreeordered;
@@ -787,7 +780,7 @@ const int GENOSPROBE = 8;
 struct clause
 {
 	long long weight;
-	boost::static_vector<int, 8> cinds;
+	static_vector<int, 8> cinds;
 	//vector<individ*> individuals;
 
 	string toString() const {
@@ -848,21 +841,21 @@ struct individ
 
 	vector<MarkerValPair> priormarkerdata;
 	vector<pair<double, double>> priormarkersure;
-	vector<std::array<double, 3>> priorgenotypes;
+	vector<array<double, 3>> priorgenotypes;
 
 	// Temporary storage of all possible marker values, used in fixparents.
 	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
-	vector<float> haploweight;
+	vector<double> haploweight;
 	// Relative skewness, i.e. shifts between adjacent markers.
-	vector<float> relhaplo;
+	vector<double> relhaplo;
 	// The cost-benefit value of inverting the haplotype assignment from an arbitrary marker point on.
 	vector<double> negshift;
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
 
-	vector<std::array<flat_map<MarkerVal, double>, 2> > infprobs;
-	vector<std::array<double, 2>> homozyg;
+	vector<array<flat_map<MarkerVal, double>, 2> > infprobs;
+	vector<array<double, 2>> homozyg;
 
 	vector<int> genotypegrid;
 
@@ -2111,7 +2104,7 @@ struct individ
 						}
 					}
 
-					std::array<double, NONSELFNUMTYPES> recombprec;
+					array<double, NONSELFNUMTYPES> recombprec;
 
 #pragma ivdep
 					for (int index = 0; index < NONSELFNUMTYPES; index++)
@@ -3227,7 +3220,7 @@ bool ignoreflag2(int flag2, int g, int shiftflagmode, int q, int flag2ignore, co
 
 template<int N> struct valuereporter
 {
-	std::array<double, N> probs;
+	array<double, N> probs;
 
 	valuereporter()
 	{
@@ -3766,12 +3759,12 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {
-  std::array<double, 1> state{orig};
+  array<double, 1> state{orig};
   
   double randomdrift = boost::random::normal_distribution(0., 1e-2)(rng);
-  ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< std::array<double, 1> > >(),
-		       [&] (std::array<double, 1>& in,
-			    std::array<double, 1>& out, double time)
+  ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< array<double, 1> > >(),
+		       [&] (array<double, 1>& in,
+			    array<double, 1>& out, double time)
 		       {
 			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
 			 else
@@ -3849,7 +3842,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		double hw = ind->haploweight[j];
 		double etf = 1 + (side ? 0 : -1) * 4 * (hw - hw * hw);
 
-		auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+		auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
 		{
 			double curprob = in[0];
 			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
@@ -3911,8 +3904,8 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 struct relskewhmm
 {
 	static constexpr bool realhmm = true;
-	typedef std::array<double, 2> halfstate;
-	typedef std::array<halfstate, 2> state;
+	typedef array<double, 2> halfstate;
+	typedef array<halfstate, 2> state;
 	vector<state> relskewfwbw;
 	vector<double> ratio;
 
@@ -4046,9 +4039,9 @@ struct relskewhmm
 	}
 };
 
-std::array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
+array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 {
-	std::array<double, TURNBITS> skewterms;
+	array<double, TURNBITS> skewterms;
 
 	for (auto& i : skewterms)
 	{
@@ -4226,7 +4219,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
-			auto gradient = [&](const std::array<double, 1>& in, std::array<double, 1>& out, const double)
+			auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
@@ -4271,6 +4264,11 @@ void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
 {
 	std::set<int> family;
 	int temp = ind->n;
+	for (int i = 0; i < 7; i++)
+	  {
+	    exists[i] = 0;
+	    cands[i] = 0;
+	  }
 	cands[6] = temp;
 	exists[6] = true;
 	family.insert(temp);
@@ -4403,7 +4401,7 @@ void createtoulbarfile(const string toulin, long long maxweight, const std::set<
 	}
 }
 
-typedef map<pair<individ*, individ*>, map<int, std::array<double, 8> > > nsmtype;
+typedef map<pair<individ*, individ*>, map<int, array<double, 8> > > nsmtype;
 
 struct canddata
 {
@@ -4525,7 +4523,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 
 	int count = 0;
-	vector<vector<std::array<float, 2> > > realgeno;
+	vector<vector<array<float, 2> > > realgeno;
 
 	realgeno.resize(dous.size());
 
@@ -5081,7 +5079,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							//Hard coded for max 3 gens.
 							//std::fstream test("test2.txt", ios::out | ios::in | ios::trunc);//TEST//TEST
 							array<int, 7> cands;
-							array<bool, 7> exists(false);
+							array<bool, 7> exists;
 							fillcandsexists(dous[j], cands, exists);
 
 							//test << "Number of individuals:  " << numbind << " End of input into cands \n ";//remember, incesters only counted once
@@ -5098,7 +5096,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								normsum += rawvals[0][s];
 							}
 							double normfactor = 1 / normsum;
-							decltype(toulInput[mark]) subInput;
+							decltype(toulInput)::value_type subInput;
 							long long submax = 0;
 
 							for (int g = 0; g < NUMTURNS; g++) {
@@ -5158,7 +5156,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 #pragma omp critical(negshifts)
 							{
-								toulInput.insert(subInput.begin(), subInput.end());
+							  toulInput[mark].insert(toulInput[mark].end(), subInput.begin(), subInput.end());
 								if (submax > maxweight)
 								{
 									maxweight = submax;
@@ -5226,7 +5224,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 
 
-				std::array<double, TURNBITS> skewterms;
+				array<double, TURNBITS> skewterms;
 #pragma omp critical(negshifts)
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
@@ -6160,7 +6158,8 @@ void priorGenotypesFromHaps(const SnpDataType& snpData, const vector<individ*>&
 		const vector<int>& markers = get<4>(snpData[i]);
 		for (size_t j = 0; j < sampleInds.size(); j++)
 		{
-			int geno = indexconv(markers[j * 2], i) + indexconv(markers[j * 2 + 1], i);
+		  int geno = indexconv(markers[j * 2], i).value() + indexconv(markers[j * 2 + 1], i).value() - 2;
+		  if (geno >= 0 && geno <= 2)
 			sampleInds[j]->priorgenotypes[i][geno] += unit;
 		}
 	}
@@ -6306,7 +6305,7 @@ void readOtherHaps(const SnpDataType& snpData,
 	}
 }
 
-double initPadding(const vector<individ*>& sampleInds, int count)
+double initPadding(const vector<individ*>& sampleInds, int count, auto dohaploweight)
 {
 	const double padding = 0.01;
 	double unit = 1.0 / (count + padding);
@@ -6317,8 +6316,9 @@ double initPadding(const vector<individ*>& sampleInds, int count)
 			if (RELSKEWS)
 			{
 				// HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
-				sampleInds[j]->relhaplo[i] = unit * 0.5;
+				sampleInds[j]->relhaplo[i] = 0;
 			}
+			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
 			sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
 		}
 	}
@@ -6423,7 +6423,7 @@ void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector
 
 	readFirstHaps(snpData, sampleInds, dohaploweight, mvFromIndex);
 
-	double unit = initPadding(sampleInds, hapsFile.size());
+	double unit = initPadding(sampleInds, hapsFile.size(), dohaploweight);
 
 	for (size_t k = 1; k < hapsFile.size(); k++)
 	{
@@ -6447,7 +6447,7 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 
 	SnpDataType snpData;	
 	auto dohaploweight = [](individ* ind) { /*return (ind->gen < 2);*/ return true; };
-	double unit = initPadding(dous, hapsFile.size());
+	double unit = initPadding(dous, hapsFile.size(), dohaploweight);
 
 	auto mapToSnpGeno = [&snpData](int index, size_t snp)
 	{
@@ -6466,8 +6466,8 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 	for (auto file : hapsFile)
 	{
 		snpData.clear();
-		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
-		priorGenotypesFromHaps(snpData, dous, indexconv, unit);
+		parseToEndWithError(*file, hapsLine % eol, snpData);
+		priorGenotypesFromHaps(snpData, dous, mapToSnpGeno, unit);
 	}
 
 	for (size_t j = 0; j < dous.size(); j++)
@@ -6476,12 +6476,14 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		{
 			// TODO: Only one marker missing.
 			MarkerValPair& marker = dous[j]->markerdata[i];
-			switch (std::max_element(dous[j]->priorgenotypes[i].begin(), dous[j]->priorgenotypes[i].end()))
+			switch (std::max_element(dous[j]->priorgenotypes[i].begin(), dous[j]->priorgenotypes[i].end()) - dous[j]->priorgenotypes[i].begin())
 			{
 			case 0:
 				marker = { 1 * MarkerValue, 1 * MarkerValue };
 				break;
 			case 1:
+			  // Preserve opposite heterzygote if present
+			  if (marker != pair{2 * MarkerValue, 1 * MarkerValue})
 				marker = { 1 * MarkerValue, 2 * MarkerValue };
 				break;
 			case 2:
@@ -6491,11 +6493,11 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		}
 	}
 
-	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
-	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
+	//parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
+	//	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
 	
 
-	for (size_t k = 1; k < hapsFile.size(); k++)
+	for (size_t k = 0; k < hapsFile.size(); k++)
 	{
 		snpData.clear();
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
