@@ -5024,24 +5024,26 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								if (!g) g2 = (1 << 15) - 1;
 
 								int oldshift = shiftflagmode;
-								rawervals[g][oldshift] = exp(dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor) - factor);
+								rawervals[g][oldshift] = dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor);
 
 								shiftflagmode = oldshift;
 
 								/*								if (c > 1) continue;*/
 								validg[g] = true;
 
-								if (!isfinite(rawervals[g][oldshift]))
+								double expval = exp(rawervals[g][oldshift]);
+
+								if (!isfinite(expval))
 								{
-									if (rawervals[g][oldshift] > 1e300)
+									if (expval > 1e300)
 										rawvals[g][oldshift] = 1e300;
 									else
 										rawvals[g][oldshift] = 0;
 									continue;
 								}
 
-								rawvals[g][oldshift] = rawervals[g][oldshift];
+								rawvals[g][oldshift] = expval;
 
 								for (int t = 0; t < TYPEBITS + 1; t++)
 								{
@@ -5090,12 +5092,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											// get relevant weights and individuals, insert to container
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
+							double normfactor = MINFACTOR;
 							double normsum = 0;
 							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore || rawvals[0][s] <= 0) continue;
-								normsum += rawvals[0][s];
+								if (s & shiftignore) continue;
+								normfactor = max(normfactor, rawervals[0][s]);
 							}
-							double normfactor = 1 / normsum;
+							for (int s = shifts; s < shiftend; s++) {
+								if (s & shiftignore || rawvals[0][s] <= 0) continue;
+								normsum += exp(rawervals[0][s] - normfactor);
+							}
+							normfactor += log(normsum);
+
 							decltype(toulInput)::value_type subInput;
 							long long submax = 0;
 
@@ -5118,22 +5126,27 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//}
 									}
 								}
-								double w = 0;
+								double w = MINFACTOR;
 
 								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore || rawvals[g][s] <= 0) continue;
-									w += rawvals[g][s];
+									if (s & shiftignore) continue;
+									w = max(w, rawervals[g][s]);
 								}
-								w *= normfactor;
+								normsum = 0;
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
+									normsum += exp(rawervals[g][s] - w);
+								}
+								w += log(normsum);
+								w -= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								if (w >= std::numeric_limits<double>::min() && isfinite(w))
 								{
-									w = log(w) * WEIGHT_DISCRETIZER;
 								}
 								else
 								{
-									if (w < 1)
+									if (w < 0)
 									{
 										w = -5000;
 									}
@@ -5141,9 +5154,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										w = 5000;
 									}
-
-									w *= WEIGHT_DISCRETIZER;
 								}
+								w *= WEIGHT_DISCRETIZER;
+
 								c.weight = w;
 								c.weight -= g;
 								c.cinds = claus;
