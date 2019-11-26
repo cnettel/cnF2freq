@@ -4371,7 +4371,7 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
-void createtoulbarfile(const string toulin, long long maxweight, const std::set<int>& indnumbers, vector<clause>& clauses)
+void createtoulbarfile(const string toulin, long long maxweight, vector<clause>& clauses)
 {
 	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
 	if (!infile) {
@@ -4603,7 +4603,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		vector<vector<char> > outqueue;
 		outqueue.resize(dous.size());
 
-		std::set<int> indnumbers;// to count individuals
 		long long maxweight = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
@@ -5175,11 +5174,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								{
 									maxweight = submax;
 								}
-								for (int b = 0; b < 7; b++) {
-									if (exists[b]) {
-										indnumbers.insert(cands[b]);
-									}
-								}
 							}
 							}
 #else
@@ -5323,7 +5317,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				continue;
 			}
 
-			createtoulbarfile(toulin, maxweight, indnumbers, toulInput[m]);
+			createtoulbarfile(toulin, maxweight, toulInput[m]);
 
 			// Run toulbar2 with partitioning rules that match the fact that we use small pedigrees
 			// Feed previous sol file as certificate/starting point
