@@ -1484,7 +1484,6 @@ struct individ
 				// for genotyping error in every single marker. A small epsilon should otherwise be introduced whenever
 				// any probs[i] is zero.
 				markerdata[marker] = make_pair(UnknownMarkerVal, UnknownMarkerVal);
-				fprintf(stderr, "Error in %x, marker %d, impossible path\n", this, marker);
 				sum = 1;
 			}
 			else
@@ -1493,6 +1492,7 @@ struct individ
 
 		if (sum <= 0)
 		{
+		  //		  fprintf(stderr, "Error in %d, marker %d, impossible path\n", this->n, marker);
 			factor = MINFACTOR;
 		}
 		else
@@ -1825,6 +1825,7 @@ struct individ
 
 				if (sum <= 0)
 				{
+				  fprintf(stderr, "No non-zero prob for ind %d at marker %d, factor %lf\n", this->n, startmark, factor);
 					factor = MINFACTOR;
 				}
 				else
@@ -3752,7 +3753,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 		if (intended > 0.5) hitnnn++;
 	}
 
-	if (breakathalf && (intended - 0.5) * (orig - 0.5) <= 0) intended = 0.5;
+	if (breakathalf && (intended - 0.5) * (orig - 0.5) < 0) intended = 0.5;
 
 	return intended;
 }
@@ -4985,7 +4986,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (unsigned int s = 0; s < NUMSHIFTS; s++)
 							{
 								rawvals[g][s] = -1;
-								rawervals[g][s] = -1;
+								rawervals[g][s] = std::numeric_limits<double>::quiet_NaN();
 							}
 						}
 
@@ -5025,7 +5026,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -5000 + factor);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -25000 + factor);
 
 								shiftflagmode = oldshift;
 
@@ -5099,7 +5100,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								normfactor = max(normfactor, rawervals[0][s]);
 							}
 							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore || rawvals[0][s] <= 0) continue;
+								if (s & shiftignore) continue;
 								normsum += exp(rawervals[0][s] - normfactor);
 							}
 							normfactor += log(normsum);
@@ -5141,7 +5142,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w -= normfactor;
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
-								if (w >= std::numeric_limits<double>::min() && isfinite(w))
+								if (isfinite(w))
 								{
 								}
 								else
@@ -5281,7 +5282,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 #pragma omp parallel for schedule(dynamic,1) firstprivate(donext)
 		for (unsigned int m = chromstarts[i]; m < chromstarts[i + 1] - 1; m++) {
-			//		  continue;
 			if ((m % 1) == (iter % 1)) donext++;
 			if (!donext) continue;
 			donext--;
@@ -6329,9 +6329,9 @@ double initPadding(const vector<individ*>& sampleInds, int count, auto dohaplowe
 			if (RELSKEWS)
 			{
 				// HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
-				sampleInds[j]->relhaplo[i] = 0;
+				sampleInds[j]->relhaplo[i] = unit * padding * 0.5;
 			}
-			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = 1e-3;
+			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = unit * padding * 0.5;
 			sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
 		}
 	}
