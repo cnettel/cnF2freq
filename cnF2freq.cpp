@@ -5339,7 +5339,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				tf.push_back(rawinput);
 				if (rawinput)
 				{
-					fprintf(stderr, "Ind %d marker %d shift indicated\n", tf.size(), m);
+					fprintf(stdout, "Ind %d marker %d shift indicated\n", tf.size(), m);
 				}
 			}
 
@@ -5361,10 +5361,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				fprintf(stderr, "ERROR: POSITIVE SCORE %lld %lld %lld %d %d\n", data.score, sumweight, maxweight, data.cover.size(), data.cands.size());
 			}
 
+			
+
 			if (data.cover.size() && data.score < 0)
+			  {
+				fprintf(stdout, "Candidate at marker %d with score %lld\n", m, data.score);
 #pragma omp critical(negshifts)
 			{
-				fprintf(stderr, "Candidate at marker %d with score %lld\n", m, data.score);
 				vector<decltype(bestcands)::iterator> toremove;
 				bool addme = true;
 				for (const canddata& elem : bestcands)
@@ -5393,13 +5396,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						bestcands.erase(i);
 					}
 					bestcands.insert(std::move(data));
-					fprintf(stderr, "Candidate at marker %d added\n", m);
 				}
 				while (bestcands.size() > 100)
 				{
 					bestcands.erase(--bestcands.end());
 				}
 			}
+			  }
 		}
 
 		bool toolarge;
