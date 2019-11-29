@@ -3762,7 +3762,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 {
   array<double, 1> state{orig};
   
-  double randomdrift = boost::random::normal_distribution(0., 1e-2)(rng);
+  double randomdrift = /*boost::random::normal_distribution(0., 1e-2)(rng)*/ 0;
   ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< array<double, 1> > >(),
 		       [&] (array<double, 1>& in,
 			    array<double, 1>& out, double time)
@@ -4157,8 +4157,6 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				val = 1;
 			}
 
-			auto relskewterm = [&](double hwnow)
-			{
 				double relskewterm = 0;
 				if (RELSKEWS)
 				{
@@ -4182,9 +4180,6 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 					if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
 					// relskewterm *= 0.5;
 				}
-
-				return relskewterm;
-			};
 
 			double scorea = 1.0 - ind->markersure[j].first;
 			double scoreb = 1.0 - ind->markersure[j].second;
@@ -4224,8 +4219,8 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					 (1 - 0 * similarity) * 1 * (2 * log(1 / in[0] - 1) + // Entropy term
-								     relskewterm(in[0])));
+					 (1 - 0 * similarity) * 1 * (1 * log(1 / in[0] - 1) + // Entropy term
+								     relskewterm));
 			};
 
 
@@ -5025,7 +5020,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								int oldshift = shiftflagmode;
 								rawervals[g][oldshift] = dous[j]->doanalyze<aroundturner>(tb, turn, chromstarts[i],
-									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -25000 + factor);
+									chromstarts[i + 1] - 1, classicstop(q, -1), -1, true, 0, -50000 + factor) - factor;
 
 								shiftflagmode = oldshift;
 
@@ -5148,13 +5143,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								{
 									if (w < 0)
 									{
-										w = -5000;
+										w = -1000000;
 									}
 									else
 									{
-										w = 5000;
+										w = 25000;
 									}
 								}
+								if (w < -1000000) w = -1000000;
+								if (w > 25000) w = 25000;
 								w *= WEIGHT_DISCRETIZER;
 
 								c.weight = w;
@@ -5270,6 +5267,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 #if DOTOULBAR
 		std::set<canddata> bestcands;
+		const int maxcandcount = 100;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 		int donext = 1;
 		bool solexists = false;
@@ -5309,7 +5307,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			bool skippable;
 
 #pragma omp critical(negshifts)
-			skippable = !fakegain || (bestcands.size() && (--bestcands.end())->score < fakegain);
+			skippable = !fakegain || (bestcands.size() >= maxcandcount && (--bestcands.end())->score < fakegain);
 
 			if (skippable)
 			{
@@ -5365,7 +5363,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 			if (data.cover.size() && data.score < 0)
 			  {
-				fprintf(stdout, "Candidate at marker %d with score %lld\n", m, data.score);
+			    fprintf(stdout, "Candidate at marker %d with score %lld (%lld)\n", m, data.score, maxweight);
 #pragma omp critical(negshifts)
 			{
 				vector<decltype(bestcands)::iterator> toremove;
@@ -5397,7 +5395,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 					bestcands.insert(std::move(data));
 				}
-				while (bestcands.size() > 100)
+				while (bestcands.size() > maxcandcount)
 				{
 					bestcands.erase(--bestcands.end());
 				}
