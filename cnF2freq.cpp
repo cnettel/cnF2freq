@@ -1339,6 +1339,56 @@ struct individ
 		}
 	}
 
+	void fixkid(unsigned int marker, bool latephase)
+	{
+		MarkerValPair& themarker = markerdata[marker];
+
+		double okmatrix[2][2] = { {false, false}, {false, false} };
+		for (int genoi = 0; genoi <= 1; genoi++)
+		{
+			MarkerVal geno = (genoi + 1) * MarkerValue;
+			for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
+			{
+				threadblock tb;
+				for (int i = 0; i < NUMTYPES; i++)
+				{
+					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
+					{
+						if (okmatrix[flag2 & 1][genoi]) continue;
+
+						double ok = trackpossible<false, false>(tb, geno, 0,
+							marker, i * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0.0, 0));
+						if (!ok) continue;
+						okmatrix[flag2 & 1][genoi] = ok;
+					}
+				}
+			}
+		}
+
+		for (int p = 0; p < 2; p++)
+		{
+			if (!pars[p]) continue;
+
+			if (okmatrix[p][0] && okmatrix[p][1]) continue;
+			int genoi = (okmatrix[p][0] ? 0 : 1);
+			MarkerVal geno = (genoi + 1) * MarkerValue;
+
+#pragma omp critical (parmarkerval)
+			{
+				auto i = pars[k]->markervals[marker].find(genoi);
+				double old1 = 1;
+				int old2 = 0;
+
+				if (i != pars[k]->markervals[marker].end())
+				{
+					old1 = i->second.second;
+					old2 = i->second.first;
+				}
+				markervals[marker][geno] = make_pair(old2 + 1, old1 * (1 - okmatrix[p][genoi]));
+			}
+		}
+	}
+
 	void addvariance(unsigned int marker, int flag2ignore = 0)
 	{
 		MarkerValPair& themarker = markerdata[marker];
@@ -3000,6 +3050,7 @@ void postmarkerdata()
 				for (size_t g = 0; g < ind->markerdata.size(); g++)
 				{
 					ind->fixparents(g, latephase);
+					ind->fixkid(g, latephase);
 				}
 			}
 		}
