@@ -3841,7 +3841,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		*/		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		double hw = ind->haploweight[j];
-		double etf = 1 + (side ? 0 : -1) * 4 * (hw - hw * hw);
+		double etf = 1 /*+ (side ? 0 : -1) * 4 * (hw - hw * hw)*/;
 
 		auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
 		{
@@ -7211,11 +7211,6 @@ int main(int argc, char* argv[])
 				clearunprotected(protinds, protmarkers);
 			}
 
-			if (outputpedfilename != "")
-			{
-				outputped(outputpedfilename);
-			}
-
 			samplereader samples;
 			vector<mapped_file_source*> hapFiles;
 			vector<string> hapsfileOption;
@@ -7267,6 +7262,12 @@ int main(int argc, char* argv[])
 			CORRECTIONINFERENCE = true;
 			postmarkerdata();
 			CORRECTIONINFERENCE = false;
+
+			if (outputpedfilename != "")
+			{
+				outputped(outputpedfilename);
+			}
+
 
 			if (deserializefilename != "")
 			{
