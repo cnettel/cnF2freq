@@ -3061,8 +3061,6 @@ void postmarkerdata()
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
-			// Only run for sex 2, tailored to half sibships
-			if (!ind->sex) continue;
 
 			for (size_t g = 0; g < ind->markervals.size(); g++)
 			{
