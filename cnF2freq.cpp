@@ -1375,11 +1375,11 @@ struct individ
 
 #pragma omp critical (parmarkerval)
 			{
-				auto i = pars[k]->markervals[marker].find(genoi);
+				auto i = pars[p]->markervals[marker].find(genoi);
 				double old1 = 1;
 				int old2 = 0;
 
-				if (i != pars[k]->markervals[marker].end())
+				if (i != pars[p]->markervals[marker].end())
 				{
 					old1 = i->second.second;
 					old2 = i->second.first;
