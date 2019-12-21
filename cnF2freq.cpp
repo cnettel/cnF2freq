@@ -1344,49 +1344,74 @@ struct individ
 		MarkerValPair& themarker = markerdata[marker];
 
 		double okmatrix[2][2] = { {false, false}, {false, false} };
+		if (n == 0 && marker >= 7)
+		  {
+		    raise(SIGTRAP);
+		  }
 		for (int genoi = 0; genoi <= 1; genoi++)
 		{
 			MarkerVal geno = (genoi + 1) * MarkerValue;
 			for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
 			{
 				threadblock tb;
-				for (int i = 0; i < NUMTYPES; i++)
+				for (int i = 0; i < NUMTYPES * 2; i++)
 				{
 					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
 					{
-						if (okmatrix[flag2 & 1][genoi]) continue;
+					  if ((&themarker.first)[flag2 & 1] != UnknownMarkerVal) continue;
+
+					  //if (okmatrix[flag2 & 1][genoi]) continue;
 
 						double ok = trackpossible<false, false>(tb, geno, 0,
-							marker, i * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0.0, 0));
-						if (!ok) continue;
-						okmatrix[flag2 & 1][genoi] = ok;
+							marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams(0.0, 0));
+						//if (!ok) continue;
+						okmatrix[flag2 & 1][genoi] += ok;
 					}
 				}
 			}
 		}
 
-		for (int p = 0; p < 2; p++)
-		{
-			if (!pars[p]) continue;
-
-			if (okmatrix[p][0] && okmatrix[p][1]) continue;
-			int genoi = (okmatrix[p][0] ? 0 : 1);
+		/*		for (int p = 0; p < 2; p++)
+				{*/
+		  for (int genoi = 0; genoi <= 1; genoi++)
+		    {
+		      double me = 0;
+		      double sum = 0;
+		      for (int p = 0; p < 2; p++)
+			{
+			  double me1 = 0;
+			  double sum1 = 0;
+			for (int i = 0; i < 2; i++)
+			  {
+			    if (i == genoi) me1 += okmatrix[p][i];
+			    sum1 += okmatrix[p][i];			    
+			  }
+			if (sum1)
+			  {
+			    me += me1 / sum1;
+			    sum += 1;
+			  }
+			}
+			
+			if (me <= sum * 0.50001) continue;
 			MarkerVal geno = (genoi + 1) * MarkerValue;
 
 #pragma omp critical (parmarkerval)
 			{
-				auto i = pars[p]->markervals[marker].find(genoi);
+				auto i = markervals[marker].find(geno);
 				double old1 = 1;
 				int old2 = 0;
 
-				if (i != pars[p]->markervals[marker].end())
+				if (i != markervals[marker].end())
 				{
 					old1 = i->second.second;
 					old2 = i->second.first;
 				}
-				markervals[marker][geno] = make_pair(old2 + 1, old1 * (1 - okmatrix[p][genoi]));
+				// TODO PROBIT?
+				markervals[marker][geno] = make_pair(old2 + 1, old1 * (sum - me / sum));
 			}
-		}
+		    }
+		  //		}
 	}
 
 	void addvariance(unsigned int marker, int flag2ignore = 0)
@@ -3106,14 +3131,14 @@ void postmarkerdata()
 				{
 					if (ind->markerdata[g].first == UnknownMarkerVal || ind->markerdata[g].second == UnknownMarkerVal) any++;
 					ind->markerdata[g] = make_pair(ind->markervals[g].begin()->first, ind->markervals[g].begin()->first);
-					ind->markersure[g] = make_pair(dosureval(ind->children, ind->markervals[g].begin()->second),
-						dosureval(ind->children, ind->markervals[g].begin()->second));
+					ind->markersure[g] = make_pair(dosureval(ind->markervals[g].begin()->second.first, ind->markervals[g].begin()->second),
+								       dosureval(ind->markervals[g].begin()->second.first, ind->markervals[g].begin()->second));
 				} // DANGEROUS ASSUMPTIONS
 				else if (!latephase && ind->markervals[g].size() == 1 && known == 0)
 				{
 					any++;
 					ind->markerdata[g] = make_pair(ind->markervals[g].begin()->first, UnknownMarkerVal);
-					ind->markersure[g] = make_pair(dosureval(ind->children, ind->markervals[g].begin()->second), 0.0);
+					ind->markersure[g] = make_pair(dosureval(ind->markervals[g].begin()->second.first, ind->markervals[g].begin()->second), 0.0);
 				}
 
 
