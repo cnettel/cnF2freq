@@ -1339,79 +1339,24 @@ struct individ
 		}
 	}
 
-	void fixkid(unsigned int marker, bool latephase)
+	void fixkid(unsigned int marker)
 	{
 		MarkerValPair& themarker = markerdata[marker];
+		if (themarker != make_pair(UnknownMarkerVal, UnknownMarkerVal)) return;
 
-		double okmatrix[2][2] = { {false, false}, {false, false} };
-		if (n == 0 && marker >= 7)
+		for (int p = 0; p < 2; p++)
 		  {
-		    raise(SIGTRAP);
+		    if (pars[p] && pars[p]->markerdata.size() > marker)
+		      {
+			MarkerValPair& parmarker = pars[p]->markerdata[marker];
+			if (parmarker.first == UnknownMarkerVal) continue;
+			if (parmarker.first != parmarker.second) continue;
+
+			(&themarker.first)[p] = parmarker.first;
+			(&markersure[marker].first)[p] = 0.5;
+		      }
 		  }
-		for (int genoi = 0; genoi <= 1; genoi++)
-		{
-			MarkerVal geno = (genoi + 1) * MarkerValue;
-			for (shiftflagmode = 0; shiftflagmode < 1; shiftflagmode += 1)
-			{
-				threadblock tb;
-				for (int i = 0; i < NUMTYPES * 2; i++)
-				{
-					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
-					{
-					  if ((&themarker.first)[flag2 & 1] != UnknownMarkerVal) continue;
 
-					  //if (okmatrix[flag2 & 1][genoi]) continue;
-
-						double ok = trackpossible<false, false>(tb, geno, 0,
-							marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams(0.0, 0));
-						//if (!ok) continue;
-						okmatrix[flag2 & 1][genoi] += ok;
-					}
-				}
-			}
-		}
-
-		/*		for (int p = 0; p < 2; p++)
-				{*/
-		  for (int genoi = 0; genoi <= 1; genoi++)
-		    {
-		      double me = 0;
-		      double sum = 0;
-		      for (int p = 0; p < 2; p++)
-			{
-			  double me1 = 0;
-			  double sum1 = 0;
-			for (int i = 0; i < 2; i++)
-			  {
-			    if (i == genoi) me1 += okmatrix[p][i];
-			    sum1 += okmatrix[p][i];			    
-			  }
-			if (sum1)
-			  {
-			    me += me1 / sum1;
-			    sum += 1;
-			  }
-			}
-			
-			if (me <= sum * 0.50001) continue;
-			MarkerVal geno = (genoi + 1) * MarkerValue;
-
-#pragma omp critical (parmarkerval)
-			{
-				auto i = markervals[marker].find(geno);
-				double old1 = 1;
-				int old2 = 0;
-
-				if (i != markervals[marker].end())
-				{
-					old1 = i->second.second;
-					old2 = i->second.first;
-				}
-				// TODO PROBIT?
-				markervals[marker][geno] = make_pair(old2 + 1, old1 * (sum - me / sum));
-			}
-		    }
-		  //		}
 	}
 
 	void addvariance(unsigned int marker, int flag2ignore = 0)
@@ -3054,6 +2999,21 @@ void postmarkerdata()
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
+		for (int i = 1; i < INDCOUNT; i++)
+		{
+			individ* ind = getind(i);
+			if (!ind) continue;
+
+			if (ind->markerdata.size())
+			{
+				generation++;
+
+				for (size_t g = 0; g < ind->markerdata.size(); g++)
+				{
+				  ind->fixkid(g);
+				}
+			}
+		}
 #pragma omp parallel for schedule(dynamic,32)
 		for (int i = 1; i < INDCOUNT; i++)
 		{
@@ -3075,7 +3035,6 @@ void postmarkerdata()
 				for (size_t g = 0; g < ind->markerdata.size(); g++)
 				{
 					ind->fixparents(g, latephase);
-					ind->fixkid(g, latephase);
 				}
 			}
 		}
@@ -3895,6 +3854,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		}
 	}
 
+	double ef = exp(0 * -0.01 * iter);
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
@@ -3923,7 +3883,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
 
 			double et = log(1 / curprob - 1);
-			d += etf * et; // Entropy term
+			d += etf * et * ef; // Entropy term
 
 			if (priorval != UnknownMarkerVal)
 			{
@@ -4289,11 +4249,12 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
+			double ef = exp(0 * -0.01 * iter);
 			auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
 			{
 				out[0] =
 					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					 (1 - 0 * similarity) * 1 * (1 * log(1 / in[0] - 1) + // Entropy term
+					 (1 - 0 * similarity) * 1 * (ef * log(1 / in[0] - 1) + // Entropy term
 								     relskewterm));
 			};
 
@@ -5703,7 +5664,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 							for (int side = 0; side < 2; side++)
 							{
-								processinfprobs(ind, j, side, iter, hitnnn);
+							  processinfprobs(ind, j, side, iter, hitnnn);
 							}
 							// oldinfprobslogic(ind, j, iter, cno, out);
 						}
@@ -6287,7 +6248,7 @@ void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 }
 
 void readOtherHaps(const SnpDataType& snpData,
-	const vector<individ*>& sampleInds, double unit, auto dohaploweight, auto indexconv)
+		   const vector<individ*>& sampleInds, double unit, double genounit, auto dohaploweight, auto indexconv)
 {
 	vector<int> phases;
 	vector<int> origPhases;
@@ -6362,7 +6323,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			{
 				// The definition of relhaplo is that marker i
 				// defines the skewness shift to the NEXT marker.
-				sampleInds[j]->relhaplo[i - 1] += unit * (oldPhase == 0 || phases[j] == oldPhase);
+			  sampleInds[j]->relhaplo[i - 1] += unit * ((oldPhase == 0 || phases[j] == oldPhase) * 1.0 + (numMatches == 0) * -0.5);
 			}
 			if (!numMatches)
 			{
@@ -6381,7 +6342,7 @@ void readOtherHaps(const SnpDataType& snpData,
 					}
 				}
 				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + unit * nomatch[0], 2 * 0.5 * (1 - unit)), min(sampleInds[j]->markersure[i].second + unit * nomatch[1], 2 * 0.5 * (1 - unit)));
+				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + genounit * nomatch[0], 0.5 * (1 - unit)), min(sampleInds[j]->markersure[i].second + genounit * nomatch[1], 0.5 * (1 - unit)));
 			}
 		}
 	}
@@ -6513,7 +6474,7 @@ void readhapsfull(const sampletype& samples, mapped_file_source& bimFile, vector
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 
-		readOtherHaps(snpData, sampleInds, unit, dohaploweight, mvFromIndex);
+		readOtherHaps(snpData, sampleInds, unit, unit, dohaploweight, mvFromIndex);
 	}
 
 	for (size_t j = 0; j < sampleInds.size(); j++)
@@ -6529,7 +6490,6 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 
 	SnpDataType snpData;	
 	auto dohaploweight = [](individ* ind) { /*return (ind->gen < 2);*/ return true; };
-	double unit = initPadding(dous, hapsFile.size(), dohaploweight);
 
 	auto mapToSnpGeno = [&snpData](int index, size_t snp)
 	{
@@ -6545,12 +6505,12 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		}
 	};	
 	
-	for (auto file : hapsFile)
+	/*for (auto file : hapsFile)
 	{
 		snpData.clear();
 		parseToEndWithError(*file, hapsLine % eol, snpData);
 		priorGenotypesFromHaps(snpData, dous, mapToSnpGeno, unit);
-	}
+		}
 
 	for (size_t j = 0; j < dous.size(); j++)
 	{
@@ -6573,20 +6533,23 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 				break;
 			}
 		}
-	}
+		}*/
 
-	//parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
-	//	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
+	parseToEndWithError(*hapsFile[0], hapsLine % eol, snpData);
+	readFirstHaps(snpData, dous, dohaploweight, mapToSnpGeno);
 	
+	double unit = initPadding(dous, hapsFile.size(), dohaploweight);
 
-	for (size_t k = 0; k < hapsFile.size(); k++)
+	for (size_t k = 1; k < hapsFile.size(); k++)
 	{
 		snpData.clear();
 		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
 		std::cout << snpData.size() << " SNPs read." << std::endl;
 
-		readOtherHaps(snpData, dous, unit, dohaploweight, mapToSnpGeno);
+		readOtherHaps(snpData, dous, unit, unit * 0.5, dohaploweight, mapToSnpGeno);
 	}
+
+	return; // NOTE
 
 	for (size_t j = 0; j < dous.size(); j++)
 	{
@@ -6819,7 +6782,7 @@ void readgigidata(mapped_file_source&& map, mapped_file_source&& ped)
 		auto attr = _attr(ctx);
 		std::pair<int, int> data = make_pair(at_c<0>(attr), at_c<1>(attr));
 		ind->markerdata[nowmarker] = make_pair(data.first * MarkerValue, data.second * MarkerValue);
-		ind->markersure[nowmarker] = make_pair(1e-4, 1e-4);
+		ind->markersure[nowmarker] = make_pair(0, 0);
 		nowmarker++;
 
 		return nowmarker;
@@ -7295,7 +7258,6 @@ int main(int argc, char* argv[])
 				hapFiles.push_back(new mapped_file_source(filename));
 			}
 
-			dous.resize(104);
 			if (samplefilename != "")
 			{
 				mapped_file_source sampleFile(samplefilename);
@@ -7343,6 +7305,7 @@ int main(int argc, char* argv[])
 			}
 
 
+			dous.resize(104);
 			if (deserializefilename != "")
 			{
 				std::ifstream deserializationFile(deserializefilename);
