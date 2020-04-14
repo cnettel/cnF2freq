@@ -135,7 +135,6 @@ using boost::container::flat_map;
 #define _finite isfinite
 #endif
 
-#define DOTOULBAR 1
 #include "settings.h"
 
 EXTERNFORGCC boost::random::mt19937 rng;
@@ -5281,6 +5280,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							w = 5000;
 						}
 					}
+#if DOTOULBAR
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
@@ -5291,6 +5291,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 						}
 					}
+#endif
 				}
 			}
 				}
@@ -7305,7 +7306,6 @@ int main(int argc, char* argv[])
 			}
 
 
-			dous.resize(104);
 			if (deserializefilename != "")
 			{
 				std::ifstream deserializationFile(deserializefilename);
