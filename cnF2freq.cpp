@@ -6190,8 +6190,9 @@ struct samplereader
 
 using SnpDataType = std::vector<std::tuple<int, std::string, std::string, std::string, std::vector<int>>>;
 
+template<class T1>
 void priorGenotypesFromHaps(const SnpDataType& snpData, const vector<individ*>&
-	sampleInds, auto indexconv, double unit)
+	sampleInds, T1 indexconv, double unit)
 {
 	for (size_t j = 0; j < sampleInds.size(); j++)
 	{
@@ -6209,8 +6210,9 @@ void priorGenotypesFromHaps(const SnpDataType& snpData, const vector<individ*>&
 	}
 }
 
+template<class T1, class T2>
 void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
-	sampleInds, auto dohaploweight, auto indexconv)
+	sampleInds, T1 dohaploweight, T2 indexconv)
 {
 	for (size_t i = 0; i < snpData.size(); i++)
 	{
@@ -6248,8 +6250,9 @@ void readFirstHaps(const SnpDataType& snpData, const vector<individ*>&
 	}
 }
 
+template<class T1, class T2>
 void readOtherHaps(const SnpDataType& snpData,
-		   const vector<individ*>& sampleInds, double unit, double genounit, auto dohaploweight, auto indexconv)
+		   const vector<individ*>& sampleInds, double unit, double genounit, T1 dohaploweight, T2 indexconv)
 {
 	vector<int> phases;
 	vector<int> origPhases;
@@ -6349,7 +6352,8 @@ void readOtherHaps(const SnpDataType& snpData,
 	}
 }
 
-double initPadding(const vector<individ*>& sampleInds, int count, auto dohaploweight)
+template<class T1>
+double initPadding(const vector<individ*>& sampleInds, int count, T1 dohaploweight)
 {
 	const double padding = 0.01;
 	double unit = 1.0 / (count + padding);
