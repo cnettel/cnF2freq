@@ -6364,7 +6364,7 @@ double initPadding(const vector<individ*>& sampleInds, int count, T1 dohaploweig
 			if (RELSKEWS)
 			{
 				// HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
-				sampleInds[j]->relhaplo[i] = unit * padding * 0.5;
+				sampleInds[j]->relhaplo[i] = padding * 0.5;
 			}
 			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = unit * padding * 0.5;
 			sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
