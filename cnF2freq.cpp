@@ -3209,7 +3209,7 @@ struct negshifter
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
 			ind->haploweight[p] = 1.0f - ind->haploweight[p];
-			//		ind->haplobase[p] = ind->haplocount[p] - ind->haplobase[p];
+			ind->haplobase[p] = ind->haplocount[p] - ind->haplobase[p];
 		}
 	}
 };
@@ -5635,7 +5635,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 	}
 #endif
-}
+			}
 
 #ifdef F2MPI
 			if (!world.rank())
@@ -6346,7 +6346,7 @@ void readOtherHaps(const SnpDataType& snpData,
 					}
 				}
 				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + genounit * nomatch[0], 0.5 * (1 - unit)), min(sampleInds[j]->markersure[i].second + genounit * nomatch[1], 0.5 * (1 - unit)));
+				sampleInds[j]->priormarkersure[i] = make_pair(min(sampleInds[j]->priormarkersure[i].first + genounit * nomatch[0], (1 - unit)), min(sampleInds[j]->priormarkersure[i].second + genounit * nomatch[1], (1 - unit)));
 			}
 		}
 	}
@@ -6493,8 +6493,9 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 {
 	using namespace x3;
 
-	SnpDataType snpData;	
-	auto dohaploweight = [](individ* ind) { /*return (ind->gen < 2);*/ return true; };
+	SnpDataType snpData;
+	bool DH = true;
+	auto dohaploweight = [&DH](individ* ind) { /*return (ind->gen < 2);*/ return DH; };
 
 	auto mapToSnpGeno = [&snpData](int index, size_t snp)
 	{
@@ -6545,17 +6546,6 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 	
 	double unit = initPadding(dous, hapsFile.size(), dohaploweight);
 
-	for (size_t k = 1; k < hapsFile.size(); k++)
-	{
-		snpData.clear();
-		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
-		std::cout << snpData.size() << " SNPs read." << std::endl;
-
-		readOtherHaps(snpData, dous, unit, unit * 0.5, dohaploweight, mapToSnpGeno);
-	}
-
-	return; // NOTE
-
 	for (size_t j = 0; j < dous.size(); j++)
 	{
 		for (size_t i = 0; i < markerposes.size(); i++)
@@ -6567,6 +6557,21 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 			}
 		}
 	}
+
+	DH = false;
+
+	for (size_t k = 1; k < hapsFile.size(); k++)
+	{
+		snpData.clear();
+		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+
+		readOtherHaps(snpData, dous, unit, unit /* * 0.5 */, dohaploweight, mapToSnpGeno);
+	}
+
+	//return; // NOTE
+
+
 }
 
 void createhapfile(const sampletype& samples, mapped_file_source& oldhapfile, ostream& newhapfile)
@@ -7087,16 +7092,26 @@ void deserialize(istream& stream)
 						ind->haploweight[i] = std::get<0>(output);
 
 						pair<MarkerVal, MarkerVal> pmv = make_pair(std::get<1>(output) * MarkerValue, std::get<2>(output) * MarkerValue);
+						pair<MarkerVal, MarkerVal> rmv = make_pair(std::get<2>(output) * MarkerValue, std::get<1>(output) * MarkerValue);
+						bool inv = false;
+						bool match = true;
 						if (pmv != ind->markerdata[i])
 						{
+						  if (rmv != ind->markerdata[i])
+						    {
 							std::cerr << "Genotype mismatch for marker " << i << " for individual " << ind->name << " (" << ind->markerdata[i].first.value() << "," << ind->markerdata[i].second.value() << ") to " <<
 								" (" << pmv.first.value() << "," << pmv.second.value() << ")" << std::endl;
+							match = false;
+						    }
+						  else inv = true;
 						}
 						ind->markerdata[i] = pmv;
 						ind->markersure[i] = make_pair(std::get<4>(output), std::get<5>(output));
 						if (ind->haploweight[i] == 0.5) continue;
+						if (pmv == rmv) continue;
+						if (!match) continue;
 
-						int newphase = 1 + (ind->haploweight[i] > 0.5);
+						int newphase = 1 + ((ind->haploweight[i] > 0.5) ^ inv);
 						if (oldphase && oldphase != newphase) switches++;
 
 						oldphase = newphase;
@@ -7332,6 +7347,7 @@ int main(int argc, char* argv[])
 			{
 				out = fopen(outputfilename.c_str(), "w");
 			}
+			dous.resize(104);
 
 			if (HAPLOTYPING || true)
 				for (int i = 0; i < COUNT; i++)
