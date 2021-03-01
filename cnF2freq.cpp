@@ -6355,7 +6355,7 @@ void readOtherHaps(const SnpDataType& snpData,
 template<class T1>
 double initPadding(const vector<individ*>& sampleInds, int count, T1 dohaploweight)
 {
-	const double padding = 0.01;
+	const double padding = 1e-5;
 	double unit = 1.0 / (count + padding);
 	for (size_t j = 0; j < sampleInds.size(); j++)
 	{
@@ -6363,8 +6363,7 @@ double initPadding(const vector<individ*>& sampleInds, int count, T1 dohaploweig
 		{
 			if (RELSKEWS)
 			{
-				// HACK, DECOUPLE padding FOR RELHAPLO AND MARKERSURE
-				sampleInds[j]->relhaplo[i] = padding * 0.5;
+				sampleInds[j]->relhaplo[i] = unit;
 			}
 			if (dohaploweight(sampleInds[j])) sampleInds[j]->haploweight[i] = unit * padding * 0.5;
 			sampleInds[j]->markersure[i] = make_pair(padding * unit, padding * unit);
