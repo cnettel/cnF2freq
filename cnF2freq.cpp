@@ -14,25 +14,12 @@
 
 #define NDEBUG
 // These defines fixed an error in one particular site installation of the Portland compiler.
-#define _STLP_EXPOSE_GLOBALS_IMPLEMENTATION 1
-#define _REENTRANT 1
-#define _SECURE_SCL 0
-// For MSCVC
-// Note: MSVC OpenMP support is insufficient in current release. Disable OpenMP for compilation
-// in MSVC.
-//
-// Recent releases of g++ on MacOS X and Linux, as well as the Intel C++ compiler on
-// Linux (x86 and x64) and Windows have been tested. The Portland compiler collection works only
-// with some optimization settings, some race conditions in STL, although some
-// workarounds are used.
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <vector>
 #include <string.h>
 #include <stdio.h>
 #include <omp.h>
 #include <limits>
-
 
 const int ANALYZE_FLAG_FORWARD = 0;
 const int ANALYZE_FLAG_BACKWARD = 16;
@@ -55,6 +42,7 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 //#include <boost/array.hpp>
 //#endif
 #include <array>
+#include <ranges>
 
 #include <boost/math/distributions/binomial.hpp>
 #include <boost/static_assert.hpp>
@@ -137,6 +125,8 @@ using boost::container::flat_map;
 
 #include "settings.h"
 
+#define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
+#define restrict __restrict__
 EXTERNFORGCC boost::random::mt19937 rng;
 
 #pragma omp threadprivate(rng)
@@ -144,6 +134,12 @@ EXTERNFORGCC boost::random::mt19937 rng;
 #ifdef DOEXTERNFORGCC
 boost::random::mt19937 rng;
 #endif
+
+struct spectype
+{
+
+};
+spectype globspec;
 
 int myrand(int max)
 {
@@ -304,7 +300,7 @@ template<int zeropropagate> bool markermiss(MarkerVal& a, const MarkerVal b)
 
 // Move a tree-based binary flag up a generation. The structure of bit flags might look like
 // (1)(3)(3), where each group of (3) is in itself (1)(2), where (2) is of course (1)(1).
-int upflagit(int flag, int parnum, int genwidth)
+int upflagit(int flag, int parnum, unsigned int genwidth)
 {
 
 	if (flag < 0) return flag;
@@ -811,6 +807,24 @@ struct clause
 
 };
 
+template<int skipper, int update, int zeropropagate>
+struct vectortrackpossible
+{
+	const threadblock& tb;
+	MarkerVal inmarkerval[TURNBITS][NUMPATHS / skipper];
+	double secondval[TURNBITS][NUMPATHS / skipper];
+	int geno[TURNBITS][NUMPATHS / skipper]; // Used to be flag
+	int flag2[TURNBITS][NUMPATHS / skipper]; // Used to be flag99 and flag2 everywhere else
+	int localshift[TURNBITS][NUMPATHS / skipper];
+	double result[NUMPATHS / skipper];
+	const trackpossibleparams& extparams;
+	const unsigned int marker;
+	int meid;
+	int menow;
+
+	vectortrackpossible(unsigned int marker, const trackpossibleparams& extparams, int flag2);
+};
+
 // A structure containing most of the information on an individual
 struct individ
 {
@@ -912,7 +926,7 @@ struct individ
 	//
 	// The double overload means that the class can be treated as a conventional function call, returning a double, when the pre-lookup
 	// is not needed. In the "real" trackpossible method, one instance is called in that way, while the other one is pre-looked up.
-	template<int update, int zeropropagate> struct recursetrackpossible
+	template<int update, int zeropropagate, class extra=const spectype, int templgenwidth = -2, int templflag2 = -2> struct recursetrackpossible
 	{
 		individ* mother;
 		int upflagr;
@@ -920,7 +934,7 @@ struct individ
 		int upshiftr;
 		double secondval;
 		const trackpossibleparams& extparams;
-		const int genwidth;
+		const unsigned int genwidth;
 		const MarkerVal markerval;
 		const int marker;
 		const threadblock& tb;
@@ -928,16 +942,27 @@ struct individ
 		int* impossibleref;
 		int impossibleval;
 		bool prelok;
+		extra& data;
 
-		recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, int genwidth, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams) :
-			genwidth(genwidth), extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval)
+		recursetrackpossible(individ* mother, const threadblock& tb, MarkerVal markerval, double secondval, int marker, int upflag, int upflag2, int upshift, unsigned int genwidth, int f2n, int firstpar, int numrealpar, const trackpossibleparams& extparams, extra& data) noexcept :
+			genwidth(genwidth), extparams(extparams), markerval(markerval), marker(marker), tb(tb), firstpar(firstpar), mother(mother), secondval(secondval), data(data)
 
 		{
+			if constexpr (templgenwidth >= 0) __assume(genwidth == templgenwidth);
+			if constexpr (templflag2 >= -2)
+			{
+				if constexpr (templflag2 == -1) __assume(upflag2 == -1);
+				else
+				__assume(upflag2 > -1);
+			}
 			upflagr = upflagit(upflag, firstpar, genwidth);
 			upflag2r = upflagit(upflag2, firstpar, genwidth >> (NUMGEN - NUMFLAG2GEN));
 			upshiftr = upflagit(upshift, firstpar, genwidth >> (NUMGEN - NUMSHIFTGEN));
-
 			prelok = true;
+
+			
+			if constexpr (DOIMPOSSIBLE)
+			{
 			if (zeropropagate != ZERO_PROPAGATE && genwidth == (1 << (NUMGEN - 1)))
 			{
 				if (DOIMPOSSIBLE)
@@ -956,10 +981,35 @@ struct individ
 				}
 			}
 		}
+		}
 
-		operator double()
+		double compute(const spectype& data) noexcept
 		{
-			if (!prelok)
+			if (templgenwidth >= 0) __assume(genwidth == templgenwidth);
+			return mother->pars[firstpar]->trackpossible<update, zeropropagate, const spectype, (templgenwidth >> 1), templflag2>(tb, markerval, secondval, marker,
+					upflagr,
+					upflag2r,
+					upshiftr, extparams, genwidth >> 1);
+		}
+
+		template<int skipper, int update2>
+		double compute(vectortrackpossible<skipper, update2, zeropropagate>& data) noexcept
+			{
+			int meid2 = data.meid + 1 + (genwidth >> 1) * firstpar;
+
+			data.inmarkerval[meid2][data.menow] = markerval;
+			data.secondval[meid2][data.menow] = secondval;
+			data.geno[meid2][data.menow] = upflagr;
+			data.flag2[meid2][data.menow] = upflag2r;
+			data.localshift[meid2][data.menow] = upshiftr;
+
+			return 1.0;
+		}
+
+		operator double() noexcept
+		{
+			if (templgenwidth >= 0) __assume(genwidth == templgenwidth);
+			if constexpr (DOIMPOSSIBLE) if (!prelok)
 			{
 				return 0;
 			}
@@ -969,11 +1019,8 @@ struct individ
 				return 1 + secondval;
 			}
 
-			double baseval =
-				mother->pars[firstpar]->trackpossible<update, zeropropagate>(tb, markerval, secondval, marker,
-					upflagr,
-					upflag2r,
-					upshiftr, extparams, genwidth >> 1);
+			double baseval = compute(data);
+
 
 			if (DOIMPOSSIBLE && impossibleref && zeropropagate != ZERO_PROPAGATE && !update && genwidth == (1 << (NUMGEN - 1)) && !baseval)
 			{
@@ -999,12 +1046,45 @@ struct individ
 	// individuals in the analysis.
 	// extparams: external parameters.
 	// genwidth: The width of the generation flags.
-	template<int update, int zeropropagate> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
+	template<int update, int zeropropagate, class extra=const spectype, int templgenwidth=-2, int templflag2=-2> double trackpossible(const threadblock& tb, MarkerVal inmarkerval, double secondval, const unsigned int marker,
 		const unsigned int flag, const int flag99, int localshift = 0, const trackpossibleparams& extparams = tpdefault,
-		const int genwidth = 1 << (NUMGEN - 1)) /*const*/
+		const unsigned int genwidth = 1 << (NUMGEN - 1), extra& data = globspec) noexcept /*const*/
 	{
+		if constexpr (templgenwidth == -2)
+		{
+			// TODO NICER FORWARDING
+			if (genwidth == 1 << (NUMGEN - 1))
+			{
+				return trackpossible<update, zeropropagate, extra, (1 << (NUMGEN - 1))>(tb, inmarkerval, secondval, marker, flag, flag99, localshift, extparams, genwidth, globspec);
+			}
+			else
+			{
+				return trackpossible<update, zeropropagate, extra, -1>(tb, inmarkerval, secondval, marker, flag, flag99, localshift, extparams, genwidth, globspec);
+			}
+		}
+		if constexpr (templflag2 == -2)
+		{
+			// TODO NICER FORWARDING
+			if (flag99 >= 0)
+			{
+				return trackpossible<update, zeropropagate, extra, templgenwidth, 0>(tb, inmarkerval, secondval, marker, flag, flag99, localshift, extparams, genwidth, globspec);
+			}
+			else
+			{
+				return trackpossible<update, zeropropagate, extra, templgenwidth, -1>(tb, inmarkerval, secondval, marker, flag, flag99, localshift, extparams, genwidth, globspec);
+			}
+		}
 		// This used to be a nice silent null check. Compilers don't like that, so we abort in order to try to detect those cases.
 		if (this == NULL) abort();
+		if (templgenwidth >= 0) __assume(genwidth == templgenwidth);
+		__assume(localshift >= 0);
+
+		if constexpr (templflag2 >= -2)
+		{
+			if constexpr (templflag2 == -1) __assume(flag99 == -1);
+			else
+			__assume(flag99 > -1);
+		}
 
 		// TYPEBITS are the ordinary TYPEBITS. Anything set beyond those indicates selfing. g is multiplied by 2 to become flag, hence TYPEBITS + 1
 		const bool rootgen = (genwidth == (1 << (NUMGEN - 1)));
@@ -1028,7 +1108,7 @@ struct individ
 		const int upflag = flag >> 1;
 		const int upshift = localshift >> 1;
 		int f2s = 0;
-		const MarkerVal* const themarker = selfingNOW ? selfmarker : &markerdata[marker].first;
+		const MarkerVal* restrict const themarker = selfingNOW ? selfmarker : &markerdata[marker].first;
 		const double* const themarkersure = selfingNOW ? selfsure : &markersure[marker].first;
 		int f2end = 2;
 
@@ -1056,10 +1136,11 @@ struct individ
 
 		// flag2 determines which value in the tuple to check. flag and localshift determine the haplotype weight value
 		// assigned to that test, and which parent to match against that value.
+#pragma ivdep		
 		for (int flag2 = f2s; flag2 < f2end && (HAPLOTYPING || !ok); flag2++)
 		{
 			int f2n = (flag2 & 1);
-			if (selfingNOW)
+			if constexpr (SELFING) if (selfingNOW)
 			{
 				int selfindex = (selfval >> 1) ^ f2n;
 				selfmarker[0] = UnknownMarkerVal;
@@ -1113,7 +1194,7 @@ struct individ
 				if (mainsecondval) mainsecondval /= baseval;
 			}
 
-			if (!baseval) continue;
+			//if (!baseval) continue;
 			bool doupdatehaplo = true;
 
 			// Normalize, in some sense.
@@ -1144,13 +1225,13 @@ struct individ
 				}
 			}
 
-			if (!baseval)
+			/*if (!baseval)
 			{
 				continue;
-			}
+			}*/
 
 			// If we are at maximum depth, by depth limit or by lack of ancestor
-			if (attopnow || !pars[firstpar])
+			if (baseval && (attopnow || !pars[firstpar]))
 			{
 				// TODO: If pars[firstpar] exists and is empty, things are messy
 				// The empty one could, in turn, have parents with genotypes.
@@ -1161,7 +1242,7 @@ struct individ
 			}
 
 			// There should be some other flag for the actual search depth
-			if (attopnow)
+			if (!baseval || attopnow)
 			{
 			}
 			else
@@ -1170,7 +1251,7 @@ struct individ
 				// These do a lookup in a special hash for combinations known to be 0, to avoid unnecessary calls
 				// Both are checked before either branch of the pedigree is actually traced.
 				auto subtrack1 =
-					recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, markerval, mainsecondval, marker,
+					recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate, extra, templgenwidth, templflag2>(this, tb, markerval, mainsecondval, marker,
 						upflag,
 						upflag2,
 						upshift,
@@ -1178,7 +1259,8 @@ struct individ
 						f2n,
 						firstpar,
 						0,
-						extparams);
+						extparams,
+						data);
 
 				if (subtrack1.prelok && (!zeropropagate || rootgen) && !(update & GENOS))
 				{
@@ -1211,7 +1293,7 @@ struct individ
 						}
 					}
 
-					baseval *= recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate>(this, tb, secmark, secsecondval,
+					baseval *= recursetrackpossible<update & ~HOMOZYGOUS, zeropropagate, extra, templgenwidth, templflag2>(this, tb, secmark, secsecondval,
 						marker,
 						upflag,
 						upflag2,
@@ -1220,18 +1302,20 @@ struct individ
 						f2n,
 						!firstpar,
 						1,
-						extparams);
+						extparams,
+						data);
 
 					if (selfingNOW && extparams.gstr && !(selfval & (1 << !firstpar))) *extparams.gstr = 0;
 				}
-				if (!baseval) continue;
-
+				if (baseval)
+				{
 				if (!(selfingNOW && extparams.gstr && !(selfval & (1 << firstpar))))
 					baseval *= subtrack1;
 			}
+			}
 
-			if (!baseval) continue;
-
+			if (baseval)
+			{
 			ok += baseval;
 
 			if ((update & HAPLOS) /*&& !allthesame*/ && doupdatehaplo)
@@ -1243,8 +1327,26 @@ struct individ
 				(*tb.infprobs)[n][realf2n][markerval] += extparams.updateval;
 			}
 		}
+		}
 		if (selfingNOW && extparams.gstr) *extparams.gstr *= 2;
 		return ok;
+	}
+
+	template<int skipper, int update, int zeropropagate> void trackpossiblevector(vectortrackpossible<skipper, update, zeropropagate>& data)
+	{
+		int meid = data.meid;
+		for (int geno = 0, i = 0; geno < NUMTYPES * 2; geno += skipper, i++)
+		{
+			data.menow = i;
+			int flag2 = data.flag2[meid][i];
+			__assume(flag2 >= 0 && flag2 < NUMPATHS);
+			//if (meid == 0)
+				data.result[i] *= trackpossible<update, zeropropagate>(data.tb, data.inmarkerval[meid][i], data.secondval[meid][i], data.marker, data.geno[meid][i],
+					flag2, data.localshift[meid][i], data.extparams, GENWIDTHS[meid], data);
+			/*else
+				data.result[i] *= trackpossible<update & ~HOMOZYGOUS, zeropropagate>(data.tb, data.inmarkerval[meid][i], data.secondval[meid][i], data.marker, data.geno[meid][i],
+					data.flag2[meid][i], data.localshift[meid][i], data.extparams, GENWIDTHS[meid], data);*/
+		}
 	}
 
 
@@ -1252,7 +1354,7 @@ struct individ
 	template<int update, bool zeropropagate> double calltrackpossible(const threadblock& tb, const MarkerVal* const markervals, const unsigned int marker,
 		const int genotype, const unsigned int offset, const int flag2, const double updateval = 0.0)
 	{
-		return trackpossible<update, zeropropagate>(tb, UnknownMarkerVal, 0,
+		return trackpossible<update, zeropropagate, const spectype, 1 << (NUMGEN - 1)>(tb, UnknownMarkerVal, 0,
 			marker, genotype * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(updateval, 0));
 	}
 
@@ -1389,7 +1491,7 @@ struct individ
 					//int flag2 = -1;
 					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
 					{
-						if (flag2 & flag2ignore) continue;
+						if (flag2 & flag2ignore) {} else {
 
 						double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
 							marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
@@ -1398,7 +1500,7 @@ struct individ
 						sqsum += ok * ok;
 						if (debugtime && ok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf\n", n, marker, allele, shiftflagmode, i, flag2, ok);
 						count++;
-					}
+					}}
 				}
 			}
 		}
@@ -1549,6 +1651,7 @@ struct individ
 				double sum = 0;
 
 #pragma ivdep:back
+#pragma GCC ivdep
 				for (int j = 0; j < NUMTYPES; j++)
 				{
 					if (!_finite(probs2[j])) probs2[j] = 0.0;
@@ -1569,6 +1672,7 @@ struct individ
 				double* probdest = &(tb.cacheprobs[*tb.shiftflagmode])[index][i][0];
 
 #pragma ivdep
+#pragma GCC ivdep
 				for (int j = 0; j < NUMTYPES; j++)
 				{
 					probdest[j] = probs2[j] * sum;
@@ -2006,9 +2110,9 @@ struct individ
 			if ((updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
 				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+					tb.fwbw[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
 
-				fwbwfactors[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				tb.fwbwfactors[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
 			}
 #endif
 		}
@@ -2034,9 +2138,9 @@ struct individ
 			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
 				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+					tb.fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
 
-				fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				tb.fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
 			}
 #endif
 
@@ -2046,7 +2150,7 @@ struct individ
 				{
 					for (int i = 0; i < NUMTYPES; i++)
 					{
-						probs[i] = probs[i] * (i == genotype);
+						probs[i] *= (i == genotype);
 					}
 				}
 			};
@@ -2150,6 +2254,7 @@ struct individ
 						int sex = TYPESEXES[t];
 						int gen = TYPEGENS[t];
 #pragma ivdep
+#pragma GCC ivdep
 						for (int index = 0; index < NONSELFNUMTYPES; index++)
 						{
 							int val = !((index >> t) & 1);
@@ -2169,20 +2274,19 @@ struct individ
 					// the 64-state model (or beyond).
 					for (int from = 0; from < VALIDSELFNUMTYPES; from++) // SELFING condition removes the double-bit set case, which is not allowed
 					{
-						if (probs[from] <= 0) continue;
+						double fromval = probs[from];
+						if (fromval <= 0) continue;
 #pragma ivdep
+#pragma GCC ivdep
 						for (int to = 0; to < VALIDSELFNUMTYPES; to++)
 						{
 							int xored = from ^ to;
-							probs2[to] += probs[from] * recombprec[xored & (NONSELFNUMTYPES - 1)] * (SELFING ? selfprec[(from >> TYPEBITS)& SELFMASK][(to >> TYPEBITS)& SELFMASK] : 1)*
+							probs2[to] += fromval * recombprec[SELFING ? xored & (NONSELFNUMTYPES - 1) : xored] * (SELFING ? selfprec[(from >> TYPEBITS)& SELFMASK][(to >> TYPEBITS)& SELFMASK] : 1)*
 								(RELSKEWSTATES ? relscore[(xored >> BITS_W_SELF) & 1] : 1);
 						}
 					}
 
-					for (int c = 0; c < NUMTYPES; c++)
-					{
-						probs[c] = probs2[c];
-					}
+					copy(probs2.begin(), probs2.end(), probs.begin());
 				}
 				//				else
 				{
@@ -2236,6 +2340,32 @@ struct individ
 		return factor;
 	}
 };
+
+template<int skipper, int update, int zeropropagate>
+vectortrackpossible<skipper, update, zeropropagate>::vectortrackpossible(unsigned int marker, const trackpossibleparams& extparams, int flag2in) : marker(marker), extparams(extparams), tb(tb)
+{
+	for (double& val : result)
+	{
+		val = 1.0;
+	}
+	for (int i = 0; i < NUMPATHS / skipper; i++)
+	{
+		inmarkerval[0][i] = UnknownMarkerVal;
+		secondval[0][i] = 0.;
+		geno[0][i] = i * skipper;
+		flag2[0][i] = flag2in;
+		localshift[0][i] = *tb.shiftflagmode;
+	}
+
+	for (int j = 0; j < TURNBITS; j++)
+	{
+		if (reltreeordered[j] != nullptr)
+		{
+			meid = j;
+			reltreeordered[j]->trackpossiblevector<skipper, update, zeropropagate>(*this);
+		}
+	}
+}	
 
 // Oh, how we waste memory, in a pseudo-O(1) manner
 individ* individer[INDCOUNT];
@@ -3353,7 +3483,7 @@ void movehaplos(int i, int k, int marker)
 {
 	if (haplos[i][0] || haplos[i][1])
 	{
-		if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.4999999)
+		if (fabs(reltree[k]->haploweight[marker] - 0.5) < 0.5 - 1e-12)
 		{
 			double b1 = (haplos[i][0] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ reltree[k]->haploweight[marker] /** (1 - reltree[k]->haploweight[marker])*/;// * (1 + 1e-10 - rhfactor);
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
@@ -3792,24 +3922,45 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {
-  array<double, 1> state{orig};
+  
   
   double randomdrift = /*boost::random::normal_distribution(0., 1e-2)(rng)*/ 0;
-  ode::integrate_adaptive(ode::controlled_runge_kutta<ode::runge_kutta_cash_karp54< array<double, 1> > >(),
-		       [&] (array<double, 1>& in,
-			    array<double, 1>& out, double time)
-		       {
-			 if (in[0] < 1e-9 || in[0] > 1-1e-9) out[0] = 0;
-			 else
-			   {
-			   gradient(in, out, time);
-			   out[0] += randomdrift;
-			   out[0] += log((orig / (1-orig)) / (in[0] / (1 - in[0])));
-			   }
-		       }, state,
-		       0., scalefactor, scalefactor * 0.01);
+  auto prelcompute = [&] (double orig, double accuracy, double time) -> double
+  {
+	  array<double, 1> state{orig - 0.5};
+  	  array<double, 1> endstate{orig - 0.5};
+  	int hitcount = 0;
+  
+	auto adaptive = ode::make_adaptive_time_range(ode::make_controlled<ode::runge_kutta_cash_karp54< array<double, 1> >>(accuracy, accuracy/*epsilon * 0.1, 0.1*/),  	
+				[&] (array<double, 1>& in,
+					array<double, 1>& out, double time)
+				{
+					double val = std::clamp(in[0] + 0.5, epsilon, 1 - epsilon);
+					
+				//if (val < epsilon || val > 1 - epsilon) out[0] = 0;
+				//else
+				{
+				gradient(val, out[0], time);
+				out[0] += randomdrift;
+				out[0] += log((orig / (1-orig)) / (val / (1 - val)));
+				}
+				}, state,
+				0., time, time * 0.01);
+	for (auto [nowstate, time] : boost::make_iterator_range(adaptive.first, adaptive.second))
+		{
+			if (nowstate[0] < epsilon || nowstate[0] > 1 - epsilon) hitcount++;
+			endstate = nowstate;
+			if (hitcount > 16) break;		
+		}
+		return endstate[0] + 0.5;
+  };
 
-  return caplogitchange(state[0], orig, epsilon, hitnnn, breakathalf);
+  double res = prelcompute(orig, 1e-2, scalefactor);
+  double newaccuracy = max(fabs(orig - res) * 1e-2, 1e-6);
+  res = prelcompute(orig, newaccuracy, scalefactor);
+			   
+
+  return caplogitchange(res, orig, epsilon, hitnnn, breakathalf);
 }
 
 void processinfprobs(individ* ind, const unsigned int j, const int side, int iter, std::atomic_int& hitnnn)
@@ -3874,16 +4025,8 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		*/		if (doprint) fprintf(stdout, "PROBPAIR a: %d %d %d %d %lf\n", ind->n, j, side, probpair.first.value(), hzygcorred);
 
 		double hw = ind->haploweight[j];
-		double etf = 1 /*+ (side ? 0 : -1) * 4 * (hw - hw * hw)*/;
-
-		auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
-		{
-			double curprob = in[0];
-			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
-
-			double et = log(1 / curprob - 1);
-			d += etf * et * ef; // Entropy term
-
+		double etf = 1 * ef/*+ (side ? 0 : -1) * 4 * (hw - hw * hw)*/;
+		double priord = 0;
 			if (priorval != UnknownMarkerVal)
 			{
 				double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
@@ -3894,10 +4037,19 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 					priorprob = 1.0 - priorprob;
 				}
 
-				d += log(priorprob) - log(1 - priorprob);
+			priord += log(priorprob) - log(1 - priorprob);
 			}
 
-			out[0] = d;
+		auto gradient = [&](const double& in, double& out, const double)
+		{
+			double curprob = in;
+			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+
+			double et = log(1 / curprob - 1);
+			d += etf * et; // Entropy term
+			d += priord;
+
+			out = d;
 		};
 
 		double intended = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
@@ -4015,10 +4167,10 @@ struct relskewhmm
 				s[0] *= 1e20;
 				s[1] *= 1e20;
 			}
-			if (sum == 0)
+			/*if (sum == 0)
 			{
 				fprintf(stderr, "Renormalization problem.\n");
-			}
+			}*/
 		};
 
 		// FW
@@ -4149,9 +4301,12 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 		while (cno + 1 < chromstarts.size() && j >= chromstarts[cno + 1])
 		{
 			cno++;
-			relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], ind);
+			for (int k = j; k < ind->haplocount.size() && k < chromstarts[cno + 1] && !anyinfo[cno]; k++)
+			{
+				if (ind->haplocount[k]) anyinfo[cno] = true;
 		}
-		anyinfo[cno] = true;
+			if (anyinfo[cno]) relskews = std::make_unique<relskewhmm>(chromstarts[cno], chromstarts[cno + 1], ind);
+		}		
 
 		if (!(ind->haploweight[j] && ind->haploweight[j] != 1) && false)
 		{
@@ -4175,9 +4330,8 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 		}
 
 
-		if ((ind->haplocount[j] || RELSKEWS) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
+		if ((anyinfo[cno]) && ind->haploweight[j] && ind->haploweight[j] != 1 /*&& (!ind->founder || ind->children)*/)
 		{
-
 			double val;
 			if (ind->haplocount[j])
 			{
@@ -4249,11 +4403,11 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			}
 
 			double ef = exp(0 * -0.01 * iter);
-			auto gradient = [&](const array<double, 1>& in, array<double, 1>& out, const double)
+			auto gradient = [&](const double& in, double& out, const double)
 			{
-				out[0] =
-					((ind->haplobase[j] - in[0] * (ind->haplocount[j])) / (in[0] - in[0] * in[0]) +
-					 (1 - 0 * similarity) * 1 * (ef * log(1 / in[0] - 1) + // Entropy term
+				out =
+					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
+					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1) + // Entropy term
 								     relskewterm));
 			};
 
@@ -4798,8 +4952,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								mwfvals[g] += val;
 							}
 
+
 							for (int flag2 = f2s; flag2 < f2end; flag2++)
 							{
+								/*vectortrackpossible<2, 0, 0> vtp(-q-1000, tpdefault, flag2);
+								printf("%lf\n", vtp.result[0]);*/
 								if (ignoreflag2(flag2, g, shiftflagmode, q, flag2ignore, relmap, relmapshift)) continue;
 								//if (flag2 & (flag2ignore)) continue;
 
@@ -4815,7 +4972,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									for (int a = 0; a < 2; a++)
 									{
 										if (a) firstpar = !firstpar;
-										const int genwidth = (1 << (NUMGEN - 1));
+										const unsigned int genwidth = (1 << (NUMGEN - 1));
 
 										int f2n = ((flag2 ^ shiftflagmode) & 1);
 
@@ -4857,17 +5014,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										for (int side = 0; side < 2; side++)
 										{
-											for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
+											#pragma ivdep
+											for (int i = 1; i <= 2; i++)
 											{
-												double sideval = dous[j]->trackpossible<GENOSPROBE, false>(tb, markerval, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
-												sidevals[side][markerval.value() - 1] += sideval;
+												MarkerVal markervalcopy = i * MarkerValue;
+												double sideval = dous[j]->trackpossible<GENOSPROBE, false>(tb, markervalcopy, 0, marker, g * 2 + side, flag2 ^ side, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+												sidevals[side][markervalcopy.value() - 1] += sideval;
 												sidevalsums[side] += sideval;
 											}
 										}
 
+										#pragma ivdep
 										for (auto markerval : { 1 * MarkerValue, 2 * MarkerValue })
 										{
-											double sideval = dous[j]->trackpossible<HOMOZYGOUS, false>(tb, markerval, 0, marker, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
+											auto markervalcopy = markerval;
+											double sideval = dous[j]->trackpossible<HOMOZYGOUS, false>(tb, markervalcopy, 0, marker, g * 2, flag2, *(tb.shiftflagmode), trackpossibleparams(0, nullptr));
 											homozyg[markerval.value() - 1] += sideval;
 										}
 									}
@@ -5219,6 +5380,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						int marker = -q - 1000;
 
 						double sum = 0;
+#pragma ivdep						
 						for (auto p : infprobs[dous[j]->n][0])
 						{
 							sum += p.second;
@@ -5233,6 +5395,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #pragma omp critical(update)
 						{
 #pragma ivdep
+#pragma GCC ivdep
 							for (size_t k = 0; k < reltree.size(); k++)
 							{
 								int i = reltree[k]->n;
@@ -6327,7 +6490,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			{
 				// The definition of relhaplo is that marker i
 				// defines the skewness shift to the NEXT marker.
-			  sampleInds[j]->relhaplo[i - 1] += unit * ((oldPhase == 0 || phases[j] == oldPhase) * 1.0 + (numMatches == 0) * -0.5);
+			  sampleInds[j]->relhaplo[i - 1] += unit * ((oldPhase == 0 || phases[j] == oldPhase) * 1.0 + (numMatches == 0) * (-0.5));
 			}
 			if (!numMatches)
 			{
@@ -6355,7 +6518,7 @@ void readOtherHaps(const SnpDataType& snpData,
 template<class T1>
 double initPadding(const vector<individ*>& sampleInds, int count, T1 dohaploweight)
 {
-	const double padding = 1e-5;
+	const double padding = 1e-2;
 	double unit = 1.0 / (count + padding);
 	for (size_t j = 0; j < sampleInds.size(); j++)
 	{
@@ -6567,6 +6730,9 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 
 		readOtherHaps(snpData, dous, unit, unit /* * 0.5 */, dohaploweight, mapToSnpGeno);
 	}
+
+
+
 
 	//return; // NOTE
 
