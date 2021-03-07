@@ -82,6 +82,7 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/fusion/include/at_c.hpp>
 #include <boost/numeric/odeint.hpp>
+#include <boost/math/quadrature/gauss_kronrod.hpp>
 #include <iostream>
 #include <fstream>
 
@@ -3111,7 +3112,7 @@ pair<int, int> fixtrees(individ* ind)
 
 
 // Some operations performed when marker data has been read, independent of format.
-void postmarkerdata()
+void postmarkerdata(int indcount = INDCOUNT)
 {
 	int any, anyrem;
 	bool latephase = false;
@@ -3123,12 +3124,12 @@ void postmarkerdata()
 	{
 #pragma omp parallel for schedule(dynamic,32)
 		// all haploweights MUST be non-zero at this point, as we do not explore all shiftflagmode values
-		for (int i = 1; i < INDCOUNT; i++)
+		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
-		for (int i = 1; i < INDCOUNT; i++)
+		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
@@ -3144,7 +3145,7 @@ void postmarkerdata()
 			}
 		}
 #pragma omp parallel for schedule(dynamic,32)
-		for (int i = 1; i < INDCOUNT; i++)
+		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
@@ -3170,7 +3171,7 @@ void postmarkerdata()
 
 		any = 0;
 		anyrem = 0;
-		for (int i = 1; i < INDCOUNT; i++)
+		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
 			if (!ind) continue;
@@ -3260,7 +3261,7 @@ void postmarkerdata()
 	} while (any > anyrem);
 
 #pragma omp parallel for schedule(dynamic,32)
-	for (int i = 1; i < INDCOUNT; i++)
+	for (int i = 1; i < indcount; i++)
 	{
 		individ* ind = getind(i);
 
@@ -3279,7 +3280,7 @@ void postmarkerdata()
 
 
 #pragma omp parallel for schedule(dynamic,32)
-	for (int i = 1; i < INDCOUNT; i++)
+	for (int i = 1; i < indcount; i++)
 	{
 		individ* ind = getind(i);
 
@@ -3921,9 +3922,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 }
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
-{
-  
-  
+{    
   double randomdrift = /*boost::random::normal_distribution(0., 1e-2)(rng)*/ 0;
   auto prelcompute = [&] (double startval, double accuracy, double starttime, double endtime) -> double
   {
@@ -3956,32 +3955,92 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		return endstate[0] + 0.5;
   };
   
-  double res = orig;
-  double newaccuracy = 1e-2;
-  double starttime = 0;
-  int step = 0;
-  do
+  if (false)
   {
-  	double prel = prelcompute(res, newaccuracy, starttime, scalefactor);
-	prel = std::clamp(prel, epsilon, 1 - epsilon);
-  	newaccuracy = fabs(res - prel) * 1e-2;
-	if (newaccuracy <= 1e-6)
+	double res = orig;
+	double newaccuracy = 1e-2;
+	double starttime = 0;
+	int step = 0;
+	do
 	{
-		newaccuracy = 1e-6;
-		break;
-	}
-	if (step++ >= 4) break;
-	double endtime = starttime + (scalefactor - starttime) * 0.9;
-	res = prelcompute(res, newaccuracy, starttime, endtime);
-	res = std::clamp(res, epsilon, 1 - epsilon);
+		double prel = prelcompute(res, newaccuracy, starttime, scalefactor);
+		prel = std::clamp(prel, epsilon, 1 - epsilon);
+		newaccuracy = fabs(res - prel) * 1e-2;
+		if (newaccuracy <= 1e-6)
+		{
+			newaccuracy = 1e-6;
+			break;
+		}
+		if (step++ >= 4) break;
+		double endtime = starttime + (scalefactor - starttime) * 0.9;
+		res = prelcompute(res, newaccuracy, starttime, endtime);
+		res = std::clamp(res, epsilon, 1 - epsilon);
 
-	starttime = endtime;
-  } while (true);
+		starttime = endtime;
+	} while (true);
 
-  res = prelcompute(res, newaccuracy, starttime, scalefactor);
-			   
+	res = prelcompute(res, newaccuracy, starttime, scalefactor);
+				
 
-  return caplogitchange(res, orig, epsilon, hitnnn, breakathalf);
+	return caplogitchange(res, orig, epsilon, hitnnn, breakathalf);
+  }
+  else
+  {
+	  std::atomic_int dumpval;	  
+	  auto actualgradient = [orig, epsilon, &gradient] (double val) -> double
+		{
+			val = std::clamp(val, epsilon, 1 - epsilon);
+			double toret;
+			gradient(val, toret, -1);
+			return 1. / (toret + log((orig / (1-orig)) / (val / (1 - val))));
+		};
+	  // We make the binary search limits slightly too large for our final caplogitchange to adjust hitnnn				
+	  double lolim = caplogitchange(epsilon, orig, epsilon, dumpval, breakathalf);
+	  double lo = lolim - epsilon * 0.125;
+	  double hilim = caplogitchange(1 - epsilon, orig, epsilon, dumpval, breakathalf);
+	  double hi = hilim + epsilon * 0.125;
+	  bool lowside = actualgradient(orig) < 0;
+	  (lowside ? hi : lo) = orig;
+	  for (int i = 0; i < 51; i++)
+	  {
+		  // We're outside true bounds
+		  if (lo > hilim || hi < lolim) break;
+
+		  double mid = (lo + hi) / 2;
+		  double prel = 0;
+		  if (actualgradient(mid) < 0 ^ lowside)
+		  {
+			  prel = (scalefactor + 0.1) * 1.1;
+		  }
+		  else
+		  {
+			double start = orig;
+			double end = mid;		  
+			if (start > end) swap(start, end);
+			if (end - start < 1e-10) break;
+			//double prel = boost::math::quadrature::gauss_kronrod<double, 15>::integrate(actualgradient, start, end, 10, 1e-3);		
+			double prel = boost::math::quadrature::gauss<double, 15>::integrate(actualgradient, start, end);		
+			if (end != mid) prel = -prel;
+		  }
+
+		if (fabs(prel - scalefactor) < scalefactor * 1e-3)
+		{
+			lo = mid;
+			break;
+		}
+
+		if ((prel < scalefactor) ^ lowside)
+		{
+			lo = mid;
+		}
+		else
+		{
+			hi = mid;
+		}
+	  }
+
+	  return caplogitchange(lo, orig, epsilon, hitnnn, breakathalf);
+  }
 }
 
 void processinfprobs(individ* ind, const unsigned int j, const int side, int iter, std::atomic_int& hitnnn)
@@ -4047,6 +4106,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 
 		double hw = ind->haploweight[j];
 		double etf = 1 * ef/*+ (side ? 0 : -1) * 4 * (hw - hw * hw)*/;
+		double epsilon = maxdiff / (ind->children + 1);
 		double priord = 0;
 			if (priorval != UnknownMarkerVal)
 			{
@@ -4057,7 +4117,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 				{
 					priorprob = 1.0 - priorprob;
 				}
-				priorprob = std::clamp(priorprob, (double) maxdiff, (double) (1 - maxdiff));
+				priorprob = std::clamp(priorprob, (double) epsilon, (double) (1 - epsilon));
 
 			priord += log(priorprob) - log(1 - priorprob);
 			}
@@ -4074,7 +4134,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 			out = d;
 		};
 
-		double intended = cappedgd(gradient, curprob, maxdiff / (ind->children + 1), hitnnn);
+		double intended = cappedgd(gradient, curprob, epsilon, hitnnn);
 		ind->infprobs[j][side][probpair.first] = intended;
 	}
 
@@ -4384,11 +4444,11 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 						}
 						// arctanh arises from log(1-x) - log(x)
 						relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
-						if (!isfinite(relskewterm)) printf("Invalid relskewterm %lf for ind %d, marker %d, d %d, relahplo %lf, otherval %lf\n", relskewterm, ind->n, j, d, ind->relhaplo[j + d], otherval);
+						//if (!isfinite(relskewterm)) printf("Invalid relskewterm %lf for ind %d, marker %d, d %d, relahplo %lf, otherval %lf\n", relskewterm, ind->n, j, d, ind->relhaplo[j + d], otherval);
 					}
 					// Each direction is counted twice, for two different markers
 					if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
-					static double minrelskewterm = 0;
+					/*static double minrelskewterm = 0;
 					static double maxrelskewterm = 0;
 					if (minrelskewterm > relskewterm)
 					{
@@ -4399,7 +4459,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 					{
 						maxrelskewterm = relskewterm;
 						printf("New ever hi relskewterm %lf for ind %d, marker %d\n", relskewterm, ind->n, j);
-					}
+					}*/
 					// relskewterm *= 0.5;
 				}
 
@@ -7516,7 +7576,7 @@ int main(int argc, char* argv[])
 
 			//	return 0;
 			CORRECTIONINFERENCE = true;
-			postmarkerdata();
+			postmarkerdata(104);
 			CORRECTIONINFERENCE = false;
 
 			if (outputpedfilename != "")
