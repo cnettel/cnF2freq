@@ -3888,7 +3888,7 @@ int oldhitnnn = 0;
 int oldhitnnn2 = 0;
 double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf)
 {
-	double nnn = 3;
+	double nnn = 10;
 	if (nnn < 1.0) nnn = 1.0;
 
 	double limn = (nnn - 1.0) * orig * (-1 + orig);
@@ -3925,10 +3925,10 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   
   
   double randomdrift = /*boost::random::normal_distribution(0., 1e-2)(rng)*/ 0;
-  auto prelcompute = [&] (double orig, double accuracy, double time) -> double
+  auto prelcompute = [&] (double startval, double accuracy, double starttime, double endtime) -> double
   {
-	  array<double, 1> state{orig - 0.5};
-  	  array<double, 1> endstate{orig - 0.5};
+	  array<double, 1> state{startval - 0.5};
+  	  array<double, 1> endstate{startval - 0.5};
   	int hitcount = 0;
   
 	auto adaptive = ode::make_adaptive_time_range(ode::make_controlled<ode::runge_kutta_cash_karp54< array<double, 1> >>(accuracy, accuracy/*epsilon * 0.1, 0.1*/),  	
@@ -3943,21 +3943,42 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 				gradient(val, out[0], time);
 				out[0] += randomdrift;
 				out[0] += log((orig / (1-orig)) / (val / (1 - val)));
+				if (!isfinite(out[0])) printf("Invalid gradient %lf for %lf, starting from %lf\n", out[0], in[0] + 0.5, orig);
 				}
 				}, state,
-				0., time, time * 0.01);
+				starttime, endtime, endtime * 0.01);
 	for (auto [nowstate, time] : boost::make_iterator_range(adaptive.first, adaptive.second))
 		{
-			if (nowstate[0] < epsilon || nowstate[0] > 1 - epsilon) hitcount++;
+			if (nowstate[0] < epsilon - 0.5 || nowstate[0] > 0.5 - epsilon) hitcount++;
 			endstate = nowstate;
-			if (hitcount > 16) break;		
+			if (hitcount > 96) break;		
 		}
 		return endstate[0] + 0.5;
   };
+  
+  double res = orig;
+  double newaccuracy = 1e-2;
+  double starttime = 0;
+  int step = 0;
+  do
+  {
+  	double prel = prelcompute(res, newaccuracy, starttime, scalefactor);
+	prel = std::clamp(prel, epsilon, 1 - epsilon);
+  	newaccuracy = fabs(res - prel) * 1e-2;
+	if (newaccuracy <= 1e-6)
+	{
+		newaccuracy = 1e-6;
+		break;
+	}
+	if (step++ >= 4) break;
+	double endtime = starttime + (scalefactor - starttime) * 0.9;
+	res = prelcompute(res, newaccuracy, starttime, endtime);
+	res = std::clamp(res, epsilon, 1 - epsilon);
 
-  double res = prelcompute(orig, 1e-2, scalefactor);
-  double newaccuracy = max(fabs(orig - res) * 1e-2, 1e-6);
-  res = prelcompute(orig, newaccuracy, scalefactor);
+	starttime = endtime;
+  } while (true);
+
+  res = prelcompute(res, newaccuracy, starttime, scalefactor);
 			   
 
   return caplogitchange(res, orig, epsilon, hitnnn, breakathalf);
@@ -4036,6 +4057,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 				{
 					priorprob = 1.0 - priorprob;
 				}
+				priorprob = std::clamp(priorprob, (double) maxdiff, (double) (1 - maxdiff));
 
 			priord += log(priorprob) - log(1 - priorprob);
 			}
@@ -4362,9 +4384,22 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 						}
 						// arctanh arises from log(1-x) - log(x)
 						relskewterm += 2 * atanh((2 * ind->relhaplo[j + d] - 1) * (2 * otherval - 1));
+						if (!isfinite(relskewterm)) printf("Invalid relskewterm %lf for ind %d, marker %d, d %d, relahplo %lf, otherval %lf\n", relskewterm, ind->n, j, d, ind->relhaplo[j + d], otherval);
 					}
 					// Each direction is counted twice, for two different markers
 					if (j > chromstarts[cno] && j + 1 < chromstarts[cno + 1]) relskewterm *= 0.5;
+					static double minrelskewterm = 0;
+					static double maxrelskewterm = 0;
+					if (minrelskewterm > relskewterm)
+					{
+						minrelskewterm = relskewterm;
+						printf("New ever lo relskewterm %lf for ind %d, marker %d\n", relskewterm, ind->n, j);
+					}
+					if (maxrelskewterm < relskewterm)
+					{
+						maxrelskewterm = relskewterm;
+						printf("New ever hi relskewterm %lf for ind %d, marker %d\n", relskewterm, ind->n, j);
+					}
 					// relskewterm *= 0.5;
 				}
 
