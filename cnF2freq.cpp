@@ -3457,6 +3457,7 @@ void resizecaches()
 
 // Global scale factor, 1.0 meaning "use unscaled gradient".
 double scalefactor = 0.013;
+double entropyfactor = 1;
 
 
 void moveinfprobs(int i, int k, int marker, double norm)
@@ -3889,7 +3890,7 @@ int oldhitnnn = 0;
 int oldhitnnn2 = 0;
 double caplogitchange(double intended, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf)
 {
-	double nnn = 10;
+	double nnn = 3;
 	if (nnn < 1.0) nnn = 1.0;
 
 	double limn = (nnn - 1.0) * orig * (-1 + orig);
@@ -3916,14 +3917,14 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 		if (intended > 0.5) hitnnn++;
 	}
 
-	if (breakathalf && (intended - 0.5) * (orig - 0.5) < 0) intended = 0.5;
+	if (breakathalf && (intended - 0.5) * (orig - 0.5) < 0) intended = 0.5 * (0.5 + orig);
 
 	return intended;
 }
 
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {    
-  double randomdrift = /*boost::random::normal_distribution(0., 1e-2)(rng)*/ 0;
+  double randomdrift = 0 /*boost::random::normal_distribution(0., 1e-0)(rng)*/;
   auto prelcompute = [&] (double startval, double accuracy, double starttime, double endtime) -> double
   {
 	  array<double, 1> state{startval - 0.5};
@@ -3987,19 +3988,28 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
   else
   {
 	  std::atomic_int dumpval;	  
-	  auto actualgradient = [orig, epsilon, &gradient] (double val) -> double
+	  auto actualgradient = [orig, epsilon, randomdrift, &gradient] (double val) -> double
 		{
 			val = std::clamp(val, epsilon, 1 - epsilon);
 			double toret;
 			gradient(val, toret, -1);
-			return 1. / (toret + log((orig / (1-orig)) / (val / (1 - val))));
+			return 1. / (toret + randomdrift/*+ log((orig / (1-orig)) / (val / (1 - val)))*/);
 		};
 	  // We make the binary search limits slightly too large for our final caplogitchange to adjust hitnnn				
 	  double lolim = caplogitchange(epsilon, orig, epsilon, dumpval, breakathalf);
 	  double lo = lolim - epsilon * 0.125;
 	  double hilim = caplogitchange(1 - epsilon, orig, epsilon, dumpval, breakathalf);
 	  double hi = hilim + epsilon * 0.125;
-	  bool lowside = actualgradient(orig) < 0;
+
+	  orig = caplogitchange(orig, orig, epsilon, dumpval, breakathalf);
+
+	  double gradval = actualgradient(orig);
+	  if (!isfinite(gradval))
+	    {
+	      lo = orig;
+	      hi = orig;
+	    }
+	  bool lowside = gradval < 0;
 	  (lowside ? hi : lo) = orig;
 	  for (int i = 0; i < 51; i++)
 	  {
@@ -4008,7 +4018,8 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 
 		  double mid = (lo + hi) / 2;
 		  double prel = 0;
-		  if (actualgradient(mid) < 0 ^ lowside)
+		  double gradval = actualgradient(mid);
+		  if (gradval < 0 ^ lowside || !isfinite(gradval))
 		  {
 			  prel = (scalefactor + 0.1) * 1.1;
 		  }
@@ -4019,15 +4030,21 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 			if (start > end) swap(start, end);
 			if (end - start < 1e-10) break;
 			//double prel = boost::math::quadrature::gauss_kronrod<double, 15>::integrate(actualgradient, start, end, 10, 1e-3);		
-			double prel = boost::math::quadrature::gauss<double, 15>::integrate(actualgradient, start, end);		
+			prel = boost::math::quadrature::gauss<double, 15>::integrate(actualgradient, start, end);		
 			if (end != mid) prel = -prel;
+			if (!isfinite(prel)) prel = (scalefactor + 0.1) * 1.1;
 		  }
-
+		  /*		  if ( omp_get_thread_num() == 0)
+		  {
+		    printf("Zero to hero: %.20lf %lf %lf %lf %lf %lf\n", prel, lo, hi, orig, mid, gradval);
+		    }*/
 		if (fabs(prel - scalefactor) < scalefactor * 1e-3)
 		{
 			lo = mid;
 			break;
 		}
+		//		if (prel < 0)
+
 
 		if ((prel < scalefactor) ^ lowside)
 		{
@@ -4084,7 +4101,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		}
 	}
 
-	double ef = exp(0 * -0.01 * iter);
+	double ef = exp(0 * -0.01 * iter) * entropyfactor;
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
@@ -4132,6 +4149,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 			d += priord;
 
 			out = d;
+			//if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, in %lf, hzygcorred %lf, sum %lf\n", out, j, ind->n, in, hzygcorred, sum);
 		};
 
 		double intended = cappedgd(gradient, curprob, epsilon, hitnnn);
@@ -4497,13 +4515,14 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				if (ind->haplobase[j] >= ind->haplocount[j]) ind->haplobase[j] = ind->haplocount[j];
 			}
 
-			double ef = exp(0 * -0.01 * iter);
+			double ef = exp(0 * -0.01 * iter) * entropyfactor;
 			auto gradient = [&](const double& in, double& out, const double)
 			{
 				out =
 					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
 					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1) + // Entropy term
 								     relskewterm));
+				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n", out, j, ind->n, ind->haplobase[j], in, relskewterm);
 			};
 
 
@@ -4666,7 +4685,7 @@ void createtoulbarfile(const string toulin, long long maxweight, vector<clause>&
 	int nbc = nbclauses;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
-	infile << "p wcnf " << 999 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+	infile << "p wcnf " << 2000 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
 		if (c.weight <= 0)
@@ -5003,6 +5022,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					double mwvals[1][1];
 					double mwfvals[1];
 					double mwval[4] = { 0 };
+					constexpr double unusualstate = -200;
 
 					for (int g = 0; g < NUMTYPES; g++)
 					{
@@ -5086,11 +5106,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 
 
-								// This is the big main call
+								// This is the big main call								
 								val = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, classicstop(q, g),
-									flag2, true, 0, -40.0 + factor) - factor;
+									flag2, true, 0, unusualstate + factor) - factor;
 
-								if (_finite(val) && val > -40.0)
+								if (_finite(val) && val > unusualstate)
 								{
 									// shift mode not included, this is the "real" f2n, indicating what value
 									// in the marker pair is used, not the strand phase (strand phase is flag2 xored
@@ -5659,7 +5679,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			  {
 			    fprintf(stdout, "Candidate at marker %d with score %lld (%lld)\n", m, data.score, maxweight);
 #pragma omp critical(negshifts)
-			{
+			{				
 				vector<decltype(bestcands)::iterator> toremove;
 				bool addme = true;
 				for (const canddata& elem : bestcands)
@@ -5698,15 +5718,24 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 
 		bool toolarge;
+		bool delprev = false;
 		do
 		{
 			toolarge = false;
+			vector<decltype(bestcands)::iterator> toremove;
 			for (auto i = bestcands.rbegin(); i != bestcands.rend() && !toolarge; i++)
 			{
+				if (delprev)
+				{
+					// base is the forward iterator one step later, i.e. our previous entry
+					toremove.push_back(i.base());
+				}
+
+				delprev = false;				
 				for (auto j = bestcands.begin(); *j < *i && !toolarge; j++)
 				{
 					auto jj = j->cover.begin();
-					bool covered = false;
+					int covered = 0;
 					for (auto ind : i->cover)
 					{
 						while (jj != j->cover.end() && *jj < ind)
@@ -5717,8 +5746,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 						if (*jj == ind)
 						{
-							covered = true;
-							break;
+							covered++;
+							if (i->cover.size() != j->cover.size()) break;
 						}
 					}
 
@@ -5731,15 +5760,27 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						// The greedy part, replaced by maximum size limit
 						// // break;
 					}
+					if (covered == j->cover.size() && covered == i->cover.size())
+					{
+						delprev = true;
+						break;
+					}
 
 					if (bestcands.size() > 1000) break;
 				}
-				if (bestcands.size() > 1000) break;
+				if (bestcands.size() > 1000)
+				{
+					toolarge = true;
+					break;
+				}
+			}
+			for (auto i : toremove)
+			{
+				bestcands.erase(i);
 			}
 			while (bestcands.size() > 1000)
 			{
 				bestcands.erase(--bestcands.end());
-				toolarge = true;
 			}
 		} while (toolarge);
 
@@ -5900,10 +5941,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 #endif
 			{
 				std::atomic_int hitnnn(0);
+				double oldscalefactor = scalefactor;
+				bool any = false;
 				for (size_t c = 0; c < chromstarts.size() - 1; c++)
-				{
+				{		
+				  if (negshiftcands[c].size()) any = true;
 					for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 				}
+				if (any)
+								scalefactor = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
 				for (unsigned int i = 0; i < INDCOUNT; i++)
@@ -5937,16 +5983,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					scalefactor /= 1.1;
 				}
-				bool goodhit = hitnnn < min(oldhitnnn, oldhitnnn2) * 0.99;
+				bool goodhit = hitnnn < max(min(oldhitnnn, oldhitnnn2), (int) dous.size() / TURNBITS) * 0.99;
 				if (goodhit)
 				{
 					scalefactor *= 1.21;
 				}
-				scalefactor *= 0.997;
-				oldhitnnn2 = oldhitnnn;
-				oldhitnnn = hitnnn;
+				scalefactor *= 0.997;			
 				//if (scalefactor < 0.01) scalefactor = 0.01;
-				fprintf(stdout, "Scale factor now %lf, hitnnn %d\n", scalefactor, oldhitnnn);
+				if (any) scalefactor = oldscalefactor;
+				else
+				{
+					oldhitnnn2 = oldhitnnn;
+					oldhitnnn = hitnnn;
+					entropyfactor *= 0.98;
+				}
+				fprintf(stdout, "Scale factor now %lf, entropy %lf, hitnnn %d\n", scalefactor, entropyfactor, oldhitnnn);
 			}
 		}
 	}
@@ -6585,7 +6636,7 @@ void readOtherHaps(const SnpDataType& snpData,
 			{
 				// The definition of relhaplo is that marker i
 				// defines the skewness shift to the NEXT marker.
-			  sampleInds[j]->relhaplo[i - 1] += unit * ((oldPhase == 0 || phases[j] == oldPhase) * 1.0 + (numMatches == 0) * (-0.5));
+			  sampleInds[j]->relhaplo[i - 1] += unit * ((oldPhase == 0 || phases[j] == oldPhase) * 1.0 + (numMatches == 0) * (0 * -0.5));
 			}
 			if (!numMatches)
 			{
@@ -6604,7 +6655,7 @@ void readOtherHaps(const SnpDataType& snpData,
 					}
 				}
 				if (!nomatch[0] && !nomatch[1]) nomatch[0] = nomatch[1] = true;
-				sampleInds[j]->priormarkersure[i] = make_pair(min(sampleInds[j]->priormarkersure[i].first + genounit * nomatch[0], (1 - unit)), min(sampleInds[j]->priormarkersure[i].second + genounit * nomatch[1], (1 - unit)));
+				sampleInds[j]->markersure[i] = make_pair(min(sampleInds[j]->markersure[i].first + genounit * nomatch[0], (1 - unit)), min(sampleInds[j]->markersure[i].second + genounit * nomatch[1], (1 - unit)));
 			}
 		}
 	}
@@ -6803,6 +6854,16 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 	
 	double unit = initPadding(dous, hapsFile.size(), dohaploweight);
 
+
+	for (size_t k = 1; k < hapsFile.size(); k++)
+	{
+		snpData.clear();
+		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
+		std::cout << snpData.size() << " SNPs read." << std::endl;
+
+		readOtherHaps(snpData, dous, unit, unit /* * 0.5 */, dohaploweight, mapToSnpGeno);
+	}
+
 	for (size_t j = 0; j < dous.size(); j++)
 	{
 		for (size_t i = 0; i < markerposes.size(); i++)
@@ -6815,17 +6876,7 @@ void readhapsonly(vector<mapped_file_source*>& hapsFile)
 		}
 	}
 
-	DH = false;
-
-	for (size_t k = 1; k < hapsFile.size(); k++)
-	{
-		snpData.clear();
-		parseToEndWithError(*hapsFile[k], hapsLine % eol, snpData);
-		std::cout << snpData.size() << " SNPs read." << std::endl;
-
-		readOtherHaps(snpData, dous, unit, unit /* * 0.5 */, dohaploweight, mapToSnpGeno);
-	}
-
+	
 
 
 
@@ -7407,8 +7458,9 @@ void outputped(const std::string& filename)
 	{
 
 		fprintf(f, "%d %s %s %s %d %d", 1, getname(ind).c_str(), getname(ind->pars[0]).c_str(), getname(ind->pars[1]).c_str(), ind->sex + 1, -9);
-		for (auto [a, b] : ind->markerdata)
+		for (int j = 0; auto [a, b] : ind->markerdata)
 		{
+			if (ind->haploweight[j++] > 0.5) swap(a, b);
 			fprintf(f, " %d %d", a.value(), b.value());
 		}
 		fprintf(f, "\n");
@@ -7525,7 +7577,7 @@ int main(int argc, char* argv[])
 				{
 					addprotinds(protinds, mapped_file_source(protindsfn));
 				}
-				clearunprotected(protinds, protmarkers);
+				if (deserializefilename != "") clearunprotected(protinds, protmarkers);
 			}
 
 			samplereader samples;
@@ -7579,12 +7631,6 @@ int main(int argc, char* argv[])
 			postmarkerdata(104);
 			CORRECTIONINFERENCE = false;
 
-			if (outputpedfilename != "")
-			{
-				outputped(outputpedfilename);
-			}
-
-
 			if (deserializefilename != "")
 			{
 				std::ifstream deserializationFile(deserializefilename);
@@ -7592,7 +7638,15 @@ int main(int argc, char* argv[])
 				std::cout << "deserialize started." << std::endl;
 				deserialize(deserializationFile);
 				std::cout << "deserialize finished." << std::endl;
+
+				if (clear) clearunprotected(protinds, protmarkers);;
 			}
+
+			if (outputpedfilename != "")
+			{
+				outputped(outputpedfilename);
+			}
+
 
 			if (samplefilename != "" && outputhapfilename != "")
 			{
