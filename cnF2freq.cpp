@@ -7564,8 +7564,7 @@ int main(int argc, char* argv[])
 			}
 
 
-			// TODO: Make sets of required params.
-			if (clear)
+			auto clearer = [&] ()
 			{
 				set<double> protmarkers;
 				set<individ*> protinds;
@@ -7577,8 +7576,12 @@ int main(int argc, char* argv[])
 				{
 					addprotinds(protinds, mapped_file_source(protindsfn));
 				}
-				if (deserializefilename != "") clearunprotected(protinds, protmarkers);
-			}
+				clearunprotected(protinds, protmarkers);
+			};
+
+			// TODO: Make sets of required params.
+			if (clear && deserializefilename != "") clearer();
+			
 
 			samplereader samples;
 			vector<mapped_file_source*> hapFiles;
@@ -7639,7 +7642,7 @@ int main(int argc, char* argv[])
 				deserialize(deserializationFile);
 				std::cout << "deserialize finished." << std::endl;
 
-				if (clear) clearunprotected(protinds, protmarkers);;
+				if (clear) clearer();
 			}
 
 			if (outputpedfilename != "")

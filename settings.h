@@ -35,6 +35,7 @@ const int SELFMASK = ((1 << SELFBITS) - 1);
 const int NONSELFNUMTYPES = 1 << TYPEBITS /*NUMTYPES >> (RELSKEWS + SELFING * 2)*/;
 
 const int TURNBITS = TYPEBITS + 1;
+const int GENWIDTHS[TURNBITS] = {4, 2, 1, 1, 2, 1, 1};
 const int NUMTURNS = 1 << TURNBITS;
 
 // Only NUMTYPES * 3 unless we have RELSKEWS messing things up as well
