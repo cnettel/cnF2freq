@@ -86,6 +86,10 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 #include <iostream>
 #include <fstream>
 
+#include <VcfRecordGenotype.h>
+#include <VcfFileReader.h>
+#include <VcfFileWriter.h>
+
 #include <vector>
 
 using namespace boost::iostreams;
@@ -3340,6 +3344,10 @@ struct negshifter
 		{
 			if (p == minstart + 1) fprintf(stdout, "Inv: %d %d\n", ind->n, p);
 			ind->haploweight[p] = 1.0f - ind->haploweight[p];
+			if (ind->n == 24 && p > 8755 && p < 8765)
+			{
+				printf("CHECK: %lf\n", ind->haploweight[p]);
+			}
 			ind->haplobase[p] = ind->haplocount[p] - ind->haplobase[p];
 		}
 	}
@@ -4011,7 +4019,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 	    }
 	  bool lowside = gradval < 0;
 	  (lowside ? hi : lo) = orig;
-	  for (int i = 0; i < 51; i++)
+	  for (int i = 0; i < 51 && scalefactor; i++)
 	  {
 		  // We're outside true bounds
 		  if (lo > hilim || hi < lolim) break;
@@ -4034,17 +4042,10 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 			if (end != mid) prel = -prel;
 			if (!isfinite(prel)) prel = (scalefactor + 0.1) * 1.1;
 		  }
-		  /*		  if ( omp_get_thread_num() == 0)
-		  {
-		    printf("Zero to hero: %.20lf %lf %lf %lf %lf %lf\n", prel, lo, hi, orig, mid, gradval);
-		    }*/
 		if (fabs(prel - scalefactor) < scalefactor * 1e-3)
 		{
-			lo = mid;
 			break;
 		}
-		//		if (prel < 0)
-
 
 		if ((prel < scalefactor) ^ lowside)
 		{
@@ -4056,7 +4057,13 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 		}
 	  }
 
-	  return caplogitchange(lo, orig, epsilon, hitnnn, breakathalf);
+	  if (!scalefactor)
+	  {
+		  lo = orig;
+		  hi = orig;
+	  }
+
+	  return caplogitchange((lo + hi) / 2, orig, epsilon, hitnnn, breakathalf);
   }
 }
 
@@ -4354,19 +4361,27 @@ array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 		for (int ix = 0; ix < 2; ix++)
 		{
 			double hw = ind->haploweight[marker + !ix];
+			double hwo = ind->haploweight[marker + ix];
 			double val = vals[ix];
 			double rh = ind->relhaplo[marker];
+			val = hwo; // TODO skip relskewhmm for skewterm logic if we keep this line
 			
 			double now =
-				hw * val * (log(rh) + log(hw)) +
-				(1 - hw) * (1 - val) * (log(rh) + log(1 - hw)) +
-				hw * (1 - val) * (log(1 - rh) + log(hw)) +
-				(1 - hw) * val * (log(1 - rh) + log(1 - hw));
-			double then =
+				hw * val * (log(rh) + log(hw) + log(hwo)) +
+				(1 - hw) * (1 - val) * (log(rh) + log(1 - hw) + log(1 - hwo)) +
+				hw * (1 - val) * (log(1 - rh) + log(hw) + log(1 - hwo)) +
+				(1 - hw) * val * (log(1 - rh) + log(1 - hw) + log(hwo));
+			// This version assumed the inv was happening on the relskewhmm computed side
+			/*double then =
 				hw * (1 - val) * (log(rh) + log(hw)) +
 				(1 - hw) * val * (log(rh) + log(1 - hw)) +
 				hw * val * (log(1 - rh) + log(hw)) +
-				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw));
+				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw));*/
+			double then =
+				(1 - hw) * val * (log(rh) + log(1 - hw) + log(hwo)) +
+				hw * (1 - val) * (log(rh) + log(hw) + log(1 - hwo)) +
+				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw) + log(1 - hwo)) +
+				hw * val * (log(1 - rh) + log(hw) + log(hwo));
 			skewterms[truei] -= then - now;
 		}		
 	}
@@ -4541,6 +4556,10 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				}*/
 				//if (similarity < 1 - maxdiff && fabs(intended - 0.5) < 1e-5) intended += 1e-5; 
 				/*if (iter <= 3)*/ ind->haploweight[j] = intended;
+				if (j > 8755 && j < 8765 && ind->n == 24)
+				{
+					printf("FLECK: %lf\n", ind->haploweight[j]);
+				}
 
 
 				// Nudging flag currently not respected
@@ -4881,8 +4900,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		}
 	}
 
-	vector<set<negshiftcand> > negshiftcands;
+	vector<set<negshiftcand>> negshiftcands;
+	vector<set<int>> negshiftcovers;
 	negshiftcands.resize(chromstarts.size());
+	negshiftcovers.resize(chromstarts.size());
 	// Create a vector where each element corresponds to a marker and
 	//contains a referense to a vector containing all the clauses for said marker
 	//EBBA also: Here starts the parallels, investigate names
@@ -5468,6 +5489,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
+								if ((std::find(c.cinds.begin(), c.cinds.end(), 24) != c.cinds.end() || std::find(c.cinds.begin(), c.cinds.end(), -24) != c.cinds.end()) && mark > 8755 && mark < 8765)
+								{
+									printf("w for ind %d, marker %d, g %d, weight %lf\n", dous[j]->n, mark, g, w);
+								}
 								if (c.weight > submax) {
 									submax = c.weight;
 
@@ -5546,7 +5571,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
-					double w = skewterms[TURNBITS - 1] * 0.5;					
+					double w = skewterms[TURNBITS - 1] * 0.5;	
 					if (!isfinite(w) || fabs(w) > 5000)
 					{
 						if (w < -5000)
@@ -5564,6 +5589,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
 							c.weight -= w * WEIGHT_DISCRETIZER;
+							if (marker > 8755 && marker < 8765 && dous[j]->n == 24)
+							{
+								printf("Reshifting marker %d, %lld, by %lf\n", marker, c.weight, w);
+							}
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
@@ -5785,9 +5814,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 		} while (toolarge);
 
 		if (bestcands.size())
+		{
 			negshiftcands[i] = bestcands.begin()->cands;
+			negshiftcovers[i] = bestcands.begin()->cover;
+		}
 		else
+		{
 			negshiftcands[i].clear();
+			negshiftcovers[i].clear();
+		}
 #endif
 
 		for (size_t j = 0; j < outqueue.size(); j++)
@@ -5976,7 +6011,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 					updatehaploweights(ind, out, iter, hitnnn);
 				}
+#if !DOTOULBAR				
 				parentswapnegshifts(nsm);
+#endif				
 
 				bool badhit = hitnnn > max(oldhitnnn, oldhitnnn2);
 				if (badhit)
@@ -5995,7 +6032,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					oldhitnnn2 = oldhitnnn;
 					oldhitnnn = hitnnn;
-					entropyfactor *= 0.98;
+					//entropyfactor *= 0.98;
 				}
 				fprintf(stdout, "Scale factor now %lf, entropy %lf, hitnnn %d\n", scalefactor, entropyfactor, oldhitnnn);
 			}
@@ -7468,6 +7505,53 @@ void outputped(const std::string& filename)
 	fclose(f);
 }
 
+void outputvcf(const std::string& templatefilename, const std::string& outputfilename)
+{
+	VcfFileReader reader;
+	VcfHeader header_read;
+
+	reader.open(templatefilename.c_str(), header_read);	
+	
+	VcfFileWriter writer;
+	writer.open(outputfilename.c_str(), header_read, InputFile::BGZF);
+
+	VcfRecord record_template;
+	while (reader.readRecord(record_template))
+	{
+		const char* markername = record_template.getIDStr();		
+		auto pos = markernames.at(markername);
+		for (int i = 0; i < header_read.getNumSamples(); i++)
+		{
+			const char* sampleName = header_read.getSampleName(i);
+			individ* ind = getind(&sampleName[0], false);
+			if (!ind) ind = getind(&sampleName[2], false); // Removing extra 1_ prefix...
+			if (!ind)
+			{
+				fprintf(stderr, "ERROR getting %s\n", sampleName);
+				abort();
+			}
+
+			auto [a, b] = ind->markerdata[pos];
+			auto markerVal2Str = [] (MarkerVal m) -> string
+			{
+				if (m == UnknownMarkerVal) return ".";
+				return std::to_string(m.value());
+			};
+
+			if (ind->haploweight[pos] > 0.5)
+			{
+				swap(a, b);
+			}
+
+			// TODO: Change to std::format when supported
+			record_template.getGenotypeInfo().setString("GT", i, markerVal2Str(a) + "|" + markerVal2Str(b));
+		}
+		writer.writeRecord(record_template);
+	}
+	reader.close();
+	writer.close();
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef _MSC_VER
@@ -7502,7 +7586,8 @@ int main(int argc, char* argv[])
 #ifdef READHAPSSAMPLE
 	po::options_description desc;
 	po::variables_map inOptions;
-	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn, gigimapfilename, gigipedfilename, outputpedfilename;
+	string impoutput, famfilename, bedfilename, deserializefilename, outputfilename, outputhapfilename, genfilename, pedfilename, mapfilename, samplefilename, protmarkersfn, protindsfn, gigimapfilename, gigipedfilename, outputpedfilename, 
+		outputvcffilename, templatevcffilename;
 	bool clear;
 	int COUNT;
 
@@ -7527,6 +7612,8 @@ int main(int argc, char* argv[])
 				("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
 				("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
 				("outputpedfile", po::value<string>(&outputpedfilename), "Output ped file based on read data (including genotypes).")
+				("templatevcffile", po::value<string>(&templatevcffilename), "Template vcf file to use.")
+				("outputvcffile", po::value<string>(&outputvcffilename), "Output vcf file based on read data (including genotypes, template required).")
 				("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
 				("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
 				("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
@@ -7648,6 +7735,11 @@ int main(int argc, char* argv[])
 			if (outputpedfilename != "")
 			{
 				outputped(outputpedfilename);
+			}
+
+			if (outputvcffilename != "")
+			{
+				outputvcf(templatevcffilename, outputvcffilename);
 			}
 
 
