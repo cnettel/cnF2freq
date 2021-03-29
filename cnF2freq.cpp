@@ -61,6 +61,8 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/container/flat_map.hpp>
+#include <boost/container/flat_set.hpp>
+#include <boost/container/small_vector.hpp>
 #include <boost/container/static_vector.hpp>
 #include <boost/program_options.hpp>
 #include <boost/interprocess/file_mapping.hpp>
@@ -118,7 +120,9 @@ using namespace std; // use functions that are part of the standard library
 //using namespace boost::mpi;
 using namespace boost::random;
 using boost::container::static_vector;
+using boost::container::small_vector;
 using boost::container::flat_map;
+using boost::container::flat_set;
 
 #define none cnF2freqNONE
 
@@ -349,6 +353,10 @@ StateToStateMatrix<double>::T quickendprobs[NUMSHIFTS];
 PerStateArray<double>::T quickmem[NUMSHIFTS];
 #endif
 
+small_vector<std::pair<MarkerVal, double>, 5> testlista;
+
+template<class K, class T, int N = 2> using small_map = flat_map<K, T, less<K>, small_vector<std::pair<K, T>, N>>;
+
 // A hashed store of inheritance pathway branches that are known to be impossible.
 // Since we can track the two branches that make up the state in the F_2 individual independently,
 // this optimization can reduce part of the cost by sqrt(number of states).
@@ -360,7 +368,7 @@ EXTERNFORGCC IAT impossible;
 // By keeping essentially thread-independent copies, no critical sections have to
 // be acquired during the updates.
 EXTERNFORGCC array<array<double, 2>, INDCOUNT> haplos;
-EXTERNFORGCC array<array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
+EXTERNFORGCC array<array<small_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 
 #if !DOFB
 // done, factors and cacheprobs all keep track of the same data
@@ -398,7 +406,7 @@ vector<individ*> reltree;
 vector<individ*> reltreeordered;
 flat_map<individ*, int> relmap; //containing flag2 indices
 flat_map<individ*, int> relmapshift; //containing flag2 indices
-std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
+std::array<std::array<small_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
@@ -430,7 +438,7 @@ struct threadblock
 #endif
 	IAT* const impossible;
 	std::array<std::array<double, 2>, INDCOUNT>* const haplos;
-	std::array<std::array<flat_map<MarkerVal, double>, 2>, INDCOUNT>* infprobs;
+	std::array<std::array<small_map<MarkerVal, double>, 2>, INDCOUNT>* infprobs;
 #if !DOFB
 	vector<int>* const done;
 	vector<PerStateArray<double>::T >* const factors;
@@ -862,7 +870,7 @@ struct individ
 	vector<array<double, 3>> priorgenotypes;
 
 	// Temporary storage of all possible marker values, used in fixparents.
-	vector<flat_map<MarkerVal, pair<int, double> > > markervals;
+	vector<small_map<MarkerVal, pair<int, double> > > markervals;
 	// The haplotype weight, or skewness. Introducing an actual ordering of the value in markerdata.
 	vector<double> haploweight;
 	// Relative skewness, i.e. shifts between adjacent markers.
@@ -872,7 +880,7 @@ struct individ
 	vector<int> lastinved;
 	vector<unsigned int> lockstart;
 
-	vector<array<flat_map<MarkerVal, double>, 2> > infprobs;
+	vector<array<small_map<MarkerVal, double>, 2> > infprobs;
 	vector<array<double, 2>> homozyg;
 
 	vector<int> genotypegrid;
@@ -4579,7 +4587,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 
 void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
 {
-	std::set<int> family;
+  flat_set<int, less<int>, static_vector<int, 7>> family;
 	int temp = ind->n;
 	for (int i = 0; i < 7; i++)
 	  {
@@ -4908,8 +4916,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	//contains a referense to a vector containing all the clauses for said marker
 	//EBBA also: Here starts the parallels, investigate names
 #if DOTOULBAR
-	vector<vector<clause>> toulInput;
-	toulInput.resize(markerposes.size()); //EBBA
+	static vector<vector<clause>> toulInput;
+	toulInput.resize(markerposes.size());
+	for (auto& subv : toulInput)
+	  {
+	    subv.clear();
+	  }
 #endif
 
 	for (size_t i = 0; i < chromstarts.size() - 1; i++)
@@ -5430,7 +5442,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							}
 							normfactor += log(normsum);
 
-							decltype(toulInput)::value_type subInput;
+							static_vector<clause, NUMTURNS> subInput;
 							long long submax = 0;
 
 							for (int g = 0; g < NUMTURNS; g++) {
