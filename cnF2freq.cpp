@@ -797,17 +797,17 @@ struct clause
 	}
 
 	string clausetostring() const {
-		string s = "";
+		stringstream s;
 		for (size_t i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
-				s = s + " " + boost::lexical_cast<std::string>(cinds[i]);
+			  s << " " << std::to_string(cinds[i]);
 			}
 		}
-		return s;
+		return s.str();
 	}
 
 	string weighttostring() const {
-		return boost::lexical_cast<std::string>(weight);
+	  return std::to_string(weight);
 	}
 
 };
@@ -7667,7 +7667,7 @@ int main(int argc, char* argv[])
 			};
 
 			// TODO: Make sets of required params.
-			if (clear && deserializefilename != "") clearer();
+			if (clear && deserializefilename == "") clearer();
 			
 
 			samplereader samples;
@@ -7718,7 +7718,7 @@ int main(int argc, char* argv[])
 
 			//	return 0;
 			CORRECTIONINFERENCE = true;
-			postmarkerdata(104);
+			postmarkerdata(/*104*/);
 			CORRECTIONINFERENCE = false;
 
 			if (deserializefilename != "")
@@ -7756,7 +7756,7 @@ int main(int argc, char* argv[])
 			{
 				out = fopen(outputfilename.c_str(), "w");
 			}
-			dous.resize(104);
+			//			dous.resize(/*104*/);
 
 			if (HAPLOTYPING || true)
 				for (int i = 0; i < COUNT; i++)
@@ -7790,7 +7790,7 @@ int main(int argc, char* argv[])
 
 					for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 					{
-						if (i2 > 104) continue;
+					  //if (i2 > 104) continue;
 						individ* ind = getind(i2);
 						if (!ind) continue;
 
