@@ -4912,6 +4912,12 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	vector<set<int>> negshiftcovers;
 	negshiftcands.resize(chromstarts.size());
 	negshiftcovers.resize(chromstarts.size());
+	vector<omp_lock_t> markerlocks;
+	markerlocks.resize(markerposes.size());
+	for (auto& lock : markerlocks)
+	  {
+	    omp_init_lock(&lock);
+	  }
 	// Create a vector where each element corresponds to a marker and
 	//contains a referense to a vector containing all the clauses for said marker
 	//EBBA also: Here starts the parallels, investigate names
@@ -5511,13 +5517,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								}
 								subInput.push_back(c);
 							}
-#pragma omp critical(negshifts)
 							{
+							  omp_set_lock(&markerlocks[mark]);
 							  toulInput[mark].insert(toulInput[mark].end(), subInput.begin(), subInput.end());
 								if (submax > maxweight)
 								{
 									maxweight = submax;
 								}
+							  omp_unset_lock(&markerlocks[mark]);
 							}
 							}
 #else
@@ -5544,8 +5551,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							dous[j]->homozyg[marker][i] *= sum;
 						}
 
-#pragma omp critical(update)
 						{
+						  omp_set_lock(&markerlocks[marker]);
 #pragma ivdep
 #pragma GCC ivdep
 							for (size_t k = 0; k < reltree.size(); k++)
@@ -5554,6 +5561,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								moveinfprobs(i, k, marker, sum);
 								movehaplos(i, k, marker);
 							}
+						  omp_unset_lock(&markerlocks[marker]);
 						}
 					}
 						}
@@ -5579,7 +5587,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 
 				array<double, TURNBITS> skewterms;
-#pragma omp critical(negshifts)
+
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
@@ -5596,20 +5604,18 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						}
 					}
 #if DOTOULBAR
+					omp_set_lock(&markerlocks[marker]);
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
 							c.weight -= w * WEIGHT_DISCRETIZER;
-							if (marker > 8755 && marker < 8765 && dous[j]->n == 24)
-							{
-								printf("Reshifting marker %d, %lld, by %lf\n", marker, c.weight, w);
-							}
 							if (c.weight > maxweight) {
 								maxweight = c.weight;
 							}
 						}
 					}
+					omp_unset_lock(&markerlocks[marker]);
 #endif
 				}
 			}
