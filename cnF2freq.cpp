@@ -83,7 +83,7 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 #include <boost/fusion/include/std_tuple.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/fusion/include/at_c.hpp>
-#include <boost/numeric/odeint.hpp>
+//#include <boost/numeric/odeint.hpp>
 #include <boost/math/quadrature/gauss_kronrod.hpp>
 #include <iostream>
 #include <fstream>
@@ -97,7 +97,7 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 using namespace boost::iostreams;
 using namespace boost::spirit;
 namespace po = boost::program_options;
-namespace ode = boost::numeric::odeint;
+//namespace ode = boost::numeric::odeint;
 
 #include <errno.h>
 #include <assert.h>
@@ -3941,6 +3941,7 @@ double caplogitchange(double intended, double orig, double epsilon, std::atomic_
 template<class T> double cappedgd(T& gradient, double orig, double epsilon, std::atomic_int& hitnnn, bool breakathalf = false)
 {    
   double randomdrift = 0 /*boost::random::normal_distribution(0., 1e-0)(rng)*/;
+#if false
   auto prelcompute = [&] (double startval, double accuracy, double starttime, double endtime) -> double
   {
 	  array<double, 1> state{startval - 0.5};
@@ -4002,6 +4003,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 	return caplogitchange(res, orig, epsilon, hitnnn, breakathalf);
   }
   else
+#endif
   {
 	  std::atomic_int dumpval;	  
 	  auto actualgradient = [orig, epsilon, randomdrift, &gradient] (double val) -> double
@@ -4585,6 +4587,17 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 	}
 }
 
+struct canddata
+{
+	long long score;
+	set<int> cover;
+	set<negshiftcand> cands;
+};
+
+auto operator < (const canddata& a, const canddata& b) noexcept {
+	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
+}
+
 void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
 {
   flat_set<int, less<int>, static_vector<int, 7>> family;
@@ -4695,6 +4708,87 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
+vector<canddata> computecandcliques(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, long long bias)
+{
+	vector<canddata> result;
+
+	int numviol = 0;
+	for (const clause& c : toulinput[m])
+	{
+		bool viol = true;
+		bool anyswitch = false;
+		for (int val : c.cinds)
+		{
+			int ind = val < 0 ? -val : val;
+			if (val < 0)
+			{
+				anyswitch = true;
+			}
+			if (tf[ind - 1] == (val > 0))
+			{
+				viol = false;
+			}
+		}
+		if (viol)
+		{
+			numviol++;
+						
+			if (anyswitch)
+			{
+				int useindex = -1;
+				for (int i = 0; i < result.size(); i++)
+				{
+					for (int val : c.cinds)
+					{
+						int ind = val < 0 ? -val : val;
+						if (result[i].cover.find(ind) != result[i].cover.end())
+						{
+							if (useindex == -1)
+							{
+								useindex = i;
+							}
+							else
+							{
+								result[useindex].cover.insert(result[i].cover.begin(), result[i].cover.end());
+								result[useindex].cands.insert(result[i].cands.begin(), result[i].cands.end());
+								result[useindex].score += result[i].score;								
+								//								printf("Merging %d and %d\n", useindex, i);
+								result.erase(result.begin() + i);
+								i--;
+							}
+							break;
+						}
+					}
+				}
+				if (useindex == -1)
+				{
+					result.emplace_back();
+					useindex = result.size() - 1;
+					result[useindex].score = 0;
+				}
+				result[useindex].score -= bias + c.weight;
+				for (int val : c.cinds)
+				{
+					int ind = val < 0 ? -val : val;
+					//					printf("Doing insert of %d into %d\n", ind, useindex);
+					//					fflush(stdout);
+					if (result[useindex].cover.insert(ind).second && tf[ind - 1])
+					{
+						result[useindex].cands.emplace(getind(ind), c.weight, m);
+					}
+				}				
+			}
+		}
+	}
+
+	if (numviol != dous.size())
+	{
+		fprintf(stderr, "Wrong number of violated clauses %d/%d at %d\n", numviol, toulinput[m].size(), m);
+	}
+
+	return result;
+}
+
 void createtoulbarfile(const string toulin, long long maxweight, vector<clause>& clauses)
 {
 	std::fstream infile(toulin, ios::out | ios::in | ios::trunc);
@@ -4727,17 +4821,6 @@ void createtoulbarfile(const string toulin, long long maxweight, vector<clause>&
 }
 
 typedef map<pair<individ*, individ*>, map<int, array<double, 8> > > nsmtype;
-
-struct canddata
-{
-	long long score;
-	set<int> cover;
-	set<negshiftcand> cands;
-};
-
-auto operator < (const canddata& a, const canddata& b) noexcept {
-	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
-}
 
 void parentswapnegshifts(nsmtype& nsm)
 {
@@ -4830,6 +4913,80 @@ void cheat_system(const char* line)
   posix_spawn(&respid, "/bin/sh", nullptr, nullptr, argv, environ);
 
   while (waitpid(respid, &wstatus, 0) == -1 && errno == EINTR) {};
+}
+
+void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
+{
+	bool toolarge;
+	bool delprev = false;
+	do
+	{
+		toolarge = false;
+		vector<remove_reference<decltype(bestcands)>::type::iterator> toremove;
+		for (auto i = bestcands.rbegin(); i != bestcands.rend() && !toolarge; i++)
+		{
+			if (delprev)
+			{
+				// base is the forward iterator one step later, i.e. our previous entry
+				toremove.push_back(i.base());
+			}
+
+			delprev = false;				
+			for (auto j = bestcands.begin(); *j < *i && !toolarge; j++)
+			{
+				auto jj = j->cover.begin();
+				int covered = 0;
+				for (auto ind : i->cover)
+				{
+					while (jj != j->cover.end() && *jj < ind)
+					{
+						jj++;
+					}
+					if (jj == j->cover.end()) break;
+
+					if (*jj == ind)
+					{
+						covered++;
+						if (i->cover.size() != j->cover.size()) break;
+					}
+				}
+
+				if (!covered)
+				{
+					canddata newcand{ i->score + j->score, i->cover, i->cands };
+					newcand.cover.insert(j->cover.begin(), j->cover.end());
+					newcand.cands.insert(j->cands.begin(), j->cands.end());
+					bestcands.insert(std::move(newcand));
+					// The greedy part, replaced by maximum size limit
+					// // break;
+				}
+				if (covered == j->cover.size() && covered == i->cover.size())
+				{
+					delprev = true;
+					break;
+				}
+
+				if (bestcands.size() > ceiling) break;
+			}
+			if (bestcands.size() > ceiling)
+			{
+				toolarge = true;
+				break;
+			}
+		}
+		for (auto i : toremove)
+		{
+			bestcands.erase(i);
+		}
+		while (bestcands.size() > ceiling)
+		{
+			bestcands.erase(--bestcands.end());
+		}
+	} while (toolarge);
+	while (bestcands.size() > clearto)
+	{
+			bestcands.erase(--bestcands.end());
+	}
 }
 
 // The actual walking over all chromosomes for all individuals in "dous"
@@ -5507,10 +5664,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
-								if ((std::find(c.cinds.begin(), c.cinds.end(), 24) != c.cinds.end() || std::find(c.cinds.begin(), c.cinds.end(), -24) != c.cinds.end()) && mark > 8755 && mark < 8765)
-								{
-									printf("w for ind %d, marker %d, g %d, weight %lf\n", dous[j]->n, mark, g, w);
-								}
 								if (c.weight > submax) {
 									submax = c.weight;
 
@@ -5628,7 +5781,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 #if DOTOULBAR
 		std::set<canddata> bestcands;
-		const int maxcandcount = 100;
+		const int maxcandcount = 1000;
 		//for (int m=0; m < (int) toulInput.size(); m++ ){//TODO change so that it is valid for more than one chromosome
 		int donext = 1;
 		bool solexists = false;
@@ -5646,9 +5799,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			long long fakegain = 0;
 			long long fakegainterm = 0;
 			long long prevlast = -1;
+			set<int> fakecover;
 			for (clause& c : toulInput[m])
 			{
-				int mainind = *(--c.cinds.end());
+				int mainind = abs(*(--c.cinds.end()));
 				if (mainind != prevlast)
 				{
 					fakegain += fakegainterm;
@@ -5659,6 +5813,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				if (c.weight > fakegainterm)
 				{
 					fakegainterm = c.weight;
+					for (int i : c.cinds)
+					{
+						fakecover.insert(abs(i));
+					}
 				}
 				c.weight = maxweight - c.weight + 1;
 			}
@@ -5668,7 +5826,21 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			bool skippable;
 
 #pragma omp critical(negshifts)
-			skippable = !fakegain || (bestcands.size() >= maxcandcount && (--bestcands.end())->score < fakegain);
+			{
+				skippable = !fakegain || (bestcands.size() >= maxcandcount && (--bestcands.end())->score < fakegain);
+				for (const canddata& elem : bestcands)
+				{
+					if (skippable) break;
+
+					if (std::includes(fakecover.begin(), fakecover.end(), elem.cover.begin(), elem.cover.end()))
+					{
+						if (elem.score <= fakegain)
+						{
+							skippable = true;
+						}
+					}
+				}
+			}
 
 			if (skippable)
 			{
@@ -5703,7 +5875,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			}
 
 			//Identify all violated clauses, elimination step means optimum cost data from toulbar not usable.
-			set<int> cover;
+			/*set<int> cover;
 			long long sumweight = computesumweight(m, tf, toulInput, cover);
 
 			canddata data;
@@ -5718,118 +5890,56 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			if (data.cover.size() && data.score >= 0)
 			{
 				fprintf(stderr, "ERROR: POSITIVE SCORE %lld %lld %lld %d %d\n", data.score, sumweight, maxweight, data.cover.size(), data.cands.size());
-			}
+			}*/
 
 			
-
-			if (data.cover.size() && data.score < 0)
-			  {
-			    fprintf(stdout, "Candidate at marker %d with score %lld (%lld)\n", m, data.score, maxweight);
-#pragma omp critical(negshifts)
-			{				
-				vector<decltype(bestcands)::iterator> toremove;
-				bool addme = true;
-				for (const canddata& elem : bestcands)
+			for (canddata data : computecandcliques(m, tf, toulInput, maxweight + 1))
+			{
+				if (data.cover.size() && data.score < 0)
 				{
-					if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
+					fprintf(stdout, "Candidate at marker %d with score %lld (%lld)\n", m, data.score, maxweight);
+	#pragma omp critical(negshifts)
+				{				
+					vector<decltype(bestcands)::iterator> toremove;
+					bool addme = true;
+					for (const canddata& elem : bestcands)
 					{
-						if (data.score <= elem.score)
+						if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
 						{
-							// Stupid to search for ourselves...
-							toremove.push_back(bestcands.find(elem));
+							if (data.score <= elem.score)
+							{
+								// Stupid to search for ourselves...
+								toremove.push_back(bestcands.find(elem));
+							}
+						}
+						else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+						{
+							if (elem.score <= data.score)
+							{
+								addme = false;
+							}
 						}
 					}
-					else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
-					{
-						if (elem.score <= data.score)
-						{
-							addme = false;
-						}
-					}
-				}
 
-				if (addme)
-				{
-					for (auto i : toremove)
+					if (addme)
 					{
-						bestcands.erase(i);
+						for (auto i : toremove)
+						{
+							bestcands.erase(i);
+						}
+						bestcands.insert(std::move(data));
 					}
-					bestcands.insert(std::move(data));
+					if (bestcands.size() > maxcandcount)
+					{
+						// Do some mergings, then make room for new ones
+						mergebestcands(bestcands, maxcandcount * 2, maxcandcount * 0.5);
+					}
 				}
-				while (bestcands.size() > maxcandcount)
-				{
-					bestcands.erase(--bestcands.end());
-				}
-			}
 			  }
+			}
 		}
 
-		bool toolarge;
-		bool delprev = false;
-		do
-		{
-			toolarge = false;
-			vector<decltype(bestcands)::iterator> toremove;
-			for (auto i = bestcands.rbegin(); i != bestcands.rend() && !toolarge; i++)
-			{
-				if (delprev)
-				{
-					// base is the forward iterator one step later, i.e. our previous entry
-					toremove.push_back(i.base());
-				}
-
-				delprev = false;				
-				for (auto j = bestcands.begin(); *j < *i && !toolarge; j++)
-				{
-					auto jj = j->cover.begin();
-					int covered = 0;
-					for (auto ind : i->cover)
-					{
-						while (jj != j->cover.end() && *jj < ind)
-						{
-							jj++;
-						}
-						if (jj == j->cover.end()) break;
-
-						if (*jj == ind)
-						{
-							covered++;
-							if (i->cover.size() != j->cover.size()) break;
-						}
-					}
-
-					if (!covered)
-					{
-						canddata newcand{ i->score + j->score, i->cover, i->cands };
-						newcand.cover.insert(j->cover.begin(), j->cover.end());
-						newcand.cands.insert(j->cands.begin(), j->cands.end());
-						bestcands.insert(std::move(newcand));
-						// The greedy part, replaced by maximum size limit
-						// // break;
-					}
-					if (covered == j->cover.size() && covered == i->cover.size())
-					{
-						delprev = true;
-						break;
-					}
-
-					if (bestcands.size() > 1000) break;
-				}
-				if (bestcands.size() > 1000)
-				{
-					toolarge = true;
-					break;
-				}
-			}
-			for (auto i : toremove)
-			{
-				bestcands.erase(i);
-			}
-			while (bestcands.size() > 1000)
-			{
-				bestcands.erase(--bestcands.end());
-			}
-		} while (toolarge);
+		mergebestcands(bestcands, maxcandcount, maxcandcount);
 
 		if (bestcands.size())
 		{
@@ -7774,7 +7884,7 @@ int main(int argc, char* argv[])
 			{
 				out = fopen(outputfilename.c_str(), "w");
 			}
-			//			dous.resize(/*104*/);
+			//			dous.resize(104);
 
 			if (HAPLOTYPING || true)
 				for (int i = 0; i < COUNT; i++)
@@ -7808,7 +7918,7 @@ int main(int argc, char* argv[])
 
 					for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 					{
-					  //if (i2 > 104) continue;
+					  //					  					  if (i2 > 104) continue;
 						individ* ind = getind(i2);
 						if (!ind) continue;
 
