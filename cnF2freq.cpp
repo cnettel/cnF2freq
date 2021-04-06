@@ -5678,6 +5678,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									maxweight = submax;
 								}
 							  omp_unset_lock(&markerlocks[mark]);
+#pragma critical negshifts
+							  if (submax > maxweight) maxweight = submax;
 							}
 							}
 #else
@@ -5758,17 +5760,20 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					}
 #if DOTOULBAR
 					omp_set_lock(&markerlocks[marker]);
+					long long submax = 0;
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
 							c.weight -= w * WEIGHT_DISCRETIZER;
-							if (c.weight > maxweight) {
-								maxweight = c.weight;
+							if (c.weight > submax) {
+								submax = c.weight;
 							}
 						}
 					}
 					omp_unset_lock(&markerlocks[marker]);
+#pragma critical negshifts
+					if (submax > maxweight) maxweight = submax;
 #endif
 				}
 			}
