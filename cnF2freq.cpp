@@ -4766,7 +4766,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 					useindex = result.size() - 1;
 					result[useindex].score = 0;
 				}
-				result[useindex].score -= bias + c.weight;
+				result[useindex].score -= bias - c.weight;
 				for (int val : c.cinds)
 				{
 					int ind = val < 0 ? -val : val;
