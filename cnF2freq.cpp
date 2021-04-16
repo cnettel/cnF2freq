@@ -2115,6 +2115,16 @@ struct individ
 		int d = 1;
 		int firstmark = startmark;
 		int lastmark = endmark;
+#if DOFB		
+		auto savefwbw = [&tb, &probs, &factor] (int m)
+		{
+				copy(probs.begin(), probs.end(),
+					tb.fwbw[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+
+				tb.fwbwfactors[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+		};
+#endif
+
 		if (updateend & ANALYZE_FLAG_BACKWARD)
 		{
 			d = -1;
@@ -2122,10 +2132,7 @@ struct individ
 #if DOFB
 			if ((updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
-				copy(probs.begin(), probs.end(),
-					tb.fwbw[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				tb.fwbwfactors[*tb.shiftflagmode][firstmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				savefwbw(firstmark);
 			}
 #endif
 		}
@@ -2150,10 +2157,7 @@ struct individ
 #if DOFB
 			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
-				copy(probs.begin(), probs.end(),
-					tb.fwbw[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				tb.fwbwfactors[*tb.shiftflagmode][j - d][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				savefwbw(j - d);				
 			}
 #endif
 
@@ -2328,10 +2332,7 @@ struct individ
 #if DOFB
 			if ((updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
-				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][j][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				fwbwfactors[*tb.shiftflagmode][j][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				savefwbw(j);				
 			}
 #endif
 		}
@@ -2341,10 +2342,7 @@ struct individ
 #if DOFB
 			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
 			{
-				copy(probs.begin(), probs.end(),
-					fwbw[*tb.shiftflagmode][lastmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
-
-				fwbwfactors[*tb.shiftflagmode][lastmark][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				savefwbw(lastmark);				
 			}
 #endif
 			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
@@ -4302,6 +4300,8 @@ struct relskewhmm
 
 		// BW, but not really, emissions included everywhere
 		s = { 0.5 * realhmm, 0.5 * realhmm };
+		int m = endmarker - firstmarker - 1;
+		ratio[m] = relskewfwbw[m][0][1] / (relskewfwbw[m][0][0] + relskewfwbw[m][0][1]);
 		for (int m = endmarker - 2; m >= firstmarker; m--)
 		{
 			doemissions(m + 1);
@@ -4312,14 +4312,18 @@ struct relskewhmm
 			double ratiofactors[2] = { 0 };
 			for (int k = 0; k < 2; k++)
 			{
-				for (int i = 0; i < 2; i++)
+				//for (int i = 0; i < 2; i++)
 				{
-					ratiofactors[k] += s[k ^ i] * relskewfwbw[m - firstmarker][0][i];
+					ratiofactors[k] += s[k] * relskewfwbw[m - firstmarker][0][k];
 				}
 			}
 
-			ratio[m - firstmarker] = ratiofactors[1] / ratiofactors[0];
+			ratio[m - firstmarker] = ratiofactors[1] / (ratiofactors[0] + ratiofactors[1]);
 		}
+	}
+	double getratio(int m)
+	{
+		return ratio[m - firstmarker];
 	}
 
 	double getweight(int m, int dir)
@@ -4472,6 +4476,10 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				double relskewterm = 0;
 				if (RELSKEWS)
 				{
+					relskewterm = relskews->getratio(j);
+				}
+				if (RELSKEWS && false)
+				{
 					for (int d = -1; d < 1; d++)
 					{
 						double otherval;
@@ -4541,12 +4549,16 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			}
 
 			double ef = exp(0 * -0.01 * iter) * entropyfactor;
+			if (j == chromstarts[1] - 1 || j == chromstarts[1] - 2)
+			{
+				printf("HAPLO DATA ind %3d: %lf %lf %lf %lf\n", ind->n, ind->haploweight[j], ind->haplobase[j], ind->haplocount[j], relskewterm);
+			}
 			auto gradient = [&](const double& in, double& out, const double)
 			{
 				out =
 					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
-					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1) + // Entropy term
-								     relskewterm));
+					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1)) + // Entropy term
+								     (relskewterm - in) / (in - in * in));
 				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n", out, j, ind->n, ind->haplobase[j], in, relskewterm);
 			};
 
@@ -5673,10 +5685,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							{
 							  omp_set_lock(&markerlocks[mark]);
 							  toulInput[mark].insert(toulInput[mark].end(), subInput.begin(), subInput.end());
-								if (submax > maxweight)
-								{
-									maxweight = submax;
-								}
 							  omp_unset_lock(&markerlocks[mark]);
 #pragma critical negshifts
 							  if (submax > maxweight) maxweight = submax;
@@ -5836,14 +5844,29 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				for (const canddata& elem : bestcands)
 				{
 					if (skippable) break;
+					/*					int anym = -1;
+					for (negshiftcand cand : elem.cands)
+					  {
+					    int m = cand.get<2>();
+					    if (anym == -1)
+					      {
+						anym = m;
+					      }
+					    if (m != anym)
+					      {
+						goto nextcand;
+					      }
+					      }*/
 
 					if (std::includes(fakecover.begin(), fakecover.end(), elem.cover.begin(), elem.cover.end()))
 					{
 						if (elem.score <= fakegain)
 						{
+						  //							printf("Making skippable with score %lld against %lld for marker %d\n", elem.score, fakegain, m);
 							skippable = true;
 						}
 					}
+				nextcand:;
 				}
 			}
 
@@ -6116,7 +6139,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				  if (negshiftcands[c].size()) any = true;
 					for_each(negshiftcands[c].begin(), negshiftcands[c].end(), negshifter(c));
 				}
-				if (any)
+								if (any)
 								scalefactor = 0;
 
 #pragma omp parallel for schedule(dynamic,1)
@@ -6160,8 +6183,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				}
 				scalefactor *= 0.997;			
 				//if (scalefactor < 0.01) scalefactor = 0.01;
-				if (any) scalefactor = oldscalefactor;
-				else
+								if (any) scalefactor = oldscalefactor;
+								else
 				{
 					oldhitnnn2 = oldhitnnn;
 					oldhitnnn = hitnnn;
@@ -7851,7 +7874,7 @@ int main(int argc, char* argv[])
 
 			//	return 0;
 			CORRECTIONINFERENCE = true;
-			postmarkerdata(/*104*/);
+			postmarkerdata(104);
 			CORRECTIONINFERENCE = false;
 
 			if (deserializefilename != "")
@@ -7889,7 +7912,7 @@ int main(int argc, char* argv[])
 			{
 				out = fopen(outputfilename.c_str(), "w");
 			}
-			//			dous.resize(104);
+						dous.resize(104);
 
 			if (HAPLOTYPING || true)
 				for (int i = 0; i < COUNT; i++)
@@ -7923,7 +7946,7 @@ int main(int argc, char* argv[])
 
 					for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 					{
-					  //					  					  if (i2 > 104) continue;
+					  					  					  if (i2 > 104) continue;
 						individ* ind = getind(i2);
 						if (!ind) continue;
 
