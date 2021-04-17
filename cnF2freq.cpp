@@ -4531,7 +4531,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 
 			if (!ind->haplocount[j] || similarity == 1.0)
 			{
-				ind->haplocount[j] = min(1.0, (double)ind->haplocount[j]);
+				ind->haplocount[j] = max(1.0, (double)ind->haplocount[j]);
 				ind->haplobase[j] = ind->haploweight[j] * ind->haplocount[j];
 			}
 			else
