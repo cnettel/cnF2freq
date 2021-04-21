@@ -4020,7 +4020,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 	  orig = caplogitchange(orig, orig, epsilon, dumpval, breakathalf);
 
 	  double gradval = actualgradient(orig);
-	  if (!isfinite(gradval))
+	  if (!isfinite(gradval) || !scalefactor)
 	    {
 	      lo = orig;
 	      hi = orig;
@@ -4397,7 +4397,8 @@ array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw) + log(1 - hwo)) +
 				hw * val * (log(1 - rh) + log(hw) + log(hwo));
 			skewterms[truei] -= then - now;
-		}		
+		}
+		if (ind->n == 66 && marker >= 4865 && marker <= 4875) printf("CALCSKEWTERMS %d: %d %lf\n", ind->n, marker, skewterms[truei]);
 	}
 
 	return skewterms;
@@ -5605,17 +5606,34 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											// get relevant weights and individuals, insert to container
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
-							double normfactor = MINFACTOR;
-							double normsum = 0;
-							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore) continue;
-								normfactor = max(normfactor, rawervals[0][s]);
+							double normfactor = 0;
+							auto computew = [&rawervals, &normfactor, shiftignore, shiftend, shifts] (int g)
+							{
+								double w = MINFACTOR;
+
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
+									w = max(w, rawervals[g][s]);
+								}
+								double normsum = 0;
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
+									normsum += exp(rawervals[g][s] - w);
+								}
+								w += log(normsum);
+								w -= normfactor;
+
+								return w;
+							};
+							normfactor = computew(0);
+
+							double maxw = 0;
+							
+							for (int g = 0; g < NUMTURNS; g++) {
+								if (g & (flag2ignore >> 1)) continue;
+								maxw = max(maxw, computew(g));
 							}
-							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore) continue;
-								normsum += exp(rawervals[0][s] - normfactor);
-							}
-							normfactor += log(normsum);
+
 
 							static_vector<clause, NUMTURNS> subInput;
 							long long submax = 0;
@@ -5639,19 +5657,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//}
 									}
 								}
-								double w = MINFACTOR;
-
-								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore) continue;
-									w = max(w, rawervals[g][s]);
-								}
-								normsum = 0;
-								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore) continue;
-									normsum += exp(rawervals[g][s] - w);
-								}
-								w += log(normsum);
-								w -= normfactor;
+								double w = computew(g);
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								if (isfinite(w))
@@ -5668,11 +5674,10 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										w = 25000;
 									}
 								}
-								if (w < -1000000) w = -1000000;
-								if (w > 25000) w = 25000;
-								w *= WEIGHT_DISCRETIZER;
+								if (w < -700) w = -700;
+								if (w > 700) w = 700;
 
-								c.weight = w;
+								c.weight = (exp(w) - 1) / exp(maxw) * WEIGHT_DISCRETIZER;
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
@@ -5755,15 +5760,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
 					double w = skewterms[TURNBITS - 1] * 0.5;	
-					if (!isfinite(w) || fabs(w) > 5000)
+					if (!isfinite(w) || fabs(w) > 700)
 					{
-						if (w < -5000)
+						if (w < -700)
 						{
-							w = -5000;
+							w = -700;
 						}
 						else
 						{
-							w = 5000;
+							w = 700;
 						}
 					}
 #if DOTOULBAR
@@ -5773,7 +5778,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
-							c.weight -= w * WEIGHT_DISCRETIZER;
+							c.weight -= (exp(w)/(exp(w) + 1) - 0.5) * WEIGHT_DISCRETIZER;
 							if (c.weight > submax) {
 								submax = c.weight;
 							}
