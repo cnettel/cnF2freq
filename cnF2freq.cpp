@@ -4020,7 +4020,7 @@ template<class T> double cappedgd(T& gradient, double orig, double epsilon, std:
 	  orig = caplogitchange(orig, orig, epsilon, dumpval, breakathalf);
 
 	  double gradval = actualgradient(orig);
-	  if (!isfinite(gradval))
+	  if (!isfinite(gradval) || !scalefactor)
 	    {
 	      lo = orig;
 	      hi = orig;
