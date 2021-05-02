@@ -4396,8 +4396,11 @@ array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 				hw * (1 - val) * (log(rh) + log(hw) + log(1 - hwo)) +
 				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw) + log(1 - hwo)) +
 				hw * val * (log(1 - rh) + log(hw) + log(hwo));
+
 			skewterms[truei] -= then - now;
-		}
+			double gonext = ind->haplobase[marker + ix] / ind->haplocount[marker + ix];
+			skewterms[truei] += (gonext - hw) * (hw - 0.5) < 0 ? 25000 : 0;
+		}		
 		if (ind->n == 66 && marker >= 4865 && marker <= 4875) printf("CALCSKEWTERMS %d: %d %lf\n", ind->n, marker, skewterms[truei]);
 	}
 
@@ -5627,24 +5630,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								return w / count;
 							};
 							normfactor = computew(0);
-
-							double maxw = 0;
-							double minw = 0;
-							double allw;
-							int countw = 0;
-							
-							for (int g = 0; g < NUMTURNS; g++) {
-								if (g & (flag2ignore >> 1)) continue;
-								double w = computew(g);
-								allw += exp(w);
-								countw++;
-								maxw = max(maxw, w);
-								minw = min(minw, w);
-							}
-							allw /= countw;
-							allw *= 2;
-
-
 							static_vector<clause, NUMTURNS> subInput;
 							long long submax = 0;
 
@@ -5653,7 +5638,6 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 								static_vector<int, NUMTURNS> claus;
 								int shiftcount = 0;
-								bool debugme = false;
 								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
@@ -5683,11 +5667,9 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										w = 25000;
 									}
-								}								
-								if (w < -700) w = -700;
-								if (w > 700) w = 700;
-								
-								c.weight = (exp(w) - 1) / (allw) * WEIGHT_DISCRETIZER;
+								}
+								w = std::clamp(w, -1000000., 25000.);
+								c.weight = w * WEIGHT_DISCRETIZER;
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
@@ -5770,15 +5752,15 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
 					double w = skewterms[TURNBITS - 1] * 0.5;	
-					if (!isfinite(w) || fabs(w) > 700)
+					if (!isfinite(w) || fabs(w) > 25000)
 					{
-						if (w < -700)
+						if (w < -25000)
 						{
-							w = -700;
+							w = -25000;
 						}
 						else
 						{
-							w = 700;
+							w = 25000;
 						}
 					}
 #if DOTOULBAR
@@ -5788,7 +5770,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
-							c.weight -= (exp(w)/(exp(w) + 1) - 0.5) * WEIGHT_DISCRETIZER;
+							c.weight -= w * WEIGHT_DISCRETIZER;
 							if (c.weight > submax) {
 								submax = c.weight;
 							}
