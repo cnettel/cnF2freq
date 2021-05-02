@@ -105,7 +105,7 @@ namespace po = boost::program_options;
 #include <set>
 #include <algorithm>
 #include <math.h>
-#include <bitset>
+#include <type_traits>
 #include <map>
 #include <float.h>
 #include <numeric>
@@ -5610,6 +5610,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							auto computew = [&rawervals, &normfactor, shiftignore, shiftend, shifts] (int g)
 							{
 								double w = MINFACTOR;
+								int count = g > 0 ? std::popcount((unsigned int) g) : 1;
 
 								for (int s = shifts; s < shiftend; s++) {
 									if (s & shiftignore) continue;
@@ -5623,16 +5624,25 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w += log(normsum);
 								w -= normfactor;
 
-								return w;
+								return w / count;
 							};
 							normfactor = computew(0);
 
 							double maxw = 0;
+							double minw = 0;
+							double allw;
+							int countw = 0;
 							
 							for (int g = 0; g < NUMTURNS; g++) {
 								if (g & (flag2ignore >> 1)) continue;
-								maxw = max(maxw, computew(g));
+								double w = computew(g);
+								allw += exp(w);
+								countw++;
+								maxw = max(maxw, w);
+								minw = min(minw, w);
 							}
+							allw /= countw;
+							allw *= 2;
 
 
 							static_vector<clause, NUMTURNS> subInput;
@@ -5641,13 +5651,13 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (int g = 0; g < NUMTURNS; g++) {
 								if (g & (flag2ignore >> 1)) continue;
 
-								std::bitset<16> bits(g);
 								static_vector<int, NUMTURNS> claus;
 								int shiftcount = 0;
+								bool debugme = false;
 								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
-										if (bits[b]) {
+										if (g & (1 << b)) {
 											claus.push_back(-cands[b]);
 											shiftcount++;
 										}
@@ -5673,11 +5683,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									{
 										w = 25000;
 									}
-								}
+								}								
 								if (w < -700) w = -700;
 								if (w > 700) w = 700;
-
-								c.weight = (exp(w) - 1) / exp(maxw) * WEIGHT_DISCRETIZER;
+								
+								c.weight = (exp(w) - 1) / (allw) * WEIGHT_DISCRETIZER;
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
