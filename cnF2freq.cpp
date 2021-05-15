@@ -849,6 +849,7 @@ struct individ
 	int gen;
 	// Number of children.
 	int children;
+	int descendants;
 	// Am I explicitly created to not contain genotypes?
 	bool empty;
 	// Do I lack (relevant) parents?
@@ -899,6 +900,7 @@ struct individ
 		empty = false;
 		// False is the safe option, other code will be take shortcuts if founder is true.
 		founder = false;
+		descendants = 0;
 	}
 
 	bool arerelated(individ* b, vector<individ*> stack = vector<individ*>(), int gens = 0)
@@ -963,7 +965,7 @@ struct individ
 
 		{
 			if constexpr (templgenwidth >= 0) __assume(genwidth == templgenwidth);
-			if constexpr (templflag2 >= -2)
+			if constexpr (templflag2 > -2)
 			{
 				if constexpr (templflag2 == -1) __assume(upflag2 == -1);
 				else
@@ -1089,11 +1091,11 @@ struct individ
 			}
 		}
 		// This used to be a nice silent null check. Compilers don't like that, so we abort in order to try to detect those cases.
-		if (this == NULL) abort();
+		//if (this == NULL) abort();
 		if (templgenwidth >= 0) __assume(genwidth == templgenwidth);
 		__assume(localshift >= 0);
 
-		if constexpr (templflag2 >= -2)
+		if constexpr (templflag2 > -2)
 		{
 			if constexpr (templflag2 == -1) __assume(flag99 == -1);
 			else
@@ -2286,7 +2288,7 @@ struct individ
 					}
 
 					double selfprec[4 * SELFING + 1][4 * SELFING + 1] = { 0 };
-					if (SELFING)
+					if constexpr (SELFING)
 					{
 						selfprec[0][1] = selfprec[0][2] = recprob[2][0];
 						selfprec[0][0] = 1 - 2 * recprob[2][0];
@@ -3177,6 +3179,7 @@ void postmarkerdata(int indcount = INDCOUNT)
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
+#pragma omp parallel for schedule(dynamic,32)		
 		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
@@ -3191,6 +3194,39 @@ void postmarkerdata(int indcount = INDCOUNT)
 				  ind->fixkid(g);
 				}
 			}
+		}
+		map<individ*, int> upsent;
+		bool anychange;
+		do
+		{
+			anychange = false;
+			for (int i = 1; i < indcount; i++)
+			{
+				individ* ind = getind(i);
+				if (!ind) continue;
+				auto& upsentval = upsent.insert({ind, 0}).first->second;
+				int nowdesc = ind->descendants;
+				if (!nowdesc) nowdesc = 1;
+				nowdesc -= upsentval;
+				if (nowdesc > 0)
+				{
+					for (individ* par : ind->pars)
+					{
+						if (par)
+						{
+							par->descendants += nowdesc;
+						}
+					}
+					upsentval += nowdesc;
+					anychange = true;
+				}
+			}
+		} while (anychange);
+		for (int i = 1; i < indcount; i++)
+		{
+			individ* ind = getind(i);
+			if (!ind) continue;
+			if (ind->descendants == 0) ind->descendants = 1;
 		}
 #pragma omp parallel for schedule(dynamic,32)
 		for (int i = 1; i < indcount; i++)
@@ -3512,7 +3548,7 @@ double scalefactor = 0.013;
 double entropyfactor = 1;
 
 
-void moveinfprobs(int i, int k, int marker, double norm)
+void moveinfprobs(int i, int k, int marker, double norm, double descfactor)
 {
 	// TODO: Sanitize for zero, inf, nan.
 	// Compensate for duplicates
@@ -3522,6 +3558,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 	{
 		if (ind == reltree[k]) norm /= 2;
 	}
+	norm *= descfactor;
 
 	for (int side = 0; side < 2; side++)
 	{
@@ -3533,7 +3570,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 	}
 }
 
-void movehaplos(int i, int k, int marker)
+void movehaplos(int i, int k, int marker, double descfactor)
 {
 	if (haplos[i][0] || haplos[i][1])
 	{
@@ -3543,8 +3580,8 @@ void movehaplos(int i, int k, int marker)
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 			//if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
 			{
-				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
-				reltree[k]->haplocount[marker] += 1;
+				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2) * descfactor;
+				reltree[k]->haplocount[marker] += descfactor;
 			}
 		}
 		haplos[i][0] = 0;
@@ -4436,8 +4473,11 @@ array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 				hw * val * (log(1 - rh) + log(hw) + log(hwo));
 
 			skewterms[truei] -= then - now;
+			if (ind->haplocount[marker + ix])
+			{
 			double gonext = ind->haplobase[marker + ix] / ind->haplocount[marker + ix];
 			skewterms[truei] += (gonext - hw) * (hw - 0.5) < 0 ? 25000 : 0;
+		}		
 		}		
 		if (ind->n == 66 && marker >= 4865 && marker <= 4875) printf("CALCSKEWTERMS %d: %d %lf\n", ind->n, marker, skewterms[truei]);
 	}
@@ -4600,7 +4640,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				out =
 					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
 					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1)) + // Entropy term
-								     (relskewterm - in) / (in - in * in));
+								     (relskewterm - in) / (in - in * in) * ind->descendants);
 				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n", out, j, ind->n, ind->haplobase[j], in, relskewterm);
 			};
 
@@ -5648,7 +5688,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
 							double normfactor = 0;
-							auto computew = [&rawervals, &normfactor, shiftignore, shiftend, shifts] (int g)
+							const int shiftignore2 = shiftignore;
+							auto computew = [&rawervals, &normfactor, &j, shiftignore = shiftignore2, shiftend, shifts] (int g)
 							{
 								double w = MINFACTOR;
 								int count = g > 0 ? std::popcount((unsigned int) g) : 1;
@@ -5665,7 +5706,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 								w += log(normsum);
 								w -= normfactor;
 
-								return w / count;
+								return w * dous[j]->descendants/*/ count*/;
 							};
 							normfactor = computew(0);
 							static_vector<clause, NUMTURNS> subInput;
@@ -5756,8 +5797,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (size_t k = 0; k < reltree.size(); k++)
 							{
 								int i = reltree[k]->n;
-								moveinfprobs(i, k, marker, sum);
-								movehaplos(i, k, marker);
+								moveinfprobs(i, k, marker, sum, dous[j]->descendants);
+								movehaplos(i, k, marker, dous[j]->descendants);
 							}
 						  omp_unset_lock(&markerlocks[marker]);
 						}
@@ -5786,6 +5827,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				array<double, TURNBITS> skewterms;
 
+#if DOTOULBAR
+				long long submax = 0;
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
@@ -5801,26 +5844,25 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							w = 25000;
 						}
 					}
-#if DOTOULBAR
+
 					omp_set_lock(&markerlocks[marker]);
-					long long submax = 0;
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
-							c.weight -= w * WEIGHT_DISCRETIZER;
+							c.weight -= w * dous[j]->descendants * WEIGHT_DISCRETIZER;
 							if (c.weight > submax) {
 								submax = c.weight;
 							}
 						}
 					}
 					omp_unset_lock(&markerlocks[marker]);
+				}
 #pragma critical negshifts
 					if (submax > maxweight) maxweight = submax;
 #endif
 				}
 			}
-				}
 
 		//Print all information to seperate files EBBA
 		// stored by marker in toulIn  vector<vector<clause>>
