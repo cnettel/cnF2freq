@@ -102,6 +102,7 @@ namespace po = boost::program_options;
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <unordered_set>
 #include <set>
 #include <algorithm>
 #include <math.h>
@@ -5809,7 +5810,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			long long fakegain = 0;
 			long long fakegainterm = 0;
 			long long prevlast = -1;
-			set<int> fakecover;
+			unordered_set<int> uofakecover;
 			for (clause& c : toulInput[m])
 			{
 				int mainind = abs(*(--c.cinds.end()));
@@ -5825,12 +5826,22 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					fakegainterm = c.weight;
 					for (int i : c.cinds)
 					{
-						fakecover.insert(abs(i));
+						uofakecover.insert(abs(i));
 					}
 				}
 				c.weight = maxweight - c.weight + 1;
 			}
 			fakegain += fakegainterm;
+			if (!fakegain)
+			{
+				donext++;
+				continue;
+			}
+
+			vector<int> fakecover;
+			fakecover.reserve(uofakecover.size());
+			std::copy(uofakecover.begin(), uofakecover.end(), std::back_inserter(fakecover));
+			std::sort(fakecover.begin(), fakecover.end());
 
 			fakegain = -fakegain;
 			bool skippable;
