@@ -6287,7 +6287,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					oldhitnnn2 = oldhitnnn;
 					oldhitnnn = hitnnn;
-					//entropyfactor *= 0.98;
+					//if (goodhit) entropyfactor *= 0.99;
 				}
 				fprintf(stdout, "Scale factor now %lf, entropy %lf, hitnnn %d\n", scalefactor, entropyfactor, oldhitnnn);
 			}
