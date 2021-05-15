@@ -102,10 +102,11 @@ namespace po = boost::program_options;
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <unordered_set>
 #include <set>
 #include <algorithm>
 #include <math.h>
-#include <bitset>
+#include <type_traits>
 #include <map>
 #include <float.h>
 #include <numeric>
@@ -380,8 +381,8 @@ EXTERNFORGCC vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
 EXTERNFORGCC vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 #else
-EXTERNFORGCC vector<array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
-EXTERNFORGCC vector<array<double, 2> > fwbwfactors[NUMSHIFTS];
+EXTERNFORGCC vector<array<PerStateArray<double>::T, 3> > fwbw[NUMSHIFTS];
+EXTERNFORGCC vector<array<double, 3> > fwbwfactors[NUMSHIFTS];
 int fwbwdone[NUMSHIFTS];
 #endif
 
@@ -411,8 +412,8 @@ std::array<std::array<small_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 #else
-vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
-vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
+vector<std::array<PerStateArray<double>::T, 3> > fwbw[NUMSHIFTS];
+vector<std::array<double, 3> > fwbwfactors[NUMSHIFTS];
 #endif
 #endif
 
@@ -446,8 +447,8 @@ struct threadblock
 	PerStateArray<double>::T* const quickendfactor;
 	StateToStateMatrix<double>::T* const quickendprobs;
 #else
-	vector<std::array<PerStateArray<double>::T, 2> >* fwbw;
-	vector<std::array<double, 2> >* fwbwfactors;
+	vector<std::array<PerStateArray<double>::T, 3> >* fwbw;
+	vector<std::array<double, 3> >* fwbwfactors;
 	int* fwbwdone;
 #endif	
 
@@ -848,6 +849,7 @@ struct individ
 	int gen;
 	// Number of children.
 	int children;
+	int descendants;
 	// Am I explicitly created to not contain genotypes?
 	bool empty;
 	// Do I lack (relevant) parents?
@@ -898,6 +900,7 @@ struct individ
 		empty = false;
 		// False is the safe option, other code will be take shortcuts if founder is true.
 		founder = false;
+		descendants = 0;
 	}
 
 	bool arerelated(individ* b, vector<individ*> stack = vector<individ*>(), int gens = 0)
@@ -962,7 +965,7 @@ struct individ
 
 		{
 			if constexpr (templgenwidth >= 0) __assume(genwidth == templgenwidth);
-			if constexpr (templflag2 >= -2)
+			if constexpr (templflag2 > -2)
 			{
 				if constexpr (templflag2 == -1) __assume(upflag2 == -1);
 				else
@@ -1088,11 +1091,11 @@ struct individ
 			}
 		}
 		// This used to be a nice silent null check. Compilers don't like that, so we abort in order to try to detect those cases.
-		if (this == NULL) abort();
+		//if (this == NULL) abort();
 		if (templgenwidth >= 0) __assume(genwidth == templgenwidth);
 		__assume(localshift >= 0);
 
-		if constexpr (templflag2 >= -2)
+		if constexpr (templflag2 > -2)
 		{
 			if constexpr (templflag2 == -1) __assume(flag99 == -1);
 			else
@@ -1927,9 +1930,13 @@ struct individ
 			newstart += stepsize;
 		}
 
-		double factor = tb.fwbwfactors[*tb.shiftflagmode][newstart][0];
-		probs = tb.fwbw[*tb.shiftflagmode][newstart][0];
 		startmark = newstart;
+		int genotype = stopdata.getgenotype(startmark);
+		int pad = genotype == -1 ? 2 : 0;
+
+		double factor = tb.fwbwfactors[*tb.shiftflagmode][startmark][pad];
+		probs = tb.fwbw[*tb.shiftflagmode][startmark][pad];
+		
 
 		if (factor < minfactor) return factor;
 
@@ -1942,10 +1949,17 @@ struct individ
 			if (willquickend)
 			{
 				// If we are doing a quick end
+				if (pad == 0)
+				{
 				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				}
+				else
+				{
+					factor += realanalyze<4 | 2, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				}
 
 				// We might have turned, this value might not exist
-				initfwbw(tb, origstart, endmark);
+				initfwbw(tb, origstart, endmark, 2);
 
 				double sum = 0;
 
@@ -2031,15 +2045,24 @@ struct individ
 		return factor;
 	}
 #else
-	void initfwbw(const threadblock& tb, const int startmark, const int endmark)
+	void initfwbw(const threadblock& tb, const int startmark, const int endmark, int domask = 3)
 	{
-		if (tb.fwbwdone[*(tb.shiftflagmode)] != *(tb.generation))
+		if (tb.fwbwdone[*(tb.shiftflagmode)] != (*(tb.generation) << 2) + domask)
 		{
+			int donemask = 0;
+			if (tb.fwbwdone[*(tb.shiftflagmode)] >> 2 == *(tb.generation))
+			{
+				donemask = tb.fwbwdone[*(tb.shiftflagmode)] & 3;
+			}
+			domask &= ~donemask;
 			PerStateArray<double>::T probs;
 
+			if (domask & 1)	
+			{
 			// Initialize forward-backward matrices in one big go.
 			//probs = fakeprobs;
 			double selfingfactors[4];
+				
 			if (SELFING)
 			{
 				int selfgen = gen - 2;
@@ -2055,14 +2078,18 @@ struct individ
 			}
 
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
+			}
 
+			if (domask & 2)
+			{
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = 1.0;
 			}
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
+			}
 
-			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
+			tb.fwbwdone[*(tb.shiftflagmode)] = (*(tb.generation) << 2) | donemask | domask;
 		}
 	}
 
@@ -2116,12 +2143,12 @@ struct individ
 		int firstmark = startmark;
 		int lastmark = endmark;
 #if DOFB		
-		auto savefwbw = [&tb, &probs, &factor] (int m)
+		auto savefwbw = [&tb, &probs, &factor] (int m, int pad = 0)
 		{
 				copy(probs.begin(), probs.end(),
-					tb.fwbw[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+					tb.fwbw[*tb.shiftflagmode][m][pad + (bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
 
-				tb.fwbwfactors[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				tb.fwbwfactors[*tb.shiftflagmode][m][pad + (bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
 		};
 #endif
 
@@ -2191,6 +2218,13 @@ struct individ
 				// is ignored!
 			}
 
+			#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				savefwbw(j - d, 2);
+			}
+			#endif
+
 			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers,
 			// and the simple case of no fixated position.
 			for (int iter = 0; iter <= (int)tofind; iter++)
@@ -2254,7 +2288,7 @@ struct individ
 					}
 
 					double selfprec[4 * SELFING + 1][4 * SELFING + 1] = { 0 };
-					if (SELFING)
+					if constexpr (SELFING)
 					{
 						selfprec[0][1] = selfprec[0][2] = recprob[2][0];
 						selfprec[0][0] = 1 - 2 * recprob[2][0];
@@ -2346,6 +2380,12 @@ struct individ
 			}
 #endif
 			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				savefwbw(lastmark, 2);
+			}
+#endif			
 		}
 
 		return factor;
@@ -3139,6 +3179,7 @@ void postmarkerdata(int indcount = INDCOUNT)
 			individ* ind = getind(i);
 			if (ind) ind->children = 0;
 		}
+#pragma omp parallel for schedule(dynamic,32)		
 		for (int i = 1; i < indcount; i++)
 		{
 			individ* ind = getind(i);
@@ -3153,6 +3194,39 @@ void postmarkerdata(int indcount = INDCOUNT)
 				  ind->fixkid(g);
 				}
 			}
+		}
+		map<individ*, int> upsent;
+		bool anychange;
+		do
+		{
+			anychange = false;
+			for (int i = 1; i < indcount; i++)
+			{
+				individ* ind = getind(i);
+				if (!ind) continue;
+				auto& upsentval = upsent.insert({ind, 0}).first->second;
+				int nowdesc = ind->descendants;
+				if (!nowdesc) nowdesc = 1;
+				nowdesc -= upsentval;
+				if (nowdesc > 0)
+				{
+					for (individ* par : ind->pars)
+					{
+						if (par)
+						{
+							par->descendants += nowdesc;
+						}
+					}
+					upsentval += nowdesc;
+					anychange = true;
+				}
+			}
+		} while (anychange);
+		for (int i = 1; i < indcount; i++)
+		{
+			individ* ind = getind(i);
+			if (!ind) continue;
+			if (ind->descendants == 0) ind->descendants = 1;
 		}
 #pragma omp parallel for schedule(dynamic,32)
 		for (int i = 1; i < indcount; i++)
@@ -3474,7 +3548,7 @@ double scalefactor = 0.013;
 double entropyfactor = 1;
 
 
-void moveinfprobs(int i, int k, int marker, double norm)
+void moveinfprobs(int i, int k, int marker, double norm, double descfactor)
 {
 	// TODO: Sanitize for zero, inf, nan.
 	// Compensate for duplicates
@@ -3484,6 +3558,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 	{
 		if (ind == reltree[k]) norm /= 2;
 	}
+	norm *= descfactor;
 
 	for (int side = 0; side < 2; side++)
 	{
@@ -3495,7 +3570,7 @@ void moveinfprobs(int i, int k, int marker, double norm)
 	}
 }
 
-void movehaplos(int i, int k, int marker)
+void movehaplos(int i, int k, int marker, double descfactor)
 {
 	if (haplos[i][0] || haplos[i][1])
 	{
@@ -3505,8 +3580,8 @@ void movehaplos(int i, int k, int marker)
 			double b2 = (haplos[i][1] + exp(-400) * maxdiff * maxdiff * 0.5) /*/ (1 - reltree[k]->haploweight[marker]) /** reltree[k]->haploweight[marker]*/;// * (rhfactor + 1e-10);
 			//if (i == 89 || i == 90) fprintf(stderr, "IND %d K %d MARKER %d %lf %lf\n", i, k, marker, b1, b2);
 			{
-				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2);
-				reltree[k]->haplocount[marker] += 1;
+				reltree[k]->haplobase[marker] += /*log(b1 / b2)*/b1 / (b1 + b2) * descfactor;
+				reltree[k]->haplocount[marker] += descfactor;
 			}
 		}
 		haplos[i][0] = 0;
@@ -4396,8 +4471,15 @@ array<double, TURNBITS> calcskewterms(int marker, relskewhmm* relskews)
 				hw * (1 - val) * (log(rh) + log(hw) + log(1 - hwo)) +
 				(1 - hw) * (1 - val) * (log(1 - rh) + log(1 - hw) + log(1 - hwo)) +
 				hw * val * (log(1 - rh) + log(hw) + log(hwo));
+
 			skewterms[truei] -= then - now;
+			if (ind->haplocount[marker + ix])
+			{
+			double gonext = ind->haplobase[marker + ix] / ind->haplocount[marker + ix];
+			skewterms[truei] += (gonext - hw) * (hw - 0.5) < 0 ? 25000 : 0;
 		}		
+		}		
+		if (ind->n == 66 && marker >= 4865 && marker <= 4875) printf("CALCSKEWTERMS %d: %d %lf\n", ind->n, marker, skewterms[truei]);
 	}
 
 	return skewterms;
@@ -4558,7 +4640,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 				out =
 					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
 					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1)) + // Entropy term
-								     (relskewterm - in) / (in - in * in));
+								     (relskewterm - in) / (in - in * in) * ind->descendants);
 				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n", out, j, ind->n, ind->haplobase[j], in, relskewterm);
 			};
 
@@ -4603,11 +4685,11 @@ struct canddata
 {
 	long long score;
 	set<int> cover;
-	set<negshiftcand> cands;
+	vector<negshiftcand> cands;
 };
 
 auto operator < (const canddata& a, const canddata& b) noexcept {
-	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
+	return std::tie(a.score, a.cover) < std::tie(b.score, b.cover);
 }
 
 void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
@@ -4720,6 +4802,13 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
+template<class C1, class C2>
+bool smartincludes(const C1& set1, const C2& set2)
+{
+	if (set1.size() < set2.size()) return false;
+	return std::includes(set1.begin(), set1.end(), set2.begin(), set2.end());
+}
+
 vector<canddata> computecandcliques(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, long long bias)
 {
 	vector<canddata> result;
@@ -4761,8 +4850,8 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 							}
 							else
 							{
-								result[useindex].cover.insert(result[i].cover.begin(), result[i].cover.end());
-								result[useindex].cands.insert(result[i].cands.begin(), result[i].cands.end());
+								result[useindex].cover.merge(result[i].cover);
+								result[useindex].cands.insert(result[useindex].cands.end(), result[i].cands.begin(), result[i].cands.end());
 								result[useindex].score += result[i].score;								
 								//								printf("Merging %d and %d\n", useindex, i);
 								result.erase(result.begin() + i);
@@ -4786,7 +4875,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 					//					fflush(stdout);
 					if (result[useindex].cover.insert(ind).second && tf[ind - 1])
 					{
-						result[useindex].cands.emplace(getind(ind), c.weight, m);
+						result[useindex].cands.emplace_back(getind(ind), c.weight, m);
 					}
 				}				
 			}
@@ -4967,7 +5056,7 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 				{
 					canddata newcand{ i->score + j->score, i->cover, i->cands };
 					newcand.cover.insert(j->cover.begin(), j->cover.end());
-					newcand.cands.insert(j->cands.begin(), j->cands.end());
+					newcand.cands.insert(newcand.cands.end(), j->cands.begin(), j->cands.end());
 					bestcands.insert(std::move(newcand));
 					// The greedy part, replaced by maximum size limit
 					// // break;
@@ -5605,31 +5694,40 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 																											// get relevant weights and individuals, insert to container
 
 																											//for (int g = 0; g < NUMTURNS; g++) {
-							double normfactor = MINFACTOR;
-							double normsum = 0;
-							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore) continue;
-								normfactor = max(normfactor, rawervals[0][s]);
-							}
-							for (int s = shifts; s < shiftend; s++) {
-								if (s & shiftignore) continue;
-								normsum += exp(rawervals[0][s] - normfactor);
-							}
-							normfactor += log(normsum);
+							double normfactor = 0;
+							const int shiftignore2 = shiftignore;
+							auto computew = [&rawervals, &normfactor, &j, shiftignore = shiftignore2, shiftend, shifts] (int g)
+							{
+								double w = MINFACTOR;
+								int count = g > 0 ? std::popcount((unsigned int) g) : 1;
 
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
+									w = max(w, rawervals[g][s]);
+								}
+								double normsum = 0;
+								for (int s = shifts; s < shiftend; s++) {
+									if (s & shiftignore) continue;
+									normsum += exp(rawervals[g][s] - w);
+								}
+								w += log(normsum);
+								w -= normfactor;
+
+								return w * dous[j]->descendants/*/ count*/;
+							};
+							normfactor = computew(0);
 							static_vector<clause, NUMTURNS> subInput;
 							long long submax = 0;
 
 							for (int g = 0; g < NUMTURNS; g++) {
 								if (g & (flag2ignore >> 1)) continue;
 
-								std::bitset<16> bits(g);
 								static_vector<int, NUMTURNS> claus;
 								int shiftcount = 0;
 								for (int b = 0; b < TURNBITS; b++) {
 									if (exists[b]) {
 										//if (find(claus.begin(), claus.end(), cind | -cind) == claus.end()){// avoid inbreeding results.
-										if (bits[b]) {
+										if (g & (1 << b)) {
 											claus.push_back(-cands[b]);
 											shiftcount++;
 										}
@@ -5639,19 +5737,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										//}
 									}
 								}
-								double w = MINFACTOR;
-
-								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore) continue;
-									w = max(w, rawervals[g][s]);
-								}
-								normsum = 0;
-								for (int s = shifts; s < shiftend; s++) {
-									if (s & shiftignore) continue;
-									normsum += exp(rawervals[g][s] - w);
-								}
-								w += log(normsum);
-								w -= normfactor;
+								double w = computew(g);
 								//Now simply construct a clause type and send it to the right marker
 								clause c;
 								if (isfinite(w))
@@ -5668,11 +5754,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 										w = 25000;
 									}
 								}
-								if (w < -1000000) w = -1000000;
-								if (w > 25000) w = 25000;
-								w *= WEIGHT_DISCRETIZER;
-
-								c.weight = w;
+								w = std::clamp(w, -1000000., 25000.);
+								c.weight = w * WEIGHT_DISCRETIZER;
 								c.weight -= g;
 								c.cinds = claus;
 								//test << "Mark: " << mark << "ClausToString: " << c.toString() << " Current maxweight: " << maxweight << endl;//TEST
@@ -5721,8 +5804,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 							for (size_t k = 0; k < reltree.size(); k++)
 							{
 								int i = reltree[k]->n;
-								moveinfprobs(i, k, marker, sum);
-								movehaplos(i, k, marker);
+								moveinfprobs(i, k, marker, sum, dous[j]->descendants);
+								movehaplos(i, k, marker, dous[j]->descendants);
 							}
 						  omp_unset_lock(&markerlocks[marker]);
 						}
@@ -5751,41 +5834,42 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 				array<double, TURNBITS> skewterms;
 
+#if DOTOULBAR
+				long long submax = 0;
 				for (int marker = chromstarts[i]; marker < chromstarts[i + 1] - 1; marker++)
 				{
 					skewterms = calcskewterms(marker, &relskews[0]);
 					double w = skewterms[TURNBITS - 1] * 0.5;	
-					if (!isfinite(w) || fabs(w) > 5000)
+					if (!isfinite(w) || fabs(w) > 25000)
 					{
-						if (w < -5000)
+						if (w < -25000)
 						{
-							w = -5000;
+							w = -25000;
 						}
 						else
 						{
-							w = 5000;
+							w = 25000;
 						}
 					}
-#if DOTOULBAR
+
 					omp_set_lock(&markerlocks[marker]);
-					long long submax = 0;
 					for (clause& c : toulInput[marker])
 					{
 						if (*(--c.cinds.end()) == -dous[j]->n)
 						{
-							c.weight -= w * WEIGHT_DISCRETIZER;
+							c.weight -= w * dous[j]->descendants * WEIGHT_DISCRETIZER;
 							if (c.weight > submax) {
 								submax = c.weight;
 							}
 						}
 					}
 					omp_unset_lock(&markerlocks[marker]);
+				}
 #pragma critical negshifts
 					if (submax > maxweight) maxweight = submax;
 #endif
 				}
 			}
-				}
 
 		//Print all information to seperate files EBBA
 		// stored by marker in toulIn  vector<vector<clause>>
@@ -5812,7 +5896,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			long long fakegain = 0;
 			long long fakegainterm = 0;
 			long long prevlast = -1;
-			set<int> fakecover;
+			unordered_set<int> uofakecover;
 			for (clause& c : toulInput[m])
 			{
 				int mainind = abs(*(--c.cinds.end()));
@@ -5828,12 +5912,22 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					fakegainterm = c.weight;
 					for (int i : c.cinds)
 					{
-						fakecover.insert(abs(i));
+						uofakecover.insert(abs(i));
 					}
 				}
 				c.weight = maxweight - c.weight + 1;
 			}
 			fakegain += fakegainterm;
+			if (!fakegain)
+			{
+				donext++;
+				continue;
+			}
+
+			vector<int> fakecover;
+			fakecover.reserve(uofakecover.size());
+			std::copy(uofakecover.begin(), uofakecover.end(), std::back_inserter(fakecover));
+			std::sort(fakecover.begin(), fakecover.end());
 
 			fakegain = -fakegain;
 			bool skippable;
@@ -5857,15 +5951,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						goto nextcand;
 					      }
 					      }*/
-
-					if (std::includes(fakecover.begin(), fakecover.end(), elem.cover.begin(), elem.cover.end()))
+					if (elem.score > fakegain)
 					{
-						if (elem.score <= fakegain)
-						{
-						  //							printf("Making skippable with score %lld against %lld for marker %d\n", elem.score, fakegain, m);
+						// Sorted order, no use in checking further, we're done here
+						break;
+					}
+
+					if (smartincludes(fakecover, elem.cover))
+					{
 							skippable = true;
 						}
-					}
 				nextcand:;
 				}
 			}
@@ -5932,20 +6027,23 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					bool addme = true;
 					for (const canddata& elem : bestcands)
 					{
-						if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
+						bool firstmatch = false;
+						if (smartincludes(elem.cover, data.cover))
 						{
 							if (data.score <= elem.score)
 							{
 								// Stupid to search for ourselves...
 								toremove.push_back(bestcands.find(elem));
 							}
+							firstmatch = true;
 						}
-						else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+						if (smartincludes(data.cover, elem.cover))
 						{
 							if (elem.score <= data.score)
 							{
 								addme = false;
 							}
+							if (firstmatch) break;
 						}
 					}
 
@@ -5971,7 +6069,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 		if (bestcands.size())
 		{
-			negshiftcands[i] = bestcands.begin()->cands;
+			negshiftcands[i].clear();
+			negshiftcands[i].insert(bestcands.begin()->cands.begin(), bestcands.begin()->cands.end());
 			negshiftcovers[i] = bestcands.begin()->cover;
 		}
 		else
@@ -6188,7 +6287,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				{
 					oldhitnnn2 = oldhitnnn;
 					oldhitnnn = hitnnn;
-					//entropyfactor *= 0.98;
+					//if (goodhit) entropyfactor *= 0.99;
 				}
 				fprintf(stdout, "Scale factor now %lf, entropy %lf, hitnnn %d\n", scalefactor, entropyfactor, oldhitnnn);
 			}
