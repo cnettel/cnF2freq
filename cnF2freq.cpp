@@ -4685,11 +4685,11 @@ struct canddata
 {
 	long long score;
 	set<int> cover;
-	set<negshiftcand> cands;
+	vector<negshiftcand> cands;
 };
 
 auto operator < (const canddata& a, const canddata& b) noexcept {
-	return std::tie(a.score, a.cover, a.cands) < std::tie(b.score, b.cover, b.cands);
+	return std::tie(a.score, a.cover) < std::tie(b.score, b.cover);
 }
 
 void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
@@ -4802,6 +4802,13 @@ long long computesumweight(const int m, const vector<int>& tf, const vector<vect
 	return sumweight;
 }
 
+template<class C1, class C2>
+bool smartincludes(const C1& set1, const C2& set2)
+{
+	if (set1.size() < set2.size()) return false;
+	return std::includes(set1.begin(), set1.end(), set2.begin(), set2.end());
+}
+
 vector<canddata> computecandcliques(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, long long bias)
 {
 	vector<canddata> result;
@@ -4843,8 +4850,8 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 							}
 							else
 							{
-								result[useindex].cover.insert(result[i].cover.begin(), result[i].cover.end());
-								result[useindex].cands.insert(result[i].cands.begin(), result[i].cands.end());
+								result[useindex].cover.merge(result[i].cover);
+								result[useindex].cands.insert(result[useindex].cands.end(), result[i].cands.begin(), result[i].cands.end());
 								result[useindex].score += result[i].score;								
 								//								printf("Merging %d and %d\n", useindex, i);
 								result.erase(result.begin() + i);
@@ -4868,7 +4875,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 					//					fflush(stdout);
 					if (result[useindex].cover.insert(ind).second && tf[ind - 1])
 					{
-						result[useindex].cands.emplace(getind(ind), c.weight, m);
+						result[useindex].cands.emplace_back(getind(ind), c.weight, m);
 					}
 				}				
 			}
@@ -5049,7 +5056,7 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 				{
 					canddata newcand{ i->score + j->score, i->cover, i->cands };
 					newcand.cover.insert(j->cover.begin(), j->cover.end());
-					newcand.cands.insert(j->cands.begin(), j->cands.end());
+					newcand.cands.insert(newcand.cands.end(), j->cands.begin(), j->cands.end());
 					bestcands.insert(std::move(newcand));
 					// The greedy part, replaced by maximum size limit
 					// // break;
@@ -5944,15 +5951,16 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 						goto nextcand;
 					      }
 					      }*/
-
-					if (std::includes(fakecover.begin(), fakecover.end(), elem.cover.begin(), elem.cover.end()))
+					if (elem.score > fakegain)
 					{
-						if (elem.score <= fakegain)
-						{
-						  //							printf("Making skippable with score %lld against %lld for marker %d\n", elem.score, fakegain, m);
+						// Sorted order, no use in checking further, we're done here
+						break;
+					}
+
+					if (smartincludes(fakecover, elem.cover))
+					{
 							skippable = true;
 						}
-					}
 				nextcand:;
 				}
 			}
@@ -6019,20 +6027,23 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					bool addme = true;
 					for (const canddata& elem : bestcands)
 					{
-						if (std::includes(elem.cover.begin(), elem.cover.end(), data.cover.begin(), data.cover.end()))
+						bool firstmatch = false;
+						if (smartincludes(elem.cover, data.cover))
 						{
 							if (data.score <= elem.score)
 							{
 								// Stupid to search for ourselves...
 								toremove.push_back(bestcands.find(elem));
 							}
+							firstmatch = true;
 						}
-						else if (std::includes(data.cover.begin(), data.cover.end(), elem.cover.begin(), elem.cover.end()))
+						if (smartincludes(data.cover, elem.cover))
 						{
 							if (elem.score <= data.score)
 							{
 								addme = false;
 							}
+							if (firstmatch) break;
 						}
 					}
 
@@ -6058,7 +6069,8 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 
 		if (bestcands.size())
 		{
-			negshiftcands[i] = bestcands.begin()->cands;
+			negshiftcands[i].clear();
+			negshiftcands[i].insert(bestcands.begin()->cands.begin(), bestcands.begin()->cands.end());
 			negshiftcovers[i] = bestcands.begin()->cover;
 		}
 		else
