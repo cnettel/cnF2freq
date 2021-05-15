@@ -381,8 +381,8 @@ EXTERNFORGCC vector<PerStateArray<double>::T > factors[NUMSHIFTS];
 // cacheprobs contain actual transitions from every possible state to every possible other state
 EXTERNFORGCC vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 #else
-EXTERNFORGCC vector<array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
-EXTERNFORGCC vector<array<double, 2> > fwbwfactors[NUMSHIFTS];
+EXTERNFORGCC vector<array<PerStateArray<double>::T, 3> > fwbw[NUMSHIFTS];
+EXTERNFORGCC vector<array<double, 3> > fwbwfactors[NUMSHIFTS];
 int fwbwdone[NUMSHIFTS];
 #endif
 
@@ -412,8 +412,8 @@ std::array<std::array<small_map<MarkerVal, double>, 2>, INDCOUNT> infprobs;
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
 #else
-vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
-vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
+vector<std::array<PerStateArray<double>::T, 3> > fwbw[NUMSHIFTS];
+vector<std::array<double, 3> > fwbwfactors[NUMSHIFTS];
 #endif
 #endif
 
@@ -447,8 +447,8 @@ struct threadblock
 	PerStateArray<double>::T* const quickendfactor;
 	StateToStateMatrix<double>::T* const quickendprobs;
 #else
-	vector<std::array<PerStateArray<double>::T, 2> >* fwbw;
-	vector<std::array<double, 2> >* fwbwfactors;
+	vector<std::array<PerStateArray<double>::T, 3> >* fwbw;
+	vector<std::array<double, 3> >* fwbwfactors;
 	int* fwbwdone;
 #endif	
 
@@ -1928,9 +1928,13 @@ struct individ
 			newstart += stepsize;
 		}
 
-		double factor = tb.fwbwfactors[*tb.shiftflagmode][newstart][0];
-		probs = tb.fwbw[*tb.shiftflagmode][newstart][0];
 		startmark = newstart;
+		int genotype = stopdata.getgenotype(startmark);
+		int pad = genotype == -1 ? 2 : 0;
+
+		double factor = tb.fwbwfactors[*tb.shiftflagmode][startmark][pad];
+		probs = tb.fwbw[*tb.shiftflagmode][startmark][pad];
+		
 
 		if (factor < minfactor) return factor;
 
@@ -1943,10 +1947,17 @@ struct individ
 			if (willquickend)
 			{
 				// If we are doing a quick end
+				if (pad == 0)
+				{
 				factor += realanalyze<4, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				}
+				else
+				{
+					factor += realanalyze<4 | 2, T>(tb, turner, startmark, startmark + stepsize, stopdata, flag2, ruleout, &probs);
+				}
 
 				// We might have turned, this value might not exist
-				initfwbw(tb, origstart, endmark);
+				initfwbw(tb, origstart, endmark, 2);
 
 				double sum = 0;
 
@@ -2032,15 +2043,24 @@ struct individ
 		return factor;
 	}
 #else
-	void initfwbw(const threadblock& tb, const int startmark, const int endmark)
+	void initfwbw(const threadblock& tb, const int startmark, const int endmark, int domask = 3)
 	{
-		if (tb.fwbwdone[*(tb.shiftflagmode)] != *(tb.generation))
+		if (tb.fwbwdone[*(tb.shiftflagmode)] != (*(tb.generation) << 2) + domask)
 		{
+			int donemask = 0;
+			if (tb.fwbwdone[*(tb.shiftflagmode)] >> 2 == *(tb.generation))
+			{
+				donemask = tb.fwbwdone[*(tb.shiftflagmode)] & 3;
+			}
+			domask &= ~donemask;
 			PerStateArray<double>::T probs;
 
+			if (domask & 1)	
+			{
 			// Initialize forward-backward matrices in one big go.
 			//probs = fakeprobs;
 			double selfingfactors[4];
+				
 			if (SELFING)
 			{
 				int selfgen = gen - 2;
@@ -2056,14 +2076,18 @@ struct individ
 			}
 
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_FORWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
+			}
 
+			if (domask & 2)
+			{
 			for (int i = 0; i < NUMTYPES; i++)
 			{
 				probs[i] = 1.0;
 			}
 			realanalyze<ANALYZE_FLAG_STORE | ANALYZE_FLAG_BACKWARD | 1, noneturner>(tb, noneturner(), startmark, endmark, NONESTOP, -1, false, &probs);
+			}
 
-			tb.fwbwdone[*(tb.shiftflagmode)] = *(tb.generation);
+			tb.fwbwdone[*(tb.shiftflagmode)] = (*(tb.generation) << 2) | donemask | domask;
 		}
 	}
 
@@ -2117,12 +2141,12 @@ struct individ
 		int firstmark = startmark;
 		int lastmark = endmark;
 #if DOFB		
-		auto savefwbw = [&tb, &probs, &factor] (int m)
+		auto savefwbw = [&tb, &probs, &factor] (int m, int pad = 0)
 		{
 				copy(probs.begin(), probs.end(),
-					tb.fwbw[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
+					tb.fwbw[*tb.shiftflagmode][m][pad + (bool)(updateend & ANALYZE_FLAG_BACKWARD)].begin());
 
-				tb.fwbwfactors[*tb.shiftflagmode][m][(bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
+				tb.fwbwfactors[*tb.shiftflagmode][m][pad + (bool)(updateend & ANALYZE_FLAG_BACKWARD)] = factor;
 		};
 #endif
 
@@ -2191,6 +2215,13 @@ struct individ
 				// a -2 genotype does not only mean that all genotypes are allowed, but indeed that the marker data at this marker
 				// is ignored!
 			}
+
+			#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				savefwbw(j - d, 2);
+			}
+			#endif
 
 			// For a specific intra-marker region, we have two cases: the case of a fixated position between the two markers,
 			// and the simple case of no fixated position.
@@ -2347,6 +2378,12 @@ struct individ
 			}
 #endif
 			adjustprobs(tb, probs, lastmark, factor, ruleout, -1); // TODO
+#if DOFB
+			if (!(updateend & ANALYZE_FLAG_BACKWARD) && (updateend & ANALYZE_FLAG_STORE))
+			{
+				savefwbw(lastmark, 2);
+			}
+#endif			
 		}
 
 		return factor;
