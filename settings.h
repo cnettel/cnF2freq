@@ -2,9 +2,11 @@
 // Do original cnF2freq tree evaluation, value 0
 #define DOFB 1
 #define DOTOULBAR 1
+#define XSTDBITSET 1
 const int SELFBITS = 2;
 
 const int INDCOUNT = 1000000;
+const int TOULBARINDCOUNT = 2000;
 const bool DOREMAPDISTANCES = false;
 const bool DOINFPROBS = true;
 const bool DOIMPOSSIBLE = false;

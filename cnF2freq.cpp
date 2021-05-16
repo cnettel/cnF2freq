@@ -135,6 +135,10 @@ using boost::container::flat_set;
 
 #include "settings.h"
 
+#if XSTDBITSET
+#include <xstd/bit_set.hpp>
+#endif
+
 #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 #define restrict __restrict__
 EXTERNFORGCC boost::random::mt19937 rng;
@@ -4683,10 +4687,16 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 	}
 }
 
+#if XSTDBITSET
+using covertype = xstd::bit_set<TOULBARINDCOUNT + 1>;
+#else
+using covertype = set<int>;
+#endif
+
 struct canddata
 {
 	long long score;
-	set<int> cover;
+	covertype cover;
 	vector<negshiftcand> cands;
 };
 
@@ -4765,7 +4775,7 @@ void fillcandsexists(individ* ind, array<int, 7>& cands, array<bool, 7>& exists)
 	}
 }
 
-long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, set<int>& cover)
+long long computesumweight(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, covertype& cover)
 {
 	long long sumweight = 0;
 	int numviol = 0;
@@ -4811,6 +4821,16 @@ bool smartincludes(const C1& set1, const C2& set2)
 	return std::includes(set1.begin(), set1.end(), set2.begin(), set2.end());
 }
 
+#if XSTDBITSET
+template<>
+bool smartincludes<covertype, covertype>(const covertype& set1, const covertype& set2)
+{
+	return set2.is_subset_of(set1);
+}
+#endif
+
+
+
 vector<canddata> computecandcliques(const int m, const vector<int>& tf, const vector<vector<clause>>& toulinput, long long bias)
 {
 	vector<canddata> result;
@@ -4852,7 +4872,11 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 							}
 							else
 							{
+#if XSTDBITSET								
+								result[useindex].cover |= result[i].cover;
+#else							
 								result[useindex].cover.merge(result[i].cover);
+#endif								
 								result[useindex].cands.insert(result[useindex].cands.end(), result[i].cands.begin(), result[i].cands.end());
 								result[useindex].score += result[i].score;								
 								//								printf("Merging %d and %d\n", useindex, i);
@@ -4909,7 +4933,7 @@ void createtoulbarfile(const string toulin, long long maxweight, vector<clause>&
 	int nbc = nbclauses;
 	//cout<<"nbvar: " <<nbvar<< "\n"; // problem solving
 	//cout<<"nbclauses: " <<nbc<< "\n"; // problem solving
-	infile << "p wcnf " << 2000 << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
+	infile << "p wcnf " << TOULBARINDCOUNT << " " << nbc << "\n"; //" " <<std::numeric_limits<int>::max()<<"\n";
 
 	for (clause& c : clauses) {
 		if (c.weight <= 0)
@@ -5037,8 +5061,16 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 			delprev = false;				
 			for (auto j = bestcands.begin(); *j < *i && !toolarge; j++)
 			{
-				auto jj = j->cover.begin();
 				int covered = 0;
+				bool fullcover = false;
+#if XSTDBITSET
+				if (i->cover.intersects(j->cover))
+				{
+					covered = 1;
+					if (i->cover == j->cover) fullcover = true;
+				}
+#else
+				auto jj = j->cover.begin();
 				for (auto ind : i->cover)
 				{
 					while (jj != j->cover.end() && *jj < ind)
@@ -5053,17 +5085,23 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 						if (i->cover.size() != j->cover.size()) break;
 					}
 				}
+				fullcover = covered == j->cover.size() && covered == i->cover.size();
+#endif				
 
 				if (!covered)
 				{
 					canddata newcand{ i->score + j->score, i->cover, i->cands };
+#if XSTDBITSET
+					newcand.cover |= j->cover;
+#else		
 					newcand.cover.insert(j->cover.begin(), j->cover.end());
+#endif							
 					newcand.cands.insert(newcand.cands.end(), j->cands.begin(), j->cands.end());
 					bestcands.insert(std::move(newcand));
 					// The greedy part, replaced by maximum size limit
 					// // break;
 				}
-				if (covered == j->cover.size() && covered == i->cover.size())
+				if (fullcover)
 				{
 					delprev = true;
 					break;
@@ -5169,7 +5207,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 	}
 
 	vector<set<negshiftcand>> negshiftcands;
-	vector<set<int>> negshiftcovers;
+	vector<covertype> negshiftcovers;
 	negshiftcands.resize(chromstarts.size());
 	negshiftcovers.resize(chromstarts.size());
 	vector<omp_lock_t> markerlocks;
@@ -5898,7 +5936,11 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 			long long fakegain = 0;
 			long long fakegainterm = 0;
 			long long prevlast = -1;
+#if XSTDBITSET			
+			covertype uofakecover;
+#else			
 			unordered_set<int> uofakecover;
+#endif			
 			for (clause& c : toulInput[m])
 			{
 				int mainind = abs(*(--c.cinds.end()));
@@ -5926,10 +5968,14 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 				continue;
 			}
 
+#if XSTDBITSET
+			covertype& fakecover = uofakecover;
+#else			
 			vector<int> fakecover;
 			fakecover.reserve(uofakecover.size());
 			std::copy(uofakecover.begin(), uofakecover.end(), std::back_inserter(fakecover));
 			std::sort(fakecover.begin(), fakecover.end());
+#endif			
 
 			fakegain = -fakegain;
 			bool skippable;
