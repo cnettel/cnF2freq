@@ -805,14 +805,16 @@ struct clause
 		return s;// note each line ends in a space
 	}
 
-	string clausetostring() const {
-		stringstream s;
+	stringstream& clausetostringstream() const {
+		static thread_local stringstream s;
+		s.str("");
+		s.clear();
 		for (size_t i = 0; i < cinds.size(); i++) {
 			if (cinds[i]) {
 			  s << " " << std::to_string(cinds[i]);
 			}
 		}
-		return s.str();
+		return s;
 	}
 
 	string weighttostring() const {
@@ -4915,7 +4917,7 @@ void createtoulbarfile(const string toulin, long long maxweight, vector<clause>&
 			fprintf(stderr, "Non-positive weight, weight %lld, maxweight %lld\n", c.weight, maxweight);
 			abort();
 		}
-		infile << c.weighttostring() << c.clausetostring() << " 0\n";
+		infile << c.weighttostring() << c.clausetostringstream().rdbuf() << " 0\n";
 		//infile<< toulInput[m][g].toString() << "\n";
 		//cout<<"TEST " <<toulInput[m][g].toString()<< "\n"; // problem solving
 	}
