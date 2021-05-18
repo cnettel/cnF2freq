@@ -4697,7 +4697,7 @@ struct canddata
 {
 	long long score;
 	covertype cover;
-	vector<negshiftcand> cands;
+	set<negshiftcand> cands;
 };
 
 auto operator < (const canddata& a, const canddata& b) noexcept {
@@ -4877,7 +4877,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 #else							
 								result[useindex].cover.merge(result[i].cover);
 #endif								
-								result[useindex].cands.insert(result[useindex].cands.end(), result[i].cands.begin(), result[i].cands.end());
+								result[useindex].cands.merge(result[i].cands);
 								result[useindex].score += result[i].score;								
 								//								printf("Merging %d and %d\n", useindex, i);
 								result.erase(result.begin() + i);
@@ -4901,7 +4901,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 					//					fflush(stdout);
 					if (result[useindex].cover.insert(ind).second && tf[ind - 1])
 					{
-						result[useindex].cands.emplace_back(getind(ind), c.weight, m);
+						result[useindex].cands.emplace(getind(ind), c.weight, m);
 					}
 				}				
 			}
@@ -5096,7 +5096,7 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 #else		
 					newcand.cover.insert(j->cover.begin(), j->cover.end());
 #endif							
-					newcand.cands.insert(newcand.cands.end(), j->cands.begin(), j->cands.end());
+					newcand.cands.insert(j->cands.begin(), j->cands.end());
 					bestcands.insert(std::move(newcand));
 					// The greedy part, replaced by maximum size limit
 					// // break;
