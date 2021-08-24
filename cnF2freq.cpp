@@ -13,7 +13,7 @@
 
 
 #define NDEBUG
-// These defines fixed an error in one particular site installation of the Portland compiler.
+#define __cpp_exceptions 0
 
 #include <vector>
 #include <string.h>
