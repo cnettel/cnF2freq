@@ -4886,7 +4886,7 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 #else							
 								result[useindex].cover.merge(result[i].cover);
 #endif								
-								result[useindex].cands.merge(result[i].cands);
+								result[useindex].cands.insert(result[useindex].cands.end(), result[i].cands.begin(), result[i].cands.end());
 								result[useindex].score += result[i].score;								
 								//								printf("Merging %d and %d\n", useindex, i);
 								result.erase(result.begin() + i);
@@ -4908,9 +4908,15 @@ vector<canddata> computecandcliques(const int m, const vector<int>& tf, const ve
 					int ind = val < 0 ? -val : val;
 					//					printf("Doing insert of %d into %d\n", ind, useindex);
 					//					fflush(stdout);
-					if (result[useindex].cover.insert(ind).second && tf[ind - 1])
+#if XSTDBITSET								
+					bool isnew = !result[useindex].cover.contains(ind);
+					result[useindex].cover.insert(ind);
+#else							
+					bool isnew = result[useindex].cover.insert(ind).second;
+#endif														
+					if (isnew && tf[ind - 1])
 					{
-						result[useindex].cands.emplace(getind(ind), c.weight, m);
+						result[useindex].cands.emplace_back(getind(ind), c.weight, m);
 					}
 				}				
 			}
