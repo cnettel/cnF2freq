@@ -43,13 +43,6 @@ const int NO_EQUIVALENCE = -1;
 const int ZERO_PROPAGATE = 1;
 const long long WEIGHT_DISCRETIZER = 1000000;
 
-// _MSC_VER is here to be interpreted as any compiler providing TR1 C++ headers
-//#ifdef _MSC_VER
-//#include <array>
-//#else
-// Boost also provides an array implementation, that is largely compatible
-//#include <boost/array.hpp>
-//#endif
 #include <array>
 #include <ranges>
 
