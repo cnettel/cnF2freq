@@ -4706,7 +4706,7 @@ struct canddata
 {
 	long long score;
 	covertype cover;
-	set<negshiftcand> cands;
+	vector<negshiftcand> cands;
 };
 
 auto operator < (const canddata& a, const canddata& b) noexcept {
@@ -5105,7 +5105,7 @@ void mergebestcands(std::set<canddata>& bestcands, int ceiling, int clearto)
 #else		
 					newcand.cover.insert(j->cover.begin(), j->cover.end());
 #endif							
-					newcand.cands.insert(j->cands.begin(), j->cands.end());
+					newcand.cands.insert(newcand.cands.end(), j->cands.begin(), j->cands.end());
 					bestcands.insert(std::move(newcand));
 					// The greedy part, replaced by maximum size limit
 					// // break;
