@@ -563,14 +563,14 @@ public:
 // change over the series of recursive calls.
 const struct trackpossibleparams
 {
-	const float updateval;
+	const double updateval;
 	int* const gstr;
 
-	trackpossibleparams() : updateval(0.0f), gstr(0)
+	trackpossibleparams() : updateval(0.0), gstr(0)
 	{
 	}
 
-	trackpossibleparams(float updateval, int* gstr, MarkerVal markerval = UnknownMarkerVal) : updateval(updateval), gstr(gstr)
+	trackpossibleparams(double updateval, int* gstr, MarkerVal markerval = UnknownMarkerVal) : updateval(updateval), gstr(gstr)
 	{
 	}
 } tpdefault;
