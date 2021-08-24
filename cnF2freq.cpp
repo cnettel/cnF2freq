@@ -13,7 +13,16 @@
 
 
 #define NDEBUG
+#define BOOST_NO_EXCEPTIONS
+#undef __cpp_exceptions
 #define __cpp_exceptions 0
+#include <exception>
+#include <cstdlib>
+namespace boost
+{
+	void throw_exception( std::exception const & e )
+	{std::abort();}
+}
 
 #include <vector>
 #include <string.h>
