@@ -4680,11 +4680,17 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			}
 			auto gradient = [&](const double& in, double& out, const double)
 			{
-				out =
-					((ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
-					 (1 - 0 * similarity) * 1 * (ef * log(1 / in - 1)) + // Entropy term
-								     (relskewterm - in) / (in - in * in) * ind->descendants);
-				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n", out, j, ind->n, ind->haplobase[j], in, relskewterm);
+				double x = in;
+				//out = 0;
+				out = -(-square(ind->haploweight[j]*ind->haplobase[j])*log(x) + square(ind->haploweight[j]*ind->haplobase[j])*log(1 - x) + square(ind->haploweight[j])*ind->haplobase[j]*ind->haplocount[j]*log(x) - square(ind->haploweight[j])*ind->haplobase[j]*ind->haplocount[j]*log(1 - x) - square(ind->haploweight[j])*ind->haplobase[j]*ind->haplocount[j] - square(ind->haploweight[j]*ind->haplocount[j])*x + square(ind->haploweight[j]*ind->haplocount[j]) + ind->haploweight[j]*square(ind->haplobase[j])*log(x) - ind->haploweight[j]*square(ind->haplobase[j])*log(1 - x) + ind->haploweight[j]*square(ind->haplobase[j]) + 2*ind->haploweight[j]*ind->haplobase[j]*ind->haplocount[j]*x - ind->haploweight[j]*ind->haplobase[j]*ind->haplocount[j]*log(x) + ind->haploweight[j]*ind->haplobase[j]*ind->haplocount[j]*log(1 - x) - ind->haploweight[j]*ind->haplobase[j]*ind->haplocount[j] - square(ind->haplobase[j])*x)/square(ind->haploweight[j]*ind->haplobase[j] + ind->haploweight[j]*ind->haplocount[j]*x - ind->haploweight[j]*ind->haplocount[j] - ind->haplobase[j]*x);
+				out +=
+					//(ind->haplobase[j] - in * (ind->haplocount[j])) / (in - in * in) +
+					 ((1 - similarity) * 1 * (ef * log(1 / in - 1)) + // Entropy term
+								     (relskewterm - in) / (in - in * in) * ind->/*haplocount[j]*/descendants);
+				/*out =
+					((ind->haplobase[j] - in * (ind->haplocount[j]) + (in * in - in)) / (in - in * in) +
+					 (1 - similarity) * 1 * ef * (log((1-in)/in*relskewterm/(1-relskewterm)))); // Entropy term*/
+				//				if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, haplobase %lf, in %lf, relskewterm %lf\n ", out, j, ind->n, ind->haplobase[j], in, relskewterm);
 			};
 
 
