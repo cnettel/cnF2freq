@@ -5571,7 +5571,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												dous[j]->homozyg[marker][markerval.value() - 1] += val * homozyg[markerval.value() - 1] / sidevalsums[0];
 												hzs += homozyg[markerval.value() - 1];
 											}
-											if (hzs > sidevalsums[0]) fprintf(stdout, "HZS MISMATCH %d %d %d %d %lf %lf %lf\n", marker, g * 2, flag2, *(tb.shiftflagmode), hzs, sidevalsums[0], sidevalsums[1]);
+											if (hzs - 1e-7 > sidevalsums[0] * (1 + 1.e-7)) fprintf(stdout, "HZS MISMATCH %d %d %d %d %lf %lf %lf\n", marker, g * 2, flag2, *(tb.shiftflagmode), hzs, sidevalsums[0], sidevalsums[1]);
 										}
 									}
 								}
