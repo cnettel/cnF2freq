@@ -4239,28 +4239,46 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 		double etf = 1 * ef/*+ (side ? 0 : -1) * 4 * (hw - hw * hw)*/;
 		double epsilon = maxdiff / (ind->children + 1);
 		double priord = 0;
+		double priorprob = 0.5;
 			if (priorval != UnknownMarkerVal)
 			{
-				double priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
+				priorprob = 1.0 - (&ind->priormarkersure[j].first)[side];
 
 				MarkerVal nowval = probpair.first;
 				if (nowval != priorval)
 				{
 					priorprob = 1.0 - priorprob;
 				}
-				priorprob = std::clamp(priorprob, (double) epsilon, (double) (1 - epsilon));
+				if (priorprob == 0)
+				{
+					priord -= 10000;
+				}
+				else if (priorprob == 1)
+				{
+					priord += 10000;
+				}
+				else
+				{
+					priorprob = std::clamp(priorprob, (double) 1e-14, (double) (1 - 1e-14));
 
 			priord += log(priorprob) - log(1 - priorprob);
 			}
+			}
 
-		auto gradient = [&](const double& in, double& out, const double)
+		auto gradient = [&](const double& x, double& out, const double)
 		{
-			double curprob = in;
-			double d = (hzygcorred - sum * curprob) / (curprob - curprob * curprob);
+			//double d = (hzygcorred - sum * x) / (x - x *x);
+			// expr6 = ((h)*(1-x)*log((1-x))+g*x*log(x))/(h*(1-x)+g*x)
+			// str(simplify(simplify(factor(simplify(-val.subs(g,g/y).subs(h,(h-g)/(1-y)).subs(y, curprob).subs(g, hzygcorred).subs(h, sum))))))
+			double d = -(-square(curprob*hzygcorred)*log(x) + square(curprob*hzygcorred)*log(1 - x) + square(curprob)*hzygcorred*sum*log(x) - square(curprob)*hzygcorred*sum*log(1 - x) - square(curprob)*hzygcorred*sum - square(curprob*sum)*x + square(curprob*sum) + curprob*square(hzygcorred)*log(x) - curprob*square(hzygcorred)*log(1 - x) + curprob*square(hzygcorred) + 2*curprob*hzygcorred*sum*x - curprob*hzygcorred*sum*log(x) + curprob*hzygcorred*sum*log(1 - x) - curprob*hzygcorred*sum - square(hzygcorred)*x)/square(curprob*hzygcorred + curprob*sum*x - curprob*sum - hzygcorred*x);
+			/*double d = (hzygcorred - sum * curprob + curprob * curprob * log(curprob/priorprob)
+					   -curprob * curprob * log((curprob - 1)/(priorprob - 1)) - curprob * log(curprob/priorprob)
+					   + curprob * log((curprob - 1)/(priorprob - 1)));*/
 
-			double et = log(1 / curprob - 1);
+			double et = log(1 / x - 1);
+			//double et = log((1-curprob) * priorprob / ((1 - priorprob) * curprob));
 			d += etf * et; // Entropy term
-			d += priord;
+			d += etf * priord;
 
 			out = d;
 			//if (fabs(out) > 1e8) printf("Large grad %lf, marker %d, ind %d, in %lf, hzygcorred %lf, sum %lf\n", out, j, ind->n, in, hzygcorred, sum);
@@ -4272,7 +4290,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 
 	for (auto probpair : ind->infprobs[j][side])
 	{
-		if (probpair.second > bestprob)
+		if (probpair.second > bestprob - (side ? 1e-30 : 0))
 		{
 			bestmarker = probpair.first;
 			bestprob = probpair.second;
@@ -4285,6 +4303,7 @@ void processinfprobs(individ* ind, const unsigned int j, const int side, int ite
 	if (!ind->empty && (bestmarker != UnknownMarkerVal || bestprob > 0))
 	{
 		//if (iter <= 3)
+		if (ind->priormarkerdata.size() > j)
 		{
 			(&ind->markerdata[j].first)[side] = bestmarker;
 			double intended = 1.0 - bestprob;
