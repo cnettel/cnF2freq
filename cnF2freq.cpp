@@ -1505,36 +1505,52 @@ struct individ
 		bool debugtime = (n == 68) && (marker == 0 || marker == 15);
 
 		int count = 0;
-		for (int allele = 0; allele < 2; allele++)
-		{
 			for (shiftflagmode = 0; shiftflagmode < 2; shiftflagmode += 1)
 			{
 				threadblock tb;
-				for (int i = 0; i < NUMTYPES * 2; i++)
+				for (int majori = 0; majori < 2; majori++)
 				{
 					//int flag2 = -1;
-					for (int flag2 = 0; flag2 < NUMPATHS; flag2++)
+					for (int majorflag2 = 0; majorflag2 < 2; majorflag2++)
+					{
+						double fullok = 0;
+							  double ok = 0;
+						for (int subi = 0, i = majori; subi < NUMTYPES*2; subi+=2, i+=2)
+						{
+							  
+							for (int flag2 = majorflag2; flag2 < NUMPATHS; flag2+=2)
 					{
 						if (flag2 & flag2ignore) {} else {
 
-						double ok = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
+								  for (int allele = 0; allele < 2; allele++)
+								    {
+								      double term = trackpossible<false, NO_EQUIVALENCE>(tb, (&themarker.first)[allele], (&thesure.first)[allele],
 							marker, i, flag2, *(tb.shiftflagmode), trackpossibleparams());
+								      ok += term * (allele ? 1 : -1);
+								      fullok += term;
+								    }
+								count++;
 						//				double ok = calltrackpossible<false, false>(tb, 0, marker, i, 0, flag2);
-						sum += ok;
+								}
+							}
+							
+
+						}
+						ok = fabs(ok);
+							sum += fullok;
 						sqsum += ok * ok;
-						if (debugtime && ok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf\n", n, marker, allele, shiftflagmode, i, flag2, ok);
-						count++;
-					}}
+							if (debugtime && fullok) fprintf(stderr, "%02d at %02d: %d %d %03d %03d %lf %lf\n", n, marker, 0, shiftflagmode, majori, majorflag2, ok, fullok);
 				}
 			}
 		}
 
+
 		if (!sum) return;
-		double contrib = (sqsum - (sum * sum / count)) / (sum * sum) * count;
+		double contrib = (sqsum /*- (sum * sum / count)*/) /* / (sum * sum) * count*/;
 		/*		for (individ* rel : relp)
 		{
 		if (!rel) continue;*/
-		variances[marker] += contrib;
+		variances[marker] = contrib;
 		if (debugtime) fprintf(stderr, "Variance for %d at %d is %lf (%lf:%lf)\n", n, marker, contrib, sqsum, sum);
 		//		}
 	}
