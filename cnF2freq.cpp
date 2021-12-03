@@ -7872,7 +7872,9 @@ void outputvcf(const std::string& templatefilename, const std::string& outputfil
 	while (reader.readRecord(record_template))
 	{
 		const char* markername = record_template.getIDStr();		
+		int refnum = boost::lexical_cast<int>(record_template.getRefStr());
 		auto pos = markernames.at(markername);
+
 		for (int i = 0; i < header_read.getNumSamples(); i++)
 		{
 			const char* sampleName = header_read.getSampleName(i);
@@ -7885,10 +7887,10 @@ void outputvcf(const std::string& templatefilename, const std::string& outputfil
 			}
 
 			auto [a, b] = ind->markerdata[pos];
-			auto markerVal2Str = [] (MarkerVal m) -> string
+			auto markerVal2Str = [refnum] (MarkerVal m) -> string
 			{
 				if (m == UnknownMarkerVal) return ".";
-				return std::to_string(m.value());
+				return std::to_string(m.value() != refnum);
 			};
 
 			if (ind->haploweight[pos] > 0.5)
