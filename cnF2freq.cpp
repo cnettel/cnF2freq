@@ -8168,7 +8168,13 @@ int main(int argc, char* argv[])
 #ifdef F2MPI
 									if (!world.rank())
 #endif
-										/*if (i == COUNT - 1)*/ fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+										/*if (i == COUNT - 1)*/ 
+										if (ind->priormarkerdata.size() > j) fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\t%d\t%d\t%lf\t%lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
+											ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0,
+											ind->priormarkerdata[j].first.value(), ind->priormarkerdata[j].second.value(),
+											ind->priormarkersure[j].first, ind->priormarkersure[j].second);
+											else
+											fprintf(out, "%f\t%d\t%d\t\t%f\t%lf %lf %lf\n", ind->haploweight[j], ind->markerdata[j].first.value(), ind->markerdata[j].second.value(), ind->negshift[j],
 											ind->markersure[j].first, ind->markersure[j].second, RELSKEWS ? ind->relhaplo[j] : 0);
 									ind->negshift[j] = 0;
 								}
