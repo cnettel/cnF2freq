@@ -4974,8 +4974,8 @@ void createtoulbarfile(const string toulin, long long maxweight, vector<clause>&
 	}
 
 	infile << "c In Weigthed Partial Max-SAT, the parameters line is 'p wcnf nbvar nbclauses top'\n";
-	infile << "c Where p is the weight\n";
-	infile << "c nbvar is the nu	mber of a variables appearing in the file (TYPEBITS +1)\n";
+	infile << "c Where p is the weight (true maxweight" << maxweight << ")\n";
+	infile << "c nbvar is the number of a variables appearing in the file\n";
 	infile << "c nbclauses is the exact number of clauses contained in the file\n";
 	infile << "c see http://maxsat.ia.udl.cat/requirements/\n";
 
