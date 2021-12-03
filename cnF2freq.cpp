@@ -7558,12 +7558,12 @@ void clearunprotected(set<individ*>& protinds, set<double>& protmarkers)
 			for (; markerposes[lastmarker] < i; lastmarker++)
 			{
 				ind->markerdata[lastmarker] = { UnknownMarkerVal, UnknownMarkerVal };
+				ind->priormarkerdata[lastmarker] = { UnknownMarkerVal, UnknownMarkerVal };
+				ind->priormarkersure[lastmarker] = make_pair(0, 0);
 				ind->markersure[lastmarker] = make_pair(0, 0);
 			}
 			lastmarker++;
 		}
-		ind->priormarkerdata = ind->markerdata;
-		ind->priormarkersure = ind->markersure;
 	}
 }
 
