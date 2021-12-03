@@ -5375,7 +5375,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 					if (shiftflagmode & shiftignore) //continue;
 						factors[shiftflagmode] = -1e30;
 					else
-						factors[shiftflagmode] = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, NONESTOP, -1, false, 0, -10000 + factor);
+						factors[shiftflagmode] = dous[j]->doanalyze<noneturner>(tb, none, chromstarts[i], chromstarts[i + 1] - 1, NONESTOP, -1, false, 0, -40000 + factor);
 					factor = max(factor, factors[shiftflagmode]);
 				}
 
