@@ -7943,6 +7943,7 @@ int main(int argc, char* argv[])
 		outputvcffilename, templatevcffilename;
 	bool clear;
 	int COUNT;
+	int limit;
 
 	desc.add_options()("samplefile", po::value<string>(&samplefilename), "ShapeIT-style .sample file")
 		("bimfile", po::value<string>(), "BIM file")
@@ -7952,6 +7953,7 @@ int main(int argc, char* argv[])
 		("famfile", po::value<string>(&famfilename), "Original PLINK fam file. Use with bedfile.")
 		("bedfile", po::value<string>(&bedfilename), "Original PLINK bed file. Use with famfile.")
 		("count", po::value<int>(&COUNT)->default_value(3), "Number of iterations")
+		("limit", po::value<int>(&limit)->default_value(INDCOUNT), "Maximum number of individuals")
 		("output", po::value<string>(&outputfilename), "Output file name")
 		("tmppath", po::value<string>(&tmppath), "Directory for toulbar temp files")
 		("capmarker", po::value<int>()->notifier([&](int cap)
@@ -7968,7 +7970,7 @@ int main(int argc, char* argv[])
 				("templatevcffile", po::value<string>(&templatevcffilename), "Template vcf file to use.")
 				("outputvcffile", po::value<string>(&outputvcffilename), "Output vcf file based on read data (including genotypes, template required).")
 				("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
-				("protinds", po::value<string>(&protindsfn), "File of mapping distances for protected markers. Used with --clear.")
+				("protinds", po::value<string>(&protindsfn), "File of individuals to not clear. Used with --clear.")
 				("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
 				("createhapfile", po::value<string>(&outputhapfilename), "Output a hapfile based on input haplotypes.");
 
@@ -8071,7 +8073,7 @@ int main(int argc, char* argv[])
 
 			//	return 0;
 			CORRECTIONINFERENCE = true;
-			postmarkerdata(104);
+			postmarkerdata(limit);
 			CORRECTIONINFERENCE = false;
 
 			if (deserializefilename != "")
@@ -8109,7 +8111,8 @@ int main(int argc, char* argv[])
 			{
 				out = fopen(outputfilename.c_str(), "w");
 			}
-						dous.resize(104);
+			if (limit < dous.size()) dous.resize(limit);
+			//chromstarts[1] = 100;
 
 			if (HAPLOTYPING || true)
 				for (int i = 0; i < COUNT; i++)
@@ -8143,7 +8146,7 @@ int main(int argc, char* argv[])
 
 					for (unsigned int i2 = 0; i2 < INDCOUNT; i2++)
 					{
-					  					  					  if (i2 > 104) continue;
+					  	if (i2 > limit) continue;
 						individ* ind = getind(i2);
 						if (!ind) continue;
 
