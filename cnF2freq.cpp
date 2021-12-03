@@ -4653,6 +4653,7 @@ void updatehaploweights(individ* ind, FILE* out, int iter, std::atomic_int& hitn
 			}
 			double similarity = min(sims[0], sims[1]);
 			similarity = 0;
+			similarity = (scorea * scoreb + (1 - scorea) * (1 - scoreb));
 
 			if (!ind->haplocount[j] || similarity == 1.0)
 			{
