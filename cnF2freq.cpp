@@ -90,9 +90,11 @@ const long long WEIGHT_DISCRETIZER = 1000000;
 #include <iostream>
 #include <fstream>
 
+#if LIBSTATGEN
 #include <VcfRecordGenotype.h>
 #include <VcfFileReader.h>
 #include <VcfFileWriter.h>
+#endif
 
 #include <vector>
 
@@ -7858,6 +7860,7 @@ void outputped(const std::string& filename)
 	fclose(f);
 }
 
+#if LIBSTATGEN
 void outputvcf(const std::string& templatefilename, const std::string& outputfilename)
 {
 	VcfFileReader reader;
@@ -7906,6 +7909,7 @@ void outputvcf(const std::string& templatefilename, const std::string& outputfil
 	reader.close();
 	writer.close();
 }
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -7969,8 +7973,10 @@ int main(int argc, char* argv[])
 				("gigimapfile", po::value<string>(&gigimapfilename), "map file in format compatible with Gigi.")
 				("gigipedfile", po::value<string>(&gigipedfilename), "ped file in format compatible with Gigi (including genotypes).")
 				("outputpedfile", po::value<string>(&outputpedfilename), "Output ped file based on read data (including genotypes).")
+#if LIBSTATGGEN				
 				("templatevcffile", po::value<string>(&templatevcffilename), "Template vcf file to use.")
 				("outputvcffile", po::value<string>(&outputvcffilename), "Output vcf file based on read data (including genotypes, template required).")
+#endif				
 				("protmarkers", po::value<string>(&protmarkersfn), "File of mapping distances for protected markers. Used with --clear.")
 				("protinds", po::value<string>(&protindsfn), "File of individuals to not clear. Used with --clear.")
 				("clear", po::bool_switch(&clear), "Clear all non-protected markers in all non-protected individuals.")
@@ -8094,10 +8100,12 @@ int main(int argc, char* argv[])
 				outputped(outputpedfilename);
 			}
 
+#if LIBSTATGEN
 			if (outputvcffilename != "")
 			{
 				outputvcf(templatevcffilename, outputvcffilename);
 			}
+#endif			
 
 
 			if (samplefilename != "" && outputhapfilename != "")

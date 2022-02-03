@@ -3,6 +3,7 @@
 #define DOFB 1
 #define DOTOULBAR 1
 #define XSTDBITSET 1
+#define LIBSTATGEN 0
 const int SELFBITS = 2;
 
 const int INDCOUNT = 1000000;
