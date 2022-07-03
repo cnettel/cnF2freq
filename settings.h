@@ -4,7 +4,7 @@
 
 const int INDCOUNT = 1000000;
 const bool DOREMAPDISTANCES = false;
-const bool DOINFPROBS = false;
+const bool DOINFPROBS = true;
 const bool SELFING = false;
 
 // F2 with haplotyping

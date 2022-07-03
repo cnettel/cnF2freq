@@ -330,11 +330,11 @@ map<individ*, int> relmap; //containing flag2 indices
 #if !DOFB
 vector<int> done[NUMSHIFTS];
 vector<StateToStateMatrix<double>::T > cacheprobs[NUMSHIFTS];
-std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #else
 vector<std::array<PerStateArray<double>::T, 2> > fwbw[NUMSHIFTS];
 vector<std::array<double, 2> > fwbwfactors[NUMSHIFTS];
 #endif
+std::array<std::array<map<MarkerVal, float>, 2>, INDCOUNT> infprobs;
 #endif
 
 
@@ -3981,7 +3981,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 									double sureness = i->second / sum;
 									double origsureness = sureness;
 
-									if (!(&(ind->markerdata[j].first))[a] == UnknownMarkerVal)
+									if ((&(ind->markerdata[j].first))[a] != UnknownMarkerVal)
 									{
 										if (i->first != (&(ind->markerdata[j].first))[a])
 										{
@@ -3990,6 +3990,7 @@ template<bool full, typename reporterclass> void doit(FILE* out, bool printalot
 												sureness = 0.9999;
 											}
 										}
+									}
 
 									if (origsureness > 0.9999) origsureness = 0.9999;
 									surenesses[i->first] += 1 - origsureness;
